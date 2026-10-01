@@ -1,0 +1,11 @@
+/* assets/css/heatmap.css */
+/* Estilos para a página de heatmap */
+body {
+    font-family: "Inter", sans-serif;
+    background-color: #f1f5f9; /* slate-100 */
+    color: #1e293b; /* slate-800 */
+}
+#heatmapChart {
+    height: 500px; /* altura fixa para o canvas */
+    max-width: 100%;
+}

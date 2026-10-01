@@ -1,0 +1,171 @@
+# ===================================================================
+# SEGURANÇA MMS - Configuração Apache
+# ===================================================================
+
+# -------------------------------------------------------------------
+# Forçar HTTPS (descomente quando o SSL estiver ativo no domínio)
+# -------------------------------------------------------------------
+# RewriteEngine On
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+
+# -------------------------------------------------------------------
+# Headers de Segurança HTTP
+# -------------------------------------------------------------------
+<IfModule mod_headers.c>
+    # Proteção contra Clickjacking
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Proteção contra MIME Sniffing
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Proteção XSS (legado, mas ainda útil em navegadores antigos)
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Política de Referrer
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Limita as APIs sensíveis do navegador (sem geo, sem mic, sem câmera)
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+
+    # Content Security Policy ATIVA
+    # - Permite Tailwind CDN, scripts inline (necessário pelo seu código),
+    #   imagens base64 (data:) das fotos, e a API do WhatsApp para compartilhamento.
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://api.anthropic.com; frame-ancestors 'self'; form-action 'self'; base-uri 'self'"
+
+    # Strict-Transport-Security (ative quando estiver 100% em HTTPS)
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Remove cabeçalhos que vazam tecnologia
+    Header unset X-Powered-By
+    Header unset Server
+</IfModule>
+
+
+# -------------------------------------------------------------------
+# Cookies de sessão SEGUROS
+# -------------------------------------------------------------------
+<IfModule mod_php.c>
+    php_flag session.cookie_httponly on
+    php_flag session.cookie_secure on
+    php_flag session.use_only_cookies on
+    php_value session.cookie_samesite "Lax"
+    php_flag session.use_strict_mode on
+</IfModule>
+
+
+# -------------------------------------------------------------------
+# Proteção de Arquivos Sensíveis
+# -------------------------------------------------------------------
+<FilesMatch "^(mms_config\.php|mms_erros_sistema\.log|\.htaccess|\.env|\.mms_env|composer\.json|composer\.lock|package\.json|package-lock\.json|.*\.sql|.*\.bak|.*\.backup|.*\.old)$">
+    Require all denied
+</FilesMatch>
+
+# Bloquear acesso a qualquer arquivo .log
+<FilesMatch "\.log$">
+    Require all denied
+</FilesMatch>
+
+# Bloquear acesso a arquivos ocultos (.git, .env, .DS_Store etc.)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Bloquear pasta .git
+<DirectoryMatch "\.git">
+    Require all denied
+</DirectoryMatch>
+
+# Bloquear acesso DIRETO à pasta dos PDFs gerados.
+# Os PDFs só podem ser baixados via download_pdf.php (que valida permissões).
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^relatorios_pdf/ - [F,L]
+</IfModule>
+
+# Bloqueia também acesso direto à pasta dompdf, se estiver no servidor
+<IfModule mod_rewrite.c>
+    RewriteRule ^dompdf/ - [F,L]
+</IfModule>
+
+
+# -------------------------------------------------------------------
+# URLs Amigáveis (Rewrite Rules)
+# -------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    RewriteRule ^index$ index.php [L]
+    RewriteRule ^login$ login.php [L]
+    RewriteRule ^cadastro$ cadastro.php [L]
+    RewriteRule ^logout$ logout.php [L]
+    RewriteRule ^meus_relatorios$ meus_relatorios.php [L,QSA]
+    RewriteRule ^ver_relatorio$ ver_relatorio.php [L,QSA]
+    RewriteRule ^coord$ coord.php [L,QSA]
+    RewriteRule ^editar_relatorio$ editar_relatorio.php [L,QSA]
+    RewriteRule ^download_pdf$ download_pdf.php [L,QSA]
+    RewriteRule ^salvar_relatorio$ salvar_relatorio.php [L]
+    RewriteRule ^salvar_interacao$ salvar_interacao.php [L]
+</IfModule>
+
+
+# -------------------------------------------------------------------
+# Filtros básicos contra payloads maliciosos na URL
+# -------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+    RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+    RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2}) [OR]
+    RewriteCond %{QUERY_STRING} (\.\./|%2e%2e%2f|%2e%2e/) [NC,OR]
+    RewriteCond %{QUERY_STRING} (union\s+select|select.+from|insert\s+into|drop\s+table) [NC]
+    RewriteRule ^(.*)$ - [F,L]
+</IfModule>
+
+
+# -------------------------------------------------------------------
+# Desabilitar listagem de diretórios e seguir symlinks
+# -------------------------------------------------------------------
+Options -Indexes -ExecCGI
+Options +FollowSymLinks
+
+
+# -------------------------------------------------------------------
+# Compressão GZIP
+# -------------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+
+# -------------------------------------------------------------------
+# Cache de Arquivos Estáticos
+# -------------------------------------------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    # PDFs NÃO devem ser cacheados (dados sensíveis)
+    ExpiresByType application/pdf "access plus 0 seconds"
+</IfModule>
+
+
+# -------------------------------------------------------------------
+# Limites de Upload
+# (php_value só funciona em Apache com mod_php; em CGI/FPM use php.ini)
+# -------------------------------------------------------------------
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 12M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+    # Endurece o PHP para produção
+    php_flag display_errors off
+    php_flag log_errors on
+    php_flag expose_php off
+</IfModule>

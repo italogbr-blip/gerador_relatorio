@@ -1,0 +1,82 @@
+/* assets/css/theme.css */
+:root {
+    /* Modo Claro (Clean / Prata / Neve) */
+    --color-bg: #f8fafc;
+    --color-text: #0f172a;
+    --color-card-bg: #ffffff;
+    --color-card-border: #ffffff;
+    --color-card-shadow: rgba(15, 23, 42, 0.05);
+    
+    --color-primary: #0284c7; /* Azul corporativo */
+    --color-nav-bg: #ffffff;
+    --color-nav-border: #e2e8f0;
+    --color-table-header: #f1f5f9;
+}
+
+
+
+body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Novo visual do Card (Sem blur exagerado, foco corporativo sólido) */
+.card {
+    background: var(--color-card-bg);
+    color: #0f172a; /* Força texto escuro dentro dos cards brancos */
+    border: 1px solid var(--color-card-border);
+    box-shadow: 0 4px 20px var(--color-card-shadow);
+    border-radius: 0.5rem; /* Menos arredondado, mais sério */
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Garante que os textos que usam a variável text adaptem para escuro dentro do card */
+.card [class*="text-[var(--color-text)]"] {
+    color: #0f172a !important;
+}
+
+/* Estilo para Navbar e Elementos Fixos */
+.offshore-nav {
+    background: var(--color-nav-bg);
+    color: #0f172a;
+    border-bottom: 1px solid var(--color-nav-border);
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.offshore-nav [class*="text-[var(--color-text)]"] {
+    color: #0f172a !important;
+}
+
+/* Botões refinados */
+.btn-offshore {
+    background: transparent;
+    border: 1px solid var(--color-card-border);
+    color: var(--color-text);
+    transition: all 0.2s ease;
+}
+
+.btn-offshore:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--color-primary);
+}
+
+
+
+/* Tabelas */
+.table-header {
+    background: var(--color-table-header);
+    border-bottom: 2px solid var(--color-card-border);
+    transition: background 0.3s ease;
+}
+
+.table-row {
+    border-bottom: 1px solid var(--color-card-border);
+    transition: background 0.2s ease;
+}
+
+.table-row:hover {
+    background: rgba(15, 23, 42, 0.02);
+}
+
+
