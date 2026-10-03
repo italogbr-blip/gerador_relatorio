@@ -1,0 +1,1021 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  ActivityIndicator,
+  Modal,
+  Platform,
+  SafeAreaView,
+  useWindowDimensions,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { supabase } from '../lib/supabase';
+
+const modernFont = Platform.OS === 'web'
+  ? "'Inter', system-ui, -apple-system, sans-serif"
+  : undefined;
+
+const corporateFont = Platform.OS === 'web'
+  ? '"Times New Roman", Times, serif'
+  : undefined;
+
+const EMPRESAS = ['TODAS', 'TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'];
+
+export default function MeusRelatoriosScreen() {
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+
+  const [userSession, setUserSession] = useState<any>(null);
+  const [relatorios, setRelatorios] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [totalRegistros, setTotalRegistros] = useState<number>(0);
+
+  // Filtros
+  const [filtroEmpresa, setFiltroEmpresa] = useState<string>('TODAS');
+  const [filtroBusca, setFiltroBusca] = useState<string>('');
+  const [pagina, setPagina] = useState<number>(1);
+  const porPagina = 15;
+
+  // Modal de Detalhes / Visualização de Relatório
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+
+  // Custom Alert / Confirm Modal State
+  const [customDialog, setCustomDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+  });
+
+  // Carregar Sessão do Usuário
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      try {
+        const saved = localStorage.getItem('app_user_session');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed?.user) setUserSession(parsed);
+        }
+      } catch (e) {}
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setUserSession(session);
+    });
+  }, []);
+
+  // Carregar Relatórios do Supabase
+  const fetchRelatorios = async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('relatorios')
+        .select('*', { count: 'exact' });
+
+      // Se filtro de empresa selecionado (diferente de TODAS)
+      if (filtroEmpresa && filtroEmpresa !== 'TODAS') {
+        query = query.eq('empresa', filtroEmpresa);
+      }
+
+      // Se houver busca por texto (unidade ou local)
+      if (filtroBusca.trim()) {
+        const term = `%${filtroBusca.trim()}%`;
+        query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term}`);
+      }
+
+      // Paginação
+      const from = (pagina - 1) * porPagina;
+      const to = from + porPagina - 1;
+
+      query = query.order('data_criacao', { ascending: false }).range(from, to);
+
+      const { data, count, error } = await query;
+
+      if (error) {
+        console.error('Erro ao buscar relatorios:', error.message);
+      } else {
+        setRelatorios(data || []);
+        setTotalRegistros(count || 0);
+      }
+    } catch (err: any) {
+      console.error('Exceção ao buscar relatorios:', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRelatorios();
+  }, [filtroEmpresa, pagina]);
+
+  const handleApplyFilter = () => {
+    setPagina(1);
+    fetchRelatorios();
+  };
+
+  const handleClearFilter = () => {
+    setFiltroEmpresa('TODAS');
+    setFiltroBusca('');
+    setPagina(1);
+  };
+
+  // Excluir Relatório
+  const handleExcluir = (id: number) => {
+    setCustomDialog({
+      visible: true,
+      title: 'EXCLUIR RELATÓRIO',
+      message: 'Tem certeza que deseja excluir este relatório? Esta ação não pode ser desfeita.',
+      onConfirm: async () => {
+        setCustomDialog((prev) => ({ ...prev, visible: false }));
+        setLoading(true);
+        const { error } = await supabase.from('relatorios').delete().eq('id', id);
+        if (error) {
+          alert('Erro ao excluir relatório: ' + error.message);
+        } else {
+          fetchRelatorios();
+        }
+      },
+    });
+  };
+
+  // Badge de Empresa com Cores Curadas
+  const renderEmpresaBadge = (empresa: string) => {
+    const emp = (empresa || 'OUTROS').toUpperCase();
+    let bg = '#f1f5f9';
+    let text = '#475569';
+
+    if (emp === 'TECHNIP') { bg = '#f3e8ff'; text = '#7e22ce'; }
+    else if (emp === 'DOF') { bg = '#ffedd5'; text = '#c2410c'; }
+    else if (emp === 'TECHNIP/DOF') { bg = '#fce7f3'; text = '#be185d'; }
+    else if (emp === 'CONSTELLATION') { bg = '#dbeafe'; text = '#1d4ed8'; }
+    else if (emp === 'ZONDA') { bg = '#ecfccb'; text = '#3f6212'; }
+
+    return (
+      <View style={[styles.badgeContainer, { backgroundColor: bg }]}>
+        <Text style={[styles.badgeText, { color: text }]}>{emp}</Text>
+      </View>
+    );
+  };
+
+  const totalPaginas = Math.ceil(totalRegistros / porPagina) || 1;
+
+  const username = userSession?.user?.user_metadata?.name || userSession?.user?.email?.split('@')[0] || 'Usuário';
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Top Navbar */}
+      <View style={styles.navbar}>
+        <View style={styles.navLeft}>
+          <Text style={styles.navTitle}>MEUS RELATÓRIOS</Text>
+        </View>
+        <View style={styles.navRight}>
+          <Text style={styles.navUserGreeting}>Olá, <Text style={{ fontWeight: 'bold' }}>{username}</Text></Text>
+          <TouchableOpacity
+            style={styles.btnVoltar}
+            onPress={() => router.push('/')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnVoltarText}>← VOLTAR AO GERADOR</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.mainCard}>
+          {/* Header Title */}
+          <View style={styles.headerBox}>
+            <Text style={styles.pageTitle}>HISTÓRICO DE ENVIOUS</Text>
+            <Text style={styles.pageSubTitle}>Consulte todos os relatórios gerados e salvos no Supabase.</Text>
+          </View>
+
+          {/* Filtros */}
+          <View style={styles.filterCard}>
+            <View style={styles.filterGrid}>
+              {/* Filtro Empresa */}
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>EMPRESA</Text>
+                <View style={styles.selectWrapper}>
+                  {EMPRESAS.map((emp) => (
+                    <TouchableOpacity
+                      key={emp}
+                      style={[
+                        styles.empresaChip,
+                        filtroEmpresa === emp && styles.empresaChipActive,
+                      ]}
+                      onPress={() => setFiltroEmpresa(emp)}
+                    >
+                      <Text
+                        style={[
+                          styles.empresaChipText,
+                          filtroEmpresa === emp && styles.empresaChipTextActive,
+                        ]}
+                      >
+                        {emp}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Busca por Texto */}
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>BUSCAR UNIDADE OU LOCAL</Text>
+                <View style={styles.searchRow}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Digite o nome da unidade ou cidade..."
+                    placeholderTextColor="#94a3b8"
+                    value={filtroBusca}
+                    onChangeText={setFiltroBusca}
+                    onSubmitEditing={handleApplyFilter}
+                  />
+                  <TouchableOpacity
+                    style={styles.btnFiltrar}
+                    onPress={handleApplyFilter}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.btnFiltrarText}>🔍 FILTRAR</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.btnLimpar}
+                    onPress={handleClearFilter}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.btnLimparText}>LIMPAR</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* Totalizador */}
+            <View style={styles.counterRow}>
+              <Text style={styles.counterText}>
+                Mostrando <Text style={{ fontWeight: '900', color: '#1e293b' }}>{relatorios.length}</Text> de{' '}
+                <Text style={{ fontWeight: '900', color: '#1e293b' }}>{totalRegistros}</Text> relatórios salvos
+              </Text>
+            </View>
+          </View>
+
+          {/* Conteúdo: Tabela (Desktop) ou Cards (Mobile) */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#2563eb" />
+              <Text style={styles.loadingText}>Carregando relatórios...</Text>
+            </View>
+          ) : relatorios.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>📂</Text>
+              <Text style={styles.emptyTitle}>Nenhum relatório encontrado</Text>
+              <Text style={styles.emptySub}>Tente alterar os filtros de busca acima.</Text>
+            </View>
+          ) : isMobile ? (
+            /* Cards Mobile */
+            <View style={styles.cardsGridMobile}>
+              {relatorios.map((r) => (
+                <View key={r.id} style={styles.reportCardMobile}>
+                  <View style={styles.cardMobileHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardMobileTitle}>{r.unidade || 'Sem Unidade'}</Text>
+                      <Text style={styles.cardMobileDate}>
+                        📅 {new Date(r.data_criacao).toLocaleDateString('pt-BR')} às{' '}
+                        {new Date(r.data_criacao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                    {renderEmpresaBadge(r.empresa)}
+                  </View>
+
+                  <View style={styles.cardMobileBody}>
+                    <Text style={styles.cardMobileLocal}>
+                      📍 <Text style={{ fontWeight: 'bold' }}>Local:</Text> {r.local_atendimento || 'N/A'}
+                    </Text>
+                    <View style={styles.cardMobileTagsRow}>
+                      {r.teve_anexo ? (
+                        <View style={[styles.anexoBadge, { backgroundColor: '#ecfdf5' }]}>
+                          <Text style={[styles.anexoBadgeText, { color: '#047857' }]}>📷 COM FOTOS</Text>
+                        </View>
+                      ) : (
+                        <View style={[styles.anexoBadge, { backgroundColor: '#f1f5f9' }]}>
+                          <Text style={[styles.anexoBadgeText, { color: '#64748b' }]}>SEM FOTOS</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  <View style={styles.cardMobileFooter}>
+                    <TouchableOpacity
+                      style={styles.btnActionVer}
+                      onPress={() => setSelectedReport(r)}
+                    >
+                      <Text style={styles.btnActionVerText}>👁️ VER</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.btnActionExcluir}
+                      onPress={() => handleExcluir(r.id)}
+                    >
+                      <Text style={styles.btnActionExcluirText}>🗑️ EXCLUIR</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            /* Tabela Desktop */
+            <View style={styles.tableContainer}>
+              <View style={styles.tableHeaderRow}>
+                <Text style={[styles.thCell, { flex: 1.5 }]}>DATA / HORA</Text>
+                <Text style={[styles.thCell, { flex: 2 }]}>UNIDADE</Text>
+                <Text style={[styles.thCell, { flex: 2 }]}>LOCAL DE ATENDIMENTO</Text>
+                <Text style={[styles.thCell, { flex: 1.5, textAlign: 'center' }]}>EMPRESA</Text>
+                <Text style={[styles.thCell, { flex: 1, textAlign: 'center' }]}>FOTOS</Text>
+                <Text style={[styles.thCell, { flex: 2, textAlign: 'center' }]}>AÇÃO</Text>
+              </View>
+
+              {relatorios.map((r, idx) => (
+                <View
+                  key={r.id}
+                  style={[
+                    styles.tableBodyRow,
+                    idx % 2 === 1 && { backgroundColor: '#f8fafc' },
+                  ]}
+                >
+                  <Text style={[styles.tdCell, { flex: 1.5, fontSize: 12 }]}>
+                    {new Date(r.data_criacao).toLocaleDateString('pt-BR')} {new Date(r.data_criacao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  <Text style={[styles.tdCell, { flex: 2, fontWeight: 'bold', color: '#1d4ed8' }]} numberOfLines={1}>
+                    {r.unidade || 'N/A'}
+                  </Text>
+                  <Text style={[styles.tdCell, { flex: 2, color: '#475569' }]} numberOfLines={1}>
+                    {r.local_atendimento || 'N/A'}
+                  </Text>
+                  <View style={[{ flex: 1.5, alignItems: 'center', justifyContent: 'center' }]}>
+                    {renderEmpresaBadge(r.empresa)}
+                  </View>
+                  <View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center' }]}>
+                    {r.teve_anexo ? (
+                      <View style={[styles.anexoBadge, { backgroundColor: '#ecfdf5' }]}>
+                        <Text style={[styles.anexoBadgeText, { color: '#047857' }]}>SIM</Text>
+                      </View>
+                    ) : (
+                      <View style={[styles.anexoBadge, { backgroundColor: '#f1f5f9' }]}>
+                        <Text style={[styles.anexoBadgeText, { color: '#64748b' }]}>NÃO</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={[{ flex: 2, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' }]}>
+                    <TouchableOpacity
+                      style={styles.btnActionVer}
+                      onPress={() => setSelectedReport(r)}
+                    >
+                      <Text style={styles.btnActionVerText}>👁️ VER</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.btnActionExcluir}
+                      onPress={() => handleExcluir(r.id)}
+                    >
+                      <Text style={styles.btnActionExcluirText}>🗑️ EXCLUIR</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Paginação */}
+          {totalPaginas > 1 && (
+            <View style={styles.paginationContainer}>
+              <TouchableOpacity
+                style={[styles.btnPageNav, pagina === 1 && styles.btnPageNavDisabled]}
+                disabled={pagina === 1}
+                onPress={() => setPagina((p) => Math.max(1, p - 1))}
+              >
+                <Text style={styles.btnPageNavText}>← ANTERIOR</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.paginationText}>
+                Página <Text style={{ fontWeight: 'bold' }}>{pagina}</Text> de{' '}
+                <Text style={{ fontWeight: 'bold' }}>{totalPaginas}</Text>
+              </Text>
+
+              <TouchableOpacity
+                style={[styles.btnPageNav, pagina === totalPaginas && styles.btnPageNavDisabled]}
+                disabled={pagina === totalPaginas}
+                onPress={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+              >
+                <Text style={styles.btnPageNavText}>PRÓXIMA →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Modal de Detalhes do Relatório */}
+      <Modal visible={!!selectedReport} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.detailCard}>
+            <TouchableOpacity
+              style={styles.detailCloseBtn}
+              onPress={() => setSelectedReport(null)}
+            >
+              <Text style={styles.detailCloseText}>✕</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.detailTitle}>DETALHES DO RELATÓRIO #{selectedReport?.id}</Text>
+
+            {selectedReport && (
+              <ScrollView style={styles.detailScroll}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>EMPRESA:</Text>
+                  <Text style={styles.detailVal}>{selectedReport.empresa}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>UNIDADE:</Text>
+                  <Text style={styles.detailVal}>{selectedReport.unidade}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>LOCAL DE ATENDIMENTO:</Text>
+                  <Text style={styles.detailVal}>{selectedReport.local_atendimento || 'N/A'}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>DATA DE CRIAÇÃO:</Text>
+                  <Text style={styles.detailVal}>
+                    {new Date(selectedReport.data_criacao).toLocaleString('pt-BR')}
+                  </Text>
+                </View>
+
+                <View style={styles.detailDivider} />
+
+                <Text style={styles.jsonSectionTitle}>DADOS JSON REGISTRADOS:</Text>
+                <View style={styles.jsonBox}>
+                  <Text style={styles.jsonText}>
+                    {typeof selectedReport.dados_json === 'string'
+                      ? selectedReport.dados_json
+                      : JSON.stringify(selectedReport.dados_json, null, 2)}
+                  </Text>
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Custom Confirm Dialog */}
+      <Modal visible={customDialog.visible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmTitle}>{customDialog.title}</Text>
+            <Text style={styles.confirmMsg}>{customDialog.message}</Text>
+            <View style={styles.confirmButtonsRow}>
+              <TouchableOpacity
+                style={styles.btnCancelDialog}
+                onPress={() => setCustomDialog((prev) => ({ ...prev, visible: false }))}
+              >
+                <Text style={styles.btnCancelDialogText}>CANCELAR</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.btnConfirmDialog}
+                onPress={customDialog.onConfirm}
+              >
+                <Text style={styles.btnConfirmDialogText}>EXCLUIR</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+  },
+  navbar: {
+    height: 60,
+    backgroundColor: '#0f172a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  navLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  navTitle: {
+    color: '#ffffff',
+    fontWeight: '900',
+    fontSize: 15,
+    letterSpacing: 1.5,
+    fontFamily: modernFont,
+  },
+  navRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  navUserGreeting: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontFamily: modernFont,
+  },
+  btnVoltar: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  btnVoltarText: {
+    color: '#ffffff',
+    fontWeight: '900',
+    fontSize: 11,
+    letterSpacing: 1,
+    fontFamily: modernFont,
+  },
+  scrollContent: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  mainCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 1080,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  headerBox: {
+    marginBottom: 20,
+  },
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#1e293b',
+    letterSpacing: 1,
+    fontFamily: modernFont,
+  },
+  pageSubTitle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 4,
+    fontFamily: modernFont,
+  },
+  filterCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 20,
+  },
+  filterGrid: {
+    gap: 16,
+  },
+  filterGroup: {
+    gap: 8,
+  },
+  filterLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#475569',
+    letterSpacing: 1,
+    fontFamily: modernFont,
+  },
+  selectWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  empresaChip: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  empresaChipActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  empresaChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    fontFamily: modernFont,
+  },
+  empresaChipTextActive: {
+    color: '#ffffff',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  searchInput: {
+    flex: 1,
+    minWidth: 200,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 13,
+    color: '#1e293b',
+    fontFamily: modernFont,
+  },
+  btnFiltrar: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnFiltrarText: {
+    color: '#ffffff',
+    fontWeight: '900',
+    fontSize: 11,
+    letterSpacing: 1,
+    fontFamily: modernFont,
+  },
+  btnLimpar: {
+    backgroundColor: '#e2e8f0',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnLimparText: {
+    color: '#475569',
+    fontWeight: '900',
+    fontSize: 11,
+    letterSpacing: 1,
+    fontFamily: modernFont,
+  },
+  counterRow: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  counterText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontFamily: modernFont,
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '600',
+    fontFamily: modernFont,
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#1e293b',
+    fontFamily: modernFont,
+  },
+  emptySub: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
+    fontFamily: modernFont,
+  },
+  tableContainer: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  thCell: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#475569',
+    letterSpacing: 1,
+    fontFamily: modernFont,
+  },
+  tableBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  tdCell: {
+    fontSize: 13,
+    color: '#1e293b',
+    fontFamily: modernFont,
+  },
+  badgeContainer: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  anexoBadge: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  anexoBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  btnActionVer: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  btnActionVerText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#2563eb',
+    fontFamily: modernFont,
+  },
+  btnActionExcluir: {
+    backgroundColor: '#fff1f2',
+    borderWidth: 1,
+    borderColor: '#fecdd3',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  btnActionExcluirText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#e11d48',
+    fontFamily: modernFont,
+  },
+  cardsGridMobile: {
+    gap: 12,
+  },
+  reportCardMobile: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 12,
+  },
+  cardMobileHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  cardMobileTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#1d4ed8',
+    fontFamily: modernFont,
+  },
+  cardMobileDate: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  cardMobileBody: {
+    gap: 6,
+  },
+  cardMobileLocal: {
+    fontSize: 12,
+    color: '#334155',
+    fontFamily: modernFont,
+  },
+  cardMobileTagsRow: {
+    flexDirection: 'row',
+    marginTop: 4,
+  },
+  cardMobileFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 24,
+  },
+  btnPageNav: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  btnPageNavDisabled: {
+    opacity: 0.5,
+  },
+  btnPageNavText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#334155',
+    fontFamily: modernFont,
+  },
+  paginationText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontFamily: modernFont,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  detailCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 600,
+    maxHeight: '80%',
+    position: 'relative',
+  },
+  detailCloseBtn: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  detailCloseText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#64748b',
+  },
+  detailTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#1e293b',
+    marginBottom: 16,
+    letterSpacing: 1,
+    fontFamily: modernFont,
+  },
+  detailScroll: {
+    gap: 10,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#475569',
+    width: 160,
+    fontFamily: modernFont,
+  },
+  detailVal: {
+    fontSize: 13,
+    color: '#0f172a',
+    flex: 1,
+    fontWeight: '600',
+    fontFamily: modernFont,
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginVertical: 12,
+  },
+  jsonSectionTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#64748b',
+    letterSpacing: 1,
+    marginBottom: 6,
+    fontFamily: modernFont,
+  },
+  jsonBox: {
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    padding: 12,
+  },
+  jsonText: {
+    fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
+    fontSize: 11,
+    color: '#38bdf8',
+  },
+  confirmCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  confirmTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#e11d48',
+    letterSpacing: 1,
+    marginBottom: 8,
+    fontFamily: modernFont,
+  },
+  confirmMsg: {
+    fontSize: 13,
+    color: '#475569',
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: modernFont,
+  },
+  confirmButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  btnCancelDialog: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  btnCancelDialogText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#475569',
+    fontFamily: modernFont,
+  },
+  btnConfirmDialog: {
+    flex: 1,
+    backgroundColor: '#e11d48',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  btnConfirmDialogText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#ffffff',
+    fontFamily: modernFont,
+  },
+});

@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
+import { useRouter } from 'expo-router';
 
 // Cores Curadas do Layout Original Tailwind / PHP
 const colors = {
@@ -194,6 +195,7 @@ const getRotatedBase64 = (imageUri: string, angle: number): Promise<string> => {
 };
 
 export default function ReportGenerator() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<number>(1);
   const [tabs, setTabs] = useState<number[]>([1]);
   const [tabStore, setTabStore] = useState<{ [key: number]: TabData }>({
@@ -1050,7 +1052,7 @@ export default function ReportGenerator() {
                       onPress={() => {
                         setSelectedMenuItem('meus_relatorios');
                         toggleMenu();
-                        showCustomAlert('Meus Relatórios', 'Lista de relatórios salvos no Supabase.');
+                        router.push('/meus_relatorios');
                       }}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
