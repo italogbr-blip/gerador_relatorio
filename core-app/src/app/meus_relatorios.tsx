@@ -276,9 +276,9 @@ export default function MeusRelatoriosScreen() {
         <View style={[styles.mainCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderWidth: 1 }]}>
           {/* Header Title */}
           <View style={styles.headerBox}>
-            <Text style={[styles.pageTitle, !isDarkMode && { color: '#0f172a' }]}>HISTÓRICO DE ENVIOUS</Text>
+            <Text style={[styles.pageTitle, !isDarkMode && { color: '#0f172a' }]}>HISTÓRICO DE RELATÓRIOS.</Text>
             <Text style={styles.pageSubTitle}>
-              Consulte seus relatórios gerados e vinculados à sua conta.
+              Consulte todos os relatórios gerados e salvos.
             </Text>
           </View>
 

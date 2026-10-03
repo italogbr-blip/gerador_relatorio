@@ -81,8 +81,8 @@ $relatorios = $stmt->fetchAll();
         
         <!-- Header -->
         <div class="mb-6">
-            <h1 class="text-2xl md:text-3xl font-black text-slate-800 uppercase tracking-widest">Histórico de Envios</h1>
-            <p class="text-sm text-slate-500 font-medium mt-1">Consulte todos os relatórios gerados por você.</p>
+            <h1 class="text-2xl md:text-3xl font-black text-slate-800 uppercase tracking-widest">Histórico de Relatórios.</h1>
+            <p class="text-sm text-slate-500 font-medium mt-1">Consulte todos os relatórios gerados e salvos.</p>
         </div>
 
         <!-- Filtros -->
