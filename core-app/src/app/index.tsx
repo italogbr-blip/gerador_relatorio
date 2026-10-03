@@ -925,8 +925,57 @@ export default function ReportGenerator() {
     setFirstErrorField(null);
     setPdfGenerated(true);
 
+    // Salva automaticamente o relatório gerado na nuvem Supabase
+    salvarRelatorioNoSupabase();
+
     if (Platform.OS === 'web') {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+  };
+
+  const salvarRelatorioNoSupabase = async () => {
+    try {
+      const jsonPayload = {
+        grupo: currentData.grupo,
+        unidade: currentData.unidade,
+        data: currentData.data,
+        local: currentData.local,
+        modal: currentData.modal,
+        preposto: currentData.preposto,
+        observacao_nome_arquivo: currentData.observacao,
+        horarios: {
+          saida_hotel: currentData.listaSaidas,
+          embarque_previsto: currentData.semEmbarquePrev ? 'N/A' : `${currentData.h3}:${currentData.m3}`,
+          embarque_real: currentData.semEmbarque ? 'N/A' : `${currentData.h4}:${currentData.m4}`,
+          atendimento_inicio: `${currentData.h5}:${currentData.m5}`,
+          atendimento_fim: `${currentData.h6}:${currentData.m6}`,
+        },
+        info_troca: currentData.info,
+        pax_embarcando: currentData.pax1,
+        pax_desembarcando: currentData.pax2,
+        fotos: currentData.fotosAnexadas,
+      };
+
+      const { data, error } = await supabase.from('relatorios').insert([{
+        usuario_id: userSession?.user?.id || null,
+        empresa: currentData.grupo,
+        unidade: currentData.unidade,
+        local_atendimento: currentData.local,
+        dados_json: JSON.stringify(jsonPayload),
+        teve_anexo: currentData.fotosAnexadas.length > 0,
+        data_criacao: new Date().toISOString(),
+      }]);
+
+      if (error) {
+        console.error('Aviso ao salvar no Supabase:', error.message);
+      } else {
+        showCustomAlert(
+          'RELATÓRIO SALVO NA NUVEM',
+          'Seu relatório foi gerado e salvo com sucesso! Você pode visualizá-lo a qualquer momento em "Meus Relatórios".'
+        );
+      }
+    } catch (err: any) {
+      console.error('Exceção ao salvar no Supabase:', err.message);
     }
   };
 

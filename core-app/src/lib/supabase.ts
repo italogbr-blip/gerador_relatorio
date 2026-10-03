@@ -22,3 +22,36 @@ AppState.addEventListener('change', (state) => {
     supabase.auth.stopAutoRefresh();
   }
 });
+
+/**
+ * Envia um arquivo PDF para o Supabase Storage (Bucket relatorios_pdf)
+ * e retorna a URL pública permanente para salvar no banco de dados.
+ */
+export async function uploadPdfToSupabaseStorage(
+  fileName: string,
+  fileData: Blob | Uint8Array | ArrayBuffer
+): Promise<string | null> {
+  try {
+    const filePath = `relatorios_pdf/${Date.now()}_${fileName}`;
+    const { data, error } = await supabase.storage
+      .from('relatorios_pdf')
+      .upload(filePath, fileData, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+    if (error) {
+      console.warn('Storage relatorios_pdf aviso:', error.message);
+      return null;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('relatorios_pdf')
+      .getPublicUrl(filePath);
+
+    return publicUrlData?.publicUrl || null;
+  } catch (err: any) {
+    console.error('Erro ao enviar PDF para Supabase Storage:', err.message);
+    return null;
+  }
+}
