@@ -1191,57 +1191,6 @@ export default function ReportGenerator() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Banner "Salvar na Nuvem" (Aviso para Visitantes não logados) */}
-        {!userSession && !isBannerDismissed && (
-          <View style={styles.cloudBannerWrapper}>
-            <View style={styles.cloudBannerBox}>
-              <View style={styles.cloudBannerContent}>
-                <View style={styles.cloudBannerIconBox}>
-                  <Text style={styles.cloudBannerIcon}>☁️</Text>
-                </View>
-                <View style={styles.cloudBannerTextGroup}>
-                  <Text style={styles.cloudBannerTitle}>Salvar na Nuvem</Text>
-                  <Text style={styles.cloudBannerText}>
-                    Crie uma conta para organizar e acessar facilmente todos os seus relatórios.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.cloudBannerButtonsRow}>
-                <TouchableOpacity
-                  style={styles.btnBannerEntrar}
-                  onPress={() => {
-                    setAuthMode('login');
-                    setIsAuthModalVisible(true);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.btnBannerEntrarText}>ENTRAR</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.btnBannerCriarConta}
-                  onPress={() => {
-                    setAuthMode('cadastro');
-                    setIsAuthModalVisible(true);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.btnBannerCriarContaText}>CRIAR CONTA</Text>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={styles.cloudBannerCloseBtn}
-                onPress={() => setIsBannerDismissed(true)}
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Text style={styles.cloudBannerCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
         {/* Cartão Principal de Preenchimento (Independente e Separado do Preview) */}
         <View style={styles.card}>
           {/* Header do Card com Botão Iniciar Novo Relatório na posição onde ficava o logo */}
@@ -2229,6 +2178,59 @@ export default function ReportGenerator() {
             >
               <Text style={styles.btnConfirmAttachText}>✅ CONFIRMAR E ANEXAR</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Pop-up Alert: Banner "Salvar na Nuvem" (Aviso em Modal para Visitantes não logados) */}
+      <Modal visible={!userSession && !isBannerDismissed} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.cloudBannerPopUpCard}>
+            <TouchableOpacity
+              style={styles.authCloseBtn}
+              onPress={() => setIsBannerDismissed(true)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={styles.authCloseText}>✕</Text>
+            </TouchableOpacity>
+
+            <View style={styles.cloudBannerPopUpHeader}>
+              <View style={styles.cloudBannerIconBoxPopUp}>
+                <Text style={styles.cloudBannerIcon}>☁️</Text>
+              </View>
+              <Text style={styles.cloudBannerTitlePopUp}>Salvar na Nuvem</Text>
+            </View>
+
+            <Text style={styles.cloudBannerPopUpBody}>
+              Crie uma conta gratuita para salvar, organizar e acessar facilmente todos os seus relatórios em qualquer lugar.
+            </Text>
+
+            <View style={styles.cloudBannerPopUpActions}>
+              <TouchableOpacity
+                style={styles.btnBannerEntrarPopUp}
+                onPress={() => {
+                  setIsBannerDismissed(true);
+                  setAuthMode('login');
+                  setIsAuthModalVisible(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.btnBannerEntrarText}>ENTRAR</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.btnBannerCriarContaPopUp}
+                onPress={() => {
+                  setIsBannerDismissed(true);
+                  setAuthMode('cadastro');
+                  setIsAuthModalVisible(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.btnBannerCriarContaText}>CRIAR CONTA</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -3735,7 +3737,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 1.5,
     marginBottom: 12,
-    fontFamily: corporateFont,
+    fontFamily: modernFont,
   },
   warningMessage: {
     fontSize: 14,
@@ -3743,7 +3745,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
-    fontFamily: corporateFont,
+    fontFamily: modernFont,
   },
   btnWarningOk: {
     backgroundColor: '#059669',
@@ -3758,7 +3760,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 14,
     letterSpacing: 1,
-    fontFamily: corporateFont,
+    fontFamily: modernFont,
   },
   userInitialCircle: {
     width: 26,
@@ -3878,6 +3880,74 @@ const styles = StyleSheet.create({
     color: colors.slate700,
     fontWeight: 'bold',
     fontSize: 14,
-    fontFamily: corporateFont,
+    fontFamily: modernFont,
+  },
+  cloudBannerPopUpCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 420,
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+  },
+  cloudBannerPopUpHeader: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cloudBannerIconBoxPopUp: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.blue50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.blue200,
+  },
+  cloudBannerTitlePopUp: {
+    color: colors.slate800,
+    fontWeight: '900',
+    fontSize: 18,
+    fontFamily: modernFont,
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  cloudBannerPopUpBody: {
+    fontSize: 13,
+    color: colors.slate600,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    fontFamily: modernFont,
+  },
+  cloudBannerPopUpActions: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 10,
+  },
+  btnBannerEntrarPopUp: {
+    flex: 1,
+    backgroundColor: colors.blue600,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnBannerCriarContaPopUp: {
+    flex: 1,
+    backgroundColor: colors.indigo600,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
