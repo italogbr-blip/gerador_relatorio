@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
+import { PHP_SAVE_ENDPOINT, formatReportPdfUrl } from '../lib/config';
 import { useRouter } from 'expo-router';
 
 // Cores Curadas do Layout Original Tailwind / PHP
@@ -956,6 +957,27 @@ export default function ReportGenerator() {
         fotos: currentData.fotosAnexadas,
       };
 
+      let pdfUrlResult: string | null = null;
+
+      // 1. Tenta enviar para o servidor PHP (mmssuportelogistica.com.br/salvar_relatorio.php)
+      try {
+        const phpResp = await fetch(PHP_SAVE_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(jsonPayload),
+        });
+
+        if (phpResp.ok) {
+          const phpData = await phpResp.json();
+          if (phpData?.sucesso && phpData?.pdf_url) {
+            pdfUrlResult = formatReportPdfUrl(phpData.pdf_url);
+          }
+        }
+      } catch (phpErr) {
+        console.log('Servidor PHP pendente de deploy ou offline. Salvando no Supabase.');
+      }
+
+      // 2. Registra o relatório no banco Supabase
       const { data, error } = await supabase.from('relatorios').insert([{
         usuario_id: userSession?.user?.id || null,
         empresa: currentData.grupo,
@@ -963,6 +985,8 @@ export default function ReportGenerator() {
         local_atendimento: currentData.local,
         dados_json: JSON.stringify(jsonPayload),
         teve_anexo: currentData.fotosAnexadas.length > 0,
+        pdf_url: pdfUrlResult,
+        caminho_pdf: pdfUrlResult,
         data_criacao: new Date().toISOString(),
       }]);
 
@@ -970,12 +994,12 @@ export default function ReportGenerator() {
         console.error('Aviso ao salvar no Supabase:', error.message);
       } else {
         showCustomAlert(
-          'RELATÓRIO SALVO NA NUVEM',
-          'Seu relatório foi gerado e salvo com sucesso! Você pode visualizá-lo a qualquer momento em "Meus Relatórios".'
+          'RELATÓRIO SALVO',
+          'Seu relatório foi gerado e salvo com sucesso! Você pode visualizá-lo a qualquer momento na página "Meus Relatórios".'
         );
       }
     } catch (err: any) {
-      console.error('Exceção ao salvar no Supabase:', err.message);
+      console.error('Exceção ao salvar relatório:', err.message);
     }
   };
 

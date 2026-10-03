@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
 
 const modernFont = Platform.OS === 'web'
   ? "'Inter', system-ui, -apple-system, sans-serif"
@@ -193,19 +194,17 @@ export default function MeusRelatoriosScreen() {
   // Abrir / Baixar PDF vinculado ao relatório
   const openReportPdf = (report: any) => {
     if (!report) return;
-    let url = report.pdf_url || report.caminho_pdf;
-    if (url) {
-      if (!url.startsWith('http') && !url.startsWith('/')) {
-        url = '/' + url;
-      }
-      if (Platform.OS === 'web') {
-        window.open(url, '_blank');
-        return;
-      }
+    const rawUrl = report.pdf_url || report.caminho_pdf;
+    let url = formatReportPdfUrl(rawUrl);
+
+    if (url && Platform.OS === 'web') {
+      window.open(url, '_blank');
+      return;
     }
-    // Fallback para download dinâmico via backend PHP se necessário
+
+    // Fallback para download no servidor PHP caso não haja URL salva no banco
     if (Platform.OS === 'web') {
-      window.open(`/download_pdf.php?id=${report.id}`, '_blank');
+      window.open(`${PHP_SERVER_URL}/download_pdf.php?id=${report.id}`, '_blank');
     }
   };
 
