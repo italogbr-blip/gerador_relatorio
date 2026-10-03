@@ -10,6 +10,7 @@ import {
   Modal,
   Platform,
   SafeAreaView,
+  Image,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -35,6 +36,34 @@ export default function MeusRelatoriosScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [totalRegistros, setTotalRegistros] = useState<number>(0);
 
+  // Tema Claro / Escuro Persistente
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('app_theme_dark');
+      if (saved !== null) {
+        return saved === 'true';
+      }
+    }
+    return true;
+  });
+
+  const toggleTheme = () => {
+    const nextVal = !isDarkMode;
+    setIsDarkMode(nextVal);
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      if (nextVal) {
+        document.body.classList.remove('light-theme');
+        document.body.classList.add('dark-theme');
+      } else {
+        document.body.classList.remove('dark-theme');
+        document.body.classList.add('light-theme');
+      }
+      try {
+        localStorage.setItem('app_theme_dark', String(nextVal));
+      } catch (e) {}
+    }
+  };
+
   // Filtros
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('TODAS');
   const [filtroBusca, setFiltroBusca] = useState<string>('');
@@ -56,30 +85,21 @@ export default function MeusRelatoriosScreen() {
     message: '',
   });
 
-  // Carregar Sessão do Usuário
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      try {
-        const saved = localStorage.getItem('app_user_session');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed?.user) setUserSession(parsed);
-        }
-      } catch (e) {}
-    }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) setUserSession(session);
-    });
-  }, []);
-
-  // Carregar Relatórios do Supabase
-  const fetchRelatorios = async () => {
+  // Carregar Relatórios do Supabase (Apenas do Usuário Logado)
+  const fetchRelatorios = async (sessionParam = userSession) => {
     setLoading(true);
     try {
       let query = supabase
         .from('relatorios')
         .select('*', { count: 'exact' });
+
+      // IMPORTANTE: Na página "Meus Relatórios", traz SOMENTE os relatórios do usuário logado!
+      if (sessionParam?.user?.id) {
+        query = query.eq('usuario_id', sessionParam.user.id);
+      } else {
+        // Se não estiver logado, não carrega relatórios de terceiros
+        query = query.eq('usuario_id', -1);
+      }
 
       // Se filtro de empresa selecionado (diferente de TODAS)
       if (filtroEmpresa && filtroEmpresa !== 'TODAS') {
@@ -113,13 +133,36 @@ export default function MeusRelatoriosScreen() {
     }
   };
 
+  // Carregar Sessão do Usuário ao montar
   useEffect(() => {
-    fetchRelatorios();
+    let currentSession: any = null;
+    if (Platform.OS === 'web') {
+      try {
+        const saved = localStorage.getItem('app_user_session');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed?.user) {
+            currentSession = parsed;
+            setUserSession(parsed);
+          }
+        }
+      } catch (e) {}
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const active = session?.user ? session : currentSession;
+      if (active) setUserSession(active);
+      fetchRelatorios(active);
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchRelatorios(userSession);
   }, [filtroEmpresa, pagina]);
 
   const handleApplyFilter = () => {
     setPagina(1);
-    fetchRelatorios();
+    fetchRelatorios(userSession);
   };
 
   const handleClearFilter = () => {
@@ -141,10 +184,40 @@ export default function MeusRelatoriosScreen() {
         if (error) {
           alert('Erro ao excluir relatório: ' + error.message);
         } else {
-          fetchRelatorios();
+          fetchRelatorios(userSession);
         }
       },
     });
+  };
+
+  // Abrir / Baixar PDF vinculado ao relatório
+  const openReportPdf = (report: any) => {
+    if (!report) return;
+    let url = report.pdf_url || report.caminho_pdf;
+    if (url) {
+      if (!url.startsWith('http') && !url.startsWith('/')) {
+        url = '/' + url;
+      }
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+        return;
+      }
+    }
+    // Fallback para download dinâmico via backend PHP se necessário
+    if (Platform.OS === 'web') {
+      window.open(`/download_pdf.php?id=${report.id}`, '_blank');
+    }
+  };
+
+  // Parser seguro de dados JSON registrados
+  const parseReportData = (report: any) => {
+    if (!report || !report.dados_json) return null;
+    if (typeof report.dados_json === 'object') return report.dados_json;
+    try {
+      return JSON.parse(report.dados_json);
+    } catch (e) {
+      return null;
+    }
   };
 
   // Badge de Empresa com Cores Curadas
@@ -167,18 +240,28 @@ export default function MeusRelatoriosScreen() {
   };
 
   const totalPaginas = Math.ceil(totalRegistros / porPagina) || 1;
-
   const username = userSession?.user?.user_metadata?.name || userSession?.user?.email?.split('@')[0] || 'Usuário';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
       {/* Top Navbar */}
-      <View style={styles.navbar}>
+      <View style={[styles.navbar, !isDarkMode && { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
         <View style={styles.navLeft}>
-          <Text style={styles.navTitle}>MEUS RELATÓRIOS</Text>
+          <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>MEUS RELATÓRIOS</Text>
         </View>
         <View style={styles.navRight}>
-          <Text style={styles.navUserGreeting}>Olá, <Text style={{ fontWeight: 'bold' }}>{username}</Text></Text>
+          {/* Switch de Tema */}
+          <TouchableOpacity
+            style={styles.btnThemeToggle}
+            onPress={toggleTheme}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnThemeToggleText}>{isDarkMode ? '🌙' : '☀️'}</Text>
+          </TouchableOpacity>
+
+          <Text style={[styles.navUserGreeting, !isDarkMode && { color: '#475569' }]}>
+            Olá, <Text style={{ fontWeight: 'bold' }}>{username}</Text>
+          </Text>
           <TouchableOpacity
             style={styles.btnVoltar}
             onPress={() => router.push('/')}
@@ -190,15 +273,17 @@ export default function MeusRelatoriosScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.mainCard}>
+        <View style={[styles.mainCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderWidth: 1 }]}>
           {/* Header Title */}
           <View style={styles.headerBox}>
-            <Text style={styles.pageTitle}>HISTÓRICO DE ENVIOUS</Text>
-            <Text style={styles.pageSubTitle}>Consulte todos os relatórios gerados e salvos no Supabase.</Text>
+            <Text style={[styles.pageTitle, !isDarkMode && { color: '#0f172a' }]}>HISTÓRICO DE ENVIOUS</Text>
+            <Text style={styles.pageSubTitle}>
+              Consulte seus relatórios gerados e vinculados à sua conta.
+            </Text>
           </View>
 
           {/* Filtros */}
-          <View style={styles.filterCard}>
+          <View style={[styles.filterCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#cbd5e1' }]}>
             <View style={styles.filterGrid}>
               {/* Filtro Empresa */}
               <View style={styles.filterGroup}>
@@ -275,7 +360,11 @@ export default function MeusRelatoriosScreen() {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>📂</Text>
               <Text style={styles.emptyTitle}>Nenhum relatório encontrado</Text>
-              <Text style={styles.emptySub}>Tente alterar os filtros de busca acima.</Text>
+              <Text style={styles.emptySub}>
+                {userSession
+                  ? 'Você ainda não salvou relatórios ou altere os filtros de busca acima.'
+                  : 'Faça login para salvar e visualizar o histórico dos seus relatórios.'}
+              </Text>
             </View>
           ) : isMobile ? (
             /* Cards Mobile */
@@ -319,6 +408,13 @@ export default function MeusRelatoriosScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                      style={styles.btnActionPdf}
+                      onPress={() => openReportPdf(r)}
+                    >
+                      <Text style={styles.btnActionPdfText}>📄 PDF</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                       style={styles.btnActionExcluir}
                       onPress={() => handleExcluir(r.id)}
                     >
@@ -337,7 +433,7 @@ export default function MeusRelatoriosScreen() {
                 <Text style={[styles.thCell, { flex: 2 }]}>LOCAL DE ATENDIMENTO</Text>
                 <Text style={[styles.thCell, { flex: 1.5, textAlign: 'center' }]}>EMPRESA</Text>
                 <Text style={[styles.thCell, { flex: 1, textAlign: 'center' }]}>FOTOS</Text>
-                <Text style={[styles.thCell, { flex: 2, textAlign: 'center' }]}>AÇÃO</Text>
+                <Text style={[styles.thCell, { flex: 2.2, textAlign: 'center' }]}>AÇÃO</Text>
               </View>
 
               {relatorios.map((r, idx) => (
@@ -372,12 +468,19 @@ export default function MeusRelatoriosScreen() {
                     )}
                   </View>
 
-                  <View style={[{ flex: 2, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' }]}>
+                  <View style={[{ flex: 2.2, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' }]}>
                     <TouchableOpacity
                       style={styles.btnActionVer}
                       onPress={() => setSelectedReport(r)}
                     >
                       <Text style={styles.btnActionVerText}>👁️ VER</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.btnActionPdf}
+                      onPress={() => openReportPdf(r)}
+                    >
+                      <Text style={styles.btnActionPdfText}>📄 PDF</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -420,7 +523,7 @@ export default function MeusRelatoriosScreen() {
         </View>
       </ScrollView>
 
-      {/* Modal de Detalhes do Relatório */}
+      {/* Modal de Detalhes do Relatório Formatado */}
       <Modal visible={!!selectedReport} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.detailCard}>
@@ -433,42 +536,162 @@ export default function MeusRelatoriosScreen() {
 
             <Text style={styles.detailTitle}>DETALHES DO RELATÓRIO #{selectedReport?.id}</Text>
 
-            {selectedReport && (
-              <ScrollView style={styles.detailScroll}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>EMPRESA:</Text>
-                  <Text style={styles.detailVal}>{selectedReport.empresa}</Text>
-                </View>
+            {selectedReport && (() => {
+              const dataObj = parseReportData(selectedReport);
+              const horarios = dataObj?.horarios || {};
+              const saidasHotel = horarios?.saida_hotel || [];
+              const fotos = dataObj?.fotos || [];
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>UNIDADE:</Text>
-                  <Text style={styles.detailVal}>{selectedReport.unidade}</Text>
-                </View>
+              return (
+                <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={true}>
+                  {/* Botão ABRIR PDF */}
+                  <TouchableOpacity
+                    style={styles.btnPdfDownloadModal}
+                    onPress={() => openReportPdf(selectedReport)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.btnPdfDownloadModalText}>📄 ABRIR / BAIXAR RELATÓRIO PDF</Text>
+                  </TouchableOpacity>
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>LOCAL DE ATENDIMENTO:</Text>
-                  <Text style={styles.detailVal}>{selectedReport.local_atendimento || 'N/A'}</Text>
-                </View>
+                  {/* Grupo 1: Informações Principais */}
+                  <View style={styles.detailSectionBox}>
+                    <Text style={styles.detailSectionTitle}>📋 INFORMAÇÕES DA OPERAÇÃO</Text>
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>DATA DE CRIAÇÃO:</Text>
-                  <Text style={styles.detailVal}>
-                    {new Date(selectedReport.data_criacao).toLocaleString('pt-BR')}
-                  </Text>
-                </View>
+                    <View style={styles.detailGridRow}>
+                      <View style={styles.detailCol}>
+                        <Text style={styles.detailLabel}>EMPRESA / GRUPO:</Text>
+                        <Text style={styles.detailVal}>{dataObj?.grupo || selectedReport.empresa}</Text>
+                      </View>
+                      <View style={styles.detailCol}>
+                        <Text style={styles.detailLabel}>UNIDADE:</Text>
+                        <Text style={styles.detailVal}>{dataObj?.unidade || selectedReport.unidade}</Text>
+                      </View>
+                    </View>
 
-                <View style={styles.detailDivider} />
+                    <View style={styles.detailGridRow}>
+                      <View style={styles.detailCol}>
+                        <Text style={styles.detailLabel}>LOCAL DE ATENDIMENTO:</Text>
+                        <Text style={styles.detailVal}>{dataObj?.local || selectedReport.local_atendimento || 'N/A'}</Text>
+                      </View>
+                      <View style={styles.detailCol}>
+                        <Text style={styles.detailLabel}>MODAL:</Text>
+                        <Text style={styles.detailVal}>{dataObj?.modal || 'Helicóptero'}</Text>
+                      </View>
+                    </View>
 
-                <Text style={styles.jsonSectionTitle}>DADOS JSON REGISTRADOS:</Text>
-                <View style={styles.jsonBox}>
-                  <Text style={styles.jsonText}>
-                    {typeof selectedReport.dados_json === 'string'
-                      ? selectedReport.dados_json
-                      : JSON.stringify(selectedReport.dados_json, null, 2)}
-                  </Text>
-                </View>
-              </ScrollView>
-            )}
+                    <View style={styles.detailGridRow}>
+                      <View style={styles.detailCol}>
+                        <Text style={styles.detailLabel}>PREPOSTO RESPONSÁVEL:</Text>
+                        <Text style={styles.detailVal}>{dataObj?.preposto || 'N/A'}</Text>
+                      </View>
+                      <View style={styles.detailCol}>
+                        <Text style={styles.detailLabel}>DATA DE CRIAÇÃO:</Text>
+                        <Text style={styles.detailVal}>
+                          {new Date(selectedReport.data_criacao).toLocaleString('pt-BR')}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Grupo 2: Horários */}
+                  <View style={styles.detailSectionBox}>
+                    <Text style={styles.detailSectionTitle}>⏰ HORÁRIOS REGISTRADOS</Text>
+
+                    {saidasHotel.length > 0 && (
+                      <View style={{ marginBottom: 10 }}>
+                        <Text style={styles.detailSubLabel}>SAÍDAS DO HOTEL:</Text>
+                        {saidasHotel.map((sh: any, sIdx: number) => (
+                          <View key={sIdx} style={styles.saidaRowBox}>
+                            <Text style={styles.saidaRowText}>
+                              Previsto: <Text style={{ fontWeight: 'bold' }}>{sh.h1 ? `${sh.h1}:${sh.m1 || '00'}` : 'N/A'}</Text> | Real: <Text style={{ fontWeight: 'bold' }}>{sh.h2 ? `${sh.h2}:${sh.m2 || '00'}` : 'N/A'}</Text>
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    <View style={styles.detailGridRow}>
+                      <View style={styles.detailCol}>
+                        <Text style={styles.detailLabel}>EMBARQUE PREVISTO:</Text>
+                        <Text style={styles.detailVal}>{horarios.embarque_previsto || 'N/A'}</Text>
+                      </View>
+                      <View style={styles.detailCol}>
+                        <Text style={styles.detailLabel}>EMBARQUE REAL:</Text>
+                        <Text style={styles.detailVal}>{horarios.embarque_real || 'N/A'}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.detailGridRow}>
+                      <View style={styles.detailCol}>
+                        <Text style={styles.detailLabel}>ATENDIMENTO INÍCIO:</Text>
+                        <Text style={styles.detailVal}>{horarios.atendimento_inicio || 'N/A'}</Text>
+                      </View>
+                      <View style={styles.detailCol}>
+                        <Text style={styles.detailLabel}>ATENDIMENTO FIM:</Text>
+                        <Text style={styles.detailVal}>{horarios.atendimento_fim || 'N/A'}</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Grupo 3: Informações e Observações */}
+                  {(dataObj?.info_troca || dataObj?.observacao_nome_arquivo) && (
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionTitle}>📝 PASSAGEM DE INFORMAÇÕES & OBSERVAÇÕES</Text>
+                      {dataObj?.info_troca ? (
+                        <View style={{ marginBottom: 8 }}>
+                          <Text style={styles.detailSubLabel}>INFORMAÇÕES ADICIONAIS:</Text>
+                          <Text style={styles.detailTextBlock}>{dataObj.info_troca}</Text>
+                        </View>
+                      ) : null}
+                      {dataObj?.observacao_nome_arquivo ? (
+                        <View>
+                          <Text style={styles.detailSubLabel}>OBSERVAÇÃO ARQUIVO:</Text>
+                          <Text style={styles.detailTextBlock}>{dataObj.observacao_nome_arquivo}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  )}
+
+                  {/* Grupo 4: PAX Embarcando / Desembarcando */}
+                  <View style={styles.detailSectionBox}>
+                    <Text style={styles.detailSectionTitle}>👥 RELAÇÃO DE PASSAGEIROS (PAX)</Text>
+
+                    <View style={styles.paxDetailGrid}>
+                      <View style={styles.paxDetailCardEmbarque}>
+                        <Text style={styles.paxDetailTitleEmbarque}>🟢 EMBARCANDO</Text>
+                        <Text style={styles.paxDetailContent}>
+                          {dataObj?.pax_embarcando || 'Nenhum passageiro informado'}
+                        </Text>
+                      </View>
+
+                      <View style={styles.paxDetailCardDesembarque}>
+                        <Text style={styles.paxDetailTitleDesembarque}>🔴 DESEMBARCANDO</Text>
+                        <Text style={styles.paxDetailContent}>
+                          {dataObj?.pax_desembarcando || 'Nenhum passageiro informado'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Grupo 5: Fotos Anexadas */}
+                  {fotos.length > 0 && (
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionTitle}>📷 ANEXOS FOTOGRÁFICOS ({fotos.length})</Text>
+                      <View style={styles.fotosDetailGrid}>
+                        {fotos.map((f: any, fIdx: number) => (
+                          <View key={fIdx} style={styles.fotoDetailCard}>
+                            {f.base64 || f.uri ? (
+                              <Image source={{ uri: f.base64 || f.uri }} style={styles.fotoDetailImg} resizeMode="cover" />
+                            ) : null}
+                            <Text style={styles.fotoDetailTitle}>{f.titulo || `ANEXO ${fIdx + 1}`}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </ScrollView>
+              );
+            })()}
           </View>
         </View>
       </Modal>
@@ -530,7 +753,15 @@ const styles = StyleSheet.create({
   navRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
+  },
+  btnThemeToggle: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  btnThemeToggleText: {
+    fontSize: 16,
   },
   navUserGreeting: {
     color: '#94a3b8',
@@ -716,6 +947,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     marginTop: 4,
+    textAlign: 'center',
     fontFamily: modernFont,
   },
   tableContainer: {
@@ -786,6 +1018,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     color: '#2563eb',
+    fontFamily: modernFont,
+  },
+  btnActionPdf: {
+    backgroundColor: '#eef2ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  btnActionPdfText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#4946e5',
     fontFamily: modernFont,
   },
   btnActionExcluir: {
@@ -890,10 +1136,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 24,
-    width: '100%',
-    maxWidth: 600,
-    maxHeight: '80%',
+    width: '90%',
+    maxWidth: 680,
+    maxHeight: '85%',
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 8,
   },
   detailCloseBtn: {
     position: 'absolute',
@@ -919,50 +1170,165 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     letterSpacing: 1,
     fontFamily: modernFont,
+    textAlign: 'center',
   },
   detailScroll: {
-    gap: 10,
+    flex: 1,
   },
-  detailRow: {
+  btnPdfDownloadModal: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  btnPdfDownloadModalText: {
+    color: '#ffffff',
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 1,
+    fontFamily: modernFont,
+  },
+  detailSectionBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  detailSectionTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#334155',
+    letterSpacing: 1,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#cbd5e1',
+    paddingBottom: 4,
+    fontFamily: modernFont,
+  },
+  detailGridRow: {
     flexDirection: 'row',
     marginBottom: 8,
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  detailCol: {
+    flex: 1,
+    minWidth: 180,
   },
   detailLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '900',
-    color: '#475569',
-    width: 160,
+    color: '#64748b',
+    letterSpacing: 0.5,
     fontFamily: modernFont,
   },
   detailVal: {
     fontSize: 13,
     color: '#0f172a',
-    flex: 1,
-    fontWeight: '600',
+    fontWeight: '700',
+    marginTop: 2,
     fontFamily: modernFont,
   },
-  detailDivider: {
-    height: 1,
-    backgroundColor: '#e2e8f0',
-    marginVertical: 12,
+  detailSubLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#475569',
+    marginBottom: 4,
+    fontFamily: modernFont,
   },
-  jsonSectionTitle: {
+  saidaRowBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 6,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 4,
+  },
+  saidaRowText: {
+    fontSize: 12,
+    color: '#334155',
+    fontFamily: modernFont,
+  },
+  detailTextBlock: {
+    fontSize: 12,
+    color: '#1e293b',
+    backgroundColor: '#ffffff',
+    padding: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    lineHeight: 18,
+    fontFamily: modernFont,
+  },
+  paxDetailGrid: {
+    gap: 10,
+  },
+  paxDetailCardEmbarque: {
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    borderRadius: 8,
+    padding: 10,
+  },
+  paxDetailTitleEmbarque: {
     fontSize: 11,
     fontWeight: '900',
-    color: '#64748b',
-    letterSpacing: 1,
+    color: '#047857',
     marginBottom: 6,
     fontFamily: modernFont,
   },
-  jsonBox: {
-    backgroundColor: '#0f172a',
+  paxDetailCardDesembarque: {
+    backgroundColor: '#fff1f2',
+    borderWidth: 1,
+    borderColor: '#fecdd3',
     borderRadius: 8,
-    padding: 12,
+    padding: 10,
   },
-  jsonText: {
-    fontFamily: Platform.OS === 'web' ? 'monospace' : undefined,
+  paxDetailTitleDesembarque: {
     fontSize: 11,
-    color: '#38bdf8',
+    fontWeight: '900',
+    color: '#be123c',
+    marginBottom: 6,
+    fontFamily: modernFont,
+  },
+  paxDetailContent: {
+    fontSize: 12,
+    color: '#1e293b',
+    lineHeight: 18,
+    fontFamily: modernFont,
+  },
+  fotosDetailGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  fotoDetailCard: {
+    width: 120,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    paddingBottom: 6,
+  },
+  fotoDetailImg: {
+    width: 120,
+    height: 90,
+  },
+  fotoDetailTitle: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#475569',
+    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 4,
+    fontFamily: modernFont,
   },
   confirmCard: {
     backgroundColor: '#ffffff',

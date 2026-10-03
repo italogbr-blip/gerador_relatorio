@@ -224,11 +224,35 @@ export default function ReportGenerator() {
     }
   };
 
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('app_theme_dark');
+      if (saved !== null) {
+        return saved === 'true';
+      }
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      if (isDarkMode) {
+        document.body.classList.remove('light-theme');
+        document.body.classList.add('dark-theme');
+      } else {
+        document.body.classList.remove('dark-theme');
+        document.body.classList.add('light-theme');
+      }
+      try {
+        localStorage.setItem('app_theme_dark', String(isDarkMode));
+      } catch (e) {}
+    }
+  }, [isDarkMode]);
+
   const [isGrupoDropdownOpen, setIsGrupoDropdownOpen] = useState<boolean>(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<string>('meus_relatorios');
   const [isPax1Focused, setIsPax1Focused] = useState<boolean>(false);
   const [isPax2Focused, setIsPax2Focused] = useState<boolean>(false);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [isBannerDismissed, setIsBannerDismissed] = useState<boolean>(false);
 
   // Custom Alert / Confirmation Pop-up State
