@@ -255,6 +255,42 @@ export default function ReportGenerator() {
   const [isPax1Focused, setIsPax1Focused] = useState<boolean>(false);
   const [isPax2Focused, setIsPax2Focused] = useState<boolean>(false);
   const [isBannerDismissed, setIsBannerDismissed] = useState<boolean>(false);
+  const [infoSelection, setInfoSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
+
+  const applyFormatToInfo = (formatType: 'bold' | 'italic' | 'underline' | 'topic') => {
+    const currentText = currentData.info || '';
+    const { start, end } = infoSelection;
+
+    let newText = '';
+    let newCursorPos = start;
+
+    if (start !== end && start >= 0 && end <= currentText.length) {
+      const selected = currentText.substring(start, end);
+      let wrapped = '';
+
+      if (formatType === 'bold') wrapped = `*${selected}*`;
+      else if (formatType === 'italic') wrapped = `_${selected}_`;
+      else if (formatType === 'underline') wrapped = `[${selected}]`;
+      else if (formatType === 'topic') wrapped = `▪ ${selected}`;
+
+      newText = currentText.substring(0, start) + wrapped + currentText.substring(end);
+      newCursorPos = start + wrapped.length;
+    } else {
+      const pos = (start >= 0 && start <= currentText.length) ? start : currentText.length;
+      let snippet = '';
+
+      if (formatType === 'bold') snippet = '*negrito*';
+      else if (formatType === 'italic') snippet = '_italico_';
+      else if (formatType === 'underline') snippet = '[sublinhado]';
+      else if (formatType === 'topic') snippet = (pos > 0 && currentText[pos - 1] !== '\n' ? '\n▪ ' : '▪ ');
+
+      newText = currentText.substring(0, pos) + snippet + currentText.substring(pos);
+      newCursorPos = pos + snippet.length;
+    }
+
+    updateCurrentTab({ info: newText });
+    setInfoSelection({ start: newCursorPos, end: newCursorPos });
+  };
 
   // Custom Alert / Confirmation Pop-up State
   const [customDialog, setCustomDialog] = useState<{
@@ -1022,27 +1058,64 @@ export default function ReportGenerator() {
     return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : val;
   };
 
-  const renderFormattedText = (text: string) => {
+  const renderFormattedText = (text: string, alignment: 'left' | 'justify' = 'left') => {
     if (!text || text.trim() === '') {
       return <Text style={styles.a4Value}>N/A</Text>;
     }
     const lines = text.split('\n');
     return (
-      <View>
+      <View style={{ width: '100%' }}>
         {lines.map((line, lIdx) => {
-          const parts = line.split(/(\*[^*]+\*)/g);
+          if (line.trim() === '' && lines.length > 1) {
+            return <View key={lIdx} style={{ height: 6 }} />;
+          }
+
+          const parseLineContent = (content: string): React.ReactNode[] => {
+            const regex = /(\*[^*]+\*|_[^_]+_|\[[^\]]+\])/g;
+            const parts = content.split(regex);
+
+            return parts.map((part, pIdx) => {
+              if (!part) return null;
+
+              if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+                return (
+                  <Text key={pIdx} style={{ fontWeight: 'bold' }}>
+                    {part.slice(1, -1)}
+                  </Text>
+                );
+              }
+              if (part.startsWith('_') && part.endsWith('_') && part.length > 2) {
+                return (
+                  <Text key={pIdx} style={{ fontStyle: 'italic' }}>
+                    {part.slice(1, -1)}
+                  </Text>
+                );
+              }
+              if (part.startsWith('[') && part.endsWith(']') && part.length > 2) {
+                return (
+                  <Text key={pIdx} style={{ textDecorationLine: 'underline' }}>
+                    {part.slice(1, -1)}
+                  </Text>
+                );
+              }
+
+              return <Text key={pIdx}>{part}</Text>;
+            });
+          };
+
           return (
-            <Text key={lIdx} style={[styles.a4Value, { marginBottom: 4 }]}>
-              {parts.map((part, pIdx) => {
-                if (part.startsWith('*') && part.endsWith('*')) {
-                  return (
-                    <Text key={pIdx} style={{ fontWeight: 'bold' }}>
-                      {part.slice(1, -1)}
-                    </Text>
-                  );
-                }
-                return <Text key={pIdx}>{part}</Text>;
-              })}
+            <Text
+              key={lIdx}
+              style={[
+                styles.a4Value,
+                {
+                  marginBottom: 3,
+                  textAlign: alignment === 'justify' ? 'justify' : 'left',
+                  lineHeight: 19,
+                },
+              ]}
+            >
+              {parseLineContent(line)}
             </Text>
           );
         })}
@@ -1290,10 +1363,12 @@ export default function ReportGenerator() {
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Cartão Principal de Preenchimento (Independente e Separado do Preview) */}
         <View style={styles.card}>
-          {/* Header do Card com Botão Iniciar Novo Relatório na posição onde ficava o logo */}
+          {/* Header do Card com Botão Iniciar Novo Relatório */}
           <View style={styles.cardHeader}>
-            <TouchableOpacity onPress={limparTudo} style={styles.btnNovoRelatorio}>
-              <Text style={styles.btnNovoRelatorioIcon}>➕</Text>
+            <TouchableOpacity onPress={limparTudo} style={styles.btnNovoRelatorio} activeOpacity={0.8}>
+              <View style={styles.btnNovoRelatorioIconBox}>
+                <Text style={styles.btnNovoRelatorioIcon}>+</Text>
+              </View>
               <Text style={styles.btnNovoRelatorioText}>Iniciar Novo Relatório</Text>
             </TouchableOpacity>
           </View>
@@ -1739,19 +1814,19 @@ export default function ReportGenerator() {
                 <View style={styles.textAreaToolbar}>
                   <TouchableOpacity
                     style={styles.toolbarBtn}
-                    onPress={() => updateCurrentTab({ info: currentData.info + ' *negrito*' })}
+                    onPress={() => applyFormatToInfo('bold')}
                   >
                     <Text style={[styles.toolbarBtnText, { fontWeight: 'bold' }]}>B</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.toolbarBtn}
-                    onPress={() => updateCurrentTab({ info: currentData.info + ' _italico_' })}
+                    onPress={() => applyFormatToInfo('italic')}
                   >
                     <Text style={[styles.toolbarBtnText, { fontStyle: 'italic' }]}>I</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.toolbarBtn}
-                    onPress={() => updateCurrentTab({ info: currentData.info + ' [sublinhado]' })}
+                    onPress={() => applyFormatToInfo('underline')}
                   >
                     <Text style={[styles.toolbarBtnText, { textDecorationLine: 'underline' }]}>U</Text>
                   </TouchableOpacity>
@@ -1765,7 +1840,10 @@ export default function ReportGenerator() {
                     ]}
                     onPress={() => updateCurrentTab({ alinhamentoInfo: 'left' })}
                   >
-                    <Text style={styles.toolbarBtnText}>Esquerda</Text>
+                    <Text style={[
+                      styles.toolbarBtnText,
+                      currentData.alinhamentoInfo === 'left' && styles.toolbarBtnTextActive,
+                    ]}>Esquerda</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[
@@ -1774,14 +1852,17 @@ export default function ReportGenerator() {
                     ]}
                     onPress={() => updateCurrentTab({ alinhamentoInfo: 'justify' })}
                   >
-                    <Text style={styles.toolbarBtnText}>Justificar</Text>
+                    <Text style={[
+                      styles.toolbarBtnText,
+                      currentData.alinhamentoInfo === 'justify' && styles.toolbarBtnTextActive,
+                    ]}>Justificar</Text>
                   </TouchableOpacity>
 
                   <View style={styles.toolbarDivider} />
 
                   <TouchableOpacity
                     style={styles.toolbarBtn}
-                    onPress={() => updateCurrentTab({ info: currentData.info + ' ▪ ' })}
+                    onPress={() => applyFormatToInfo('topic')}
                   >
                     <Text style={styles.toolbarBtnText}>▪ Inserir Tópico</Text>
                   </TouchableOpacity>
@@ -1797,6 +1878,7 @@ export default function ReportGenerator() {
                   placeholderTextColor={colors.slate400}
                   value={currentData.info}
                   onChangeText={(val) => updateCurrentTab({ info: val })}
+                  onSelectionChange={(e) => setInfoSelection(e.nativeEvent.selection)}
                 />
               </View>
 
@@ -2061,7 +2143,7 @@ export default function ReportGenerator() {
             <View style={[styles.a4Row, { marginTop: 6 }]}>
               <Text style={styles.a4Label}>Informações sobre a troca de turma:</Text>
             </View>
-            <View style={styles.a4InfoBox}>{renderFormattedText(currentData.info)}</View>
+            <View style={styles.a4InfoBox}>{renderFormattedText(currentData.info, currentData.alinhamentoInfo)}</View>
 
             {/* Tabela de Passageiros */}
             <View style={styles.a4PaxTable}>
@@ -2709,25 +2791,42 @@ const styles = StyleSheet.create({
   btnNovoRelatorio: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.slate900,
     borderWidth: 1,
-    borderColor: colors.slate300,
-    paddingVertical: 10,
+    borderColor: colors.slate700,
+    paddingVertical: 9,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 8,
+    borderRadius: 999,
+    gap: 10,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  btnNovoRelatorioIconBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.blue600,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   btnNovoRelatorioIcon: {
+    color: colors.white,
     fontSize: 14,
+    fontWeight: 'bold',
+    lineHeight: 16,
   },
   btnNovoRelatorioText: {
-    color: colors.slate700,
-    fontWeight: '700',
+    color: colors.white,
+    fontWeight: '800',
     fontSize: 13,
-    fontFamily: corporateFont,
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
   },
   mainTitle: {
-    fontSize: 20,
+    fontSize: 22, // Aumentado em 2px (de 20px para 22px)
     fontWeight: '900',
     textAlign: 'center',
     marginTop: 12,
@@ -3234,14 +3333,19 @@ const styles = StyleSheet.create({
     color: colors.slate700,
     fontFamily: corporateFont,
   },
+  toolbarBtnTextActive: {
+    color: colors.blue700,
+    fontWeight: '900',
+  },
   textAreaInput: {
-    minHeight: 140,
-    padding: 10,
+    minHeight: 250, // Aumentado a altura do box conforme Anexo 2
+    padding: 12,
     textAlignVertical: 'top',
-    fontSize: 13,
+    fontSize: 14,
     color: colors.slate800,
     backgroundColor: colors.white,
     fontFamily: corporateFont,
+    lineHeight: 22,
   },
   hintInfoText: {
     fontSize: 10,
@@ -3637,25 +3741,24 @@ const styles = StyleSheet.create({
   },
   a4PaxTable: {
     flexDirection: 'row',
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.slate300,
-    paddingTop: 10,
+    marginTop: 32,
+    paddingTop: 4,
   },
   a4PaxColLeft: {
-    flex: 1,
-    paddingRight: 10,
+    width: '46%',
+    paddingRight: 15,
     borderRightWidth: 1,
-    borderRightColor: colors.slate300,
+    borderRightColor: '#ccc',
   },
   a4PaxColRight: {
-    flex: 1,
-    paddingLeft: 10,
+    width: '54%',
+    paddingLeft: 25,
   },
   a4PaxTitle: {
     fontWeight: 'bold',
-    fontSize: 13,
-    marginBottom: 6,
+    fontSize: 15,
+    marginBottom: 12,
+    color: colors.black,
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
   },
   a4Footer: {
