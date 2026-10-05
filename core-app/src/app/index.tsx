@@ -195,6 +195,205 @@ const getRotatedBase64 = (imageUri: string, angle: number): Promise<string> => {
   });
 };
 
+const InfoBoxEditor = ({
+  info,
+  alignment,
+  onUpdateInfo,
+  onUpdateAlignment,
+}: {
+  info: string;
+  alignment: 'left' | 'justify';
+  onUpdateInfo: (val: string) => void;
+  onUpdateAlignment: (align: 'left' | 'justify') => void;
+}) => {
+  const webEditorRef = useRef<HTMLDivElement | null>(null);
+  const [mobileSelection, setMobileSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && webEditorRef.current) {
+      const currentHtml = webEditorRef.current.innerHTML;
+      if (currentHtml !== info && webEditorRef.current.innerText !== info) {
+        webEditorRef.current.innerHTML = info || '';
+      }
+    }
+  }, [info]);
+
+  const handleFormat = (command: 'bold' | 'italic' | 'underline') => {
+    if (Platform.OS === 'web') {
+      if (webEditorRef.current) {
+        webEditorRef.current.focus();
+        document.execCommand(command, false);
+        onUpdateInfo(webEditorRef.current.innerHTML);
+      }
+    } else {
+      const currentText = info || '';
+      const { start, end } = mobileSelection;
+      let newText = '';
+      let newPos = start;
+
+      if (start !== end && start >= 0 && end <= currentText.length) {
+        const selected = currentText.substring(start, end);
+        let wrapped = '';
+        if (command === 'bold') wrapped = `*${selected}*`;
+        else if (command === 'italic') wrapped = `_${selected}_`;
+        else if (command === 'underline') wrapped = `[${selected}]`;
+        newText = currentText.substring(0, start) + wrapped + currentText.substring(end);
+        newPos = start + wrapped.length;
+      } else {
+        const pos = (start >= 0 && start <= currentText.length) ? start : currentText.length;
+        let snippet = command === 'bold' ? '*negrito*' : command === 'italic' ? '_italico_' : '[sublinhado]';
+        newText = currentText.substring(0, pos) + snippet + currentText.substring(pos);
+        newPos = pos + snippet.length;
+      }
+
+      onUpdateInfo(newText);
+      setMobileSelection({ start: newPos, end: newPos });
+    }
+  };
+
+  const handleInsertTopic = () => {
+    if (Platform.OS === 'web') {
+      if (webEditorRef.current) {
+        webEditorRef.current.focus();
+        document.execCommand('insertHTML', false, '▪&nbsp;');
+        onUpdateInfo(webEditorRef.current.innerHTML);
+      }
+    } else {
+      const pos = (mobileSelection.start >= 0 && mobileSelection.start <= (info || '').length)
+        ? mobileSelection.start
+        : (info || '').length;
+      const snippet = (pos > 0 && info[pos - 1] !== '\n' ? '\n▪ ' : '▪ ');
+      const newText = (info || '').substring(0, pos) + snippet + (info || '').substring(pos);
+      onUpdateInfo(newText);
+    }
+  };
+
+  const handleWebInput = () => {
+    if (Platform.OS === 'web' && webEditorRef.current) {
+      let html = webEditorRef.current.innerHTML;
+      const autoFormattedHtml = html.replace(/(^|>|\s)\*([^\*\s<]+)\*(\s|<|$)/g, '$1<b>$2</b>$3');
+      if (autoFormattedHtml !== html) {
+        webEditorRef.current.innerHTML = autoFormattedHtml;
+        html = autoFormattedHtml;
+      }
+      onUpdateInfo(html);
+    }
+  };
+
+  return (
+    <View style={styles.textAreaContainer}>
+      <View style={styles.textAreaToolbar}>
+        <TouchableOpacity
+          style={styles.toolbarBtn}
+          onPress={() => handleFormat('bold')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.toolbarBtnText, { fontWeight: 'bold' }]}>B</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.toolbarBtn}
+          onPress={() => handleFormat('italic')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.toolbarBtnText, { fontStyle: 'italic' }]}>I</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.toolbarBtn}
+          onPress={() => handleFormat('underline')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.toolbarBtnText, { textDecorationLine: 'underline' }]}>U</Text>
+        </TouchableOpacity>
+
+        <View style={styles.toolbarDivider} />
+
+        <TouchableOpacity
+          style={[
+            styles.toolbarBtn,
+            alignment === 'left' && styles.toolbarBtnActive,
+          ]}
+          onPress={() => onUpdateAlignment('left')}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              styles.toolbarBtnText,
+              alignment === 'left' && styles.toolbarBtnTextActive,
+            ]}
+          >
+            Esquerda
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.toolbarBtn,
+            alignment === 'justify' && styles.toolbarBtnActive,
+          ]}
+          onPress={() => onUpdateAlignment('justify')}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              styles.toolbarBtnText,
+              alignment === 'justify' && styles.toolbarBtnTextActive,
+            ]}
+          >
+            Justificar
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.toolbarDivider} />
+
+        <TouchableOpacity
+          style={styles.toolbarBtn}
+          onPress={handleInsertTopic}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.toolbarBtnText}>▪ Inserir Tópico</Text>
+        </TouchableOpacity>
+      </View>
+
+      {Platform.OS === 'web' ? (
+        <div
+          ref={webEditorRef}
+          contentEditable
+          onInput={handleWebInput}
+          onBlur={handleWebInput}
+          onKeyUp={handleWebInput}
+          style={{
+            minHeight: '280px',
+            padding: '14px',
+            fontSize: '14px',
+            color: '#1e293b',
+            backgroundColor: '#ffffff',
+            fontFamily: corporateFont || '"Times New Roman", Times, serif',
+            outline: 'none',
+            textAlign: alignment === 'justify' ? 'justify' : 'left',
+            lineHeight: '1.5',
+            boxSizing: 'border-box',
+            overflowY: 'auto',
+          }}
+          data-placeholder="Houve embarque de material..."
+        />
+      ) : (
+        <TextInput
+          style={[
+            styles.textAreaInput,
+            alignment === 'justify' && { textAlign: 'justify' },
+          ]}
+          multiline
+          placeholder="Houve embarque de material..."
+          placeholderTextColor={colors.slate400}
+          value={info}
+          onChangeText={onUpdateInfo}
+          onSelectionChange={(e) => setMobileSelection(e.nativeEvent.selection)}
+        />
+      )}
+    </View>
+  );
+};
+
 export default function ReportGenerator() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<number>(1);
@@ -1059,10 +1258,26 @@ export default function ReportGenerator() {
   };
 
   const renderFormattedText = (text: string, alignment: 'left' | 'justify' = 'left') => {
-    if (!text || text.trim() === '') {
+    if (!text || text.trim() === '' || text === '<br>' || text === '<div><br></div>') {
       return <Text style={styles.a4Value}>N/A</Text>;
     }
-    const lines = text.split('\n');
+
+    let cleanText = text
+      .replace(/<div><br><\/div>/gi, '\n')
+      .replace(/<div>/gi, '\n')
+      .replace(/<\/div>/gi, '')
+      .replace(/<p>/gi, '')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<b>(.*?)<\/b>/gi, '*$1*')
+      .replace(/<strong>(.*?)<\/strong>/gi, '*$1*')
+      .replace(/<i>(.*?)<\/i>/gi, '_$1_')
+      .replace(/<em>(.*?)<\/em>/gi, '_$1_')
+      .replace(/<u>(.*?)<\/u>/gi, '[$1]');
+
+    cleanText = cleanText.replace(/<[^>]+>/g, '');
+
+    const lines = cleanText.split('\n');
     return (
       <View style={{ width: '100%' }}>
         {lines.map((line, lIdx) => {
@@ -1807,78 +2022,12 @@ export default function ReportGenerator() {
             <View style={styles.sectionHeaderBox}>
               <Text style={styles.sectionHeaderTitle}>INFORMAÇÕES SOBRE A TROCA:</Text>
 
-              <View style={styles.textAreaContainer}>
-                {/* Toolbar WYSIWYG Réplica dos Prints */}
-                <View style={styles.textAreaToolbar}>
-                  <TouchableOpacity
-                    style={styles.toolbarBtn}
-                    onPress={() => applyFormatToInfo('bold')}
-                  >
-                    <Text style={[styles.toolbarBtnText, { fontWeight: 'bold' }]}>B</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.toolbarBtn}
-                    onPress={() => applyFormatToInfo('italic')}
-                  >
-                    <Text style={[styles.toolbarBtnText, { fontStyle: 'italic' }]}>I</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.toolbarBtn}
-                    onPress={() => applyFormatToInfo('underline')}
-                  >
-                    <Text style={[styles.toolbarBtnText, { textDecorationLine: 'underline' }]}>U</Text>
-                  </TouchableOpacity>
-                  
-                  <View style={styles.toolbarDivider} />
-
-                  <TouchableOpacity
-                    style={[
-                      styles.toolbarBtn,
-                      currentData.alinhamentoInfo === 'left' && styles.toolbarBtnActive,
-                    ]}
-                    onPress={() => updateCurrentTab({ alinhamentoInfo: 'left' })}
-                  >
-                    <Text style={[
-                      styles.toolbarBtnText,
-                      currentData.alinhamentoInfo === 'left' && styles.toolbarBtnTextActive,
-                    ]}>Esquerda</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.toolbarBtn,
-                      currentData.alinhamentoInfo === 'justify' && styles.toolbarBtnActive,
-                    ]}
-                    onPress={() => updateCurrentTab({ alinhamentoInfo: 'justify' })}
-                  >
-                    <Text style={[
-                      styles.toolbarBtnText,
-                      currentData.alinhamentoInfo === 'justify' && styles.toolbarBtnTextActive,
-                    ]}>Justificar</Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.toolbarDivider} />
-
-                  <TouchableOpacity
-                    style={styles.toolbarBtn}
-                    onPress={() => applyFormatToInfo('topic')}
-                  >
-                    <Text style={styles.toolbarBtnText}>▪ Inserir Tópico</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <TextInput
-                  style={[
-                    styles.textAreaInput,
-                    currentData.alinhamentoInfo === 'justify' && { textAlign: 'justify' },
-                  ]}
-                  multiline
-                  placeholder="Houve embarque de material..."
-                  placeholderTextColor={colors.slate400}
-                  value={currentData.info}
-                  onChangeText={(val) => updateCurrentTab({ info: val })}
-                  onSelectionChange={(e) => setInfoSelection(e.nativeEvent.selection)}
-                />
-              </View>
+              <InfoBoxEditor
+                info={currentData.info}
+                alignment={currentData.alinhamentoInfo}
+                onUpdateInfo={(val) => updateCurrentTab({ info: val })}
+                onUpdateAlignment={(align) => updateCurrentTab({ alinhamentoInfo: align })}
+              />
 
               <Text style={styles.hintInfoText}>
                 💡 <Text style={{ fontWeight: 'bold' }}>Dica:</Text> O alinhamento <Text style={{ fontWeight: 'bold' }}>Justificar</Text> distribui o texto para encostar nas margens do relatório.
@@ -3326,7 +3475,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   textAreaInput: {
-    minHeight: 250, // Aumentado a altura do box conforme Anexo 2
+    minHeight: 280, // Aumentado em +30px conforme solicitado
     padding: 12,
     textAlignVertical: 'top',
     fontSize: 14,
