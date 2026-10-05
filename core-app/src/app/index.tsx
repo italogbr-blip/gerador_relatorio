@@ -1365,10 +1365,8 @@ export default function ReportGenerator() {
         <View style={styles.card}>
           {/* Header do Card com Botão Iniciar Novo Relatório */}
           <View style={styles.cardHeader}>
-            <TouchableOpacity onPress={limparTudo} style={styles.btnNovoRelatorio} activeOpacity={0.8}>
-              <View style={styles.btnNovoRelatorioIconBox}>
-                <Text style={styles.btnNovoRelatorioIcon}>+</Text>
-              </View>
+            <TouchableOpacity onPress={limparTudo} style={styles.btnNovoRelatorio} activeOpacity={0.75}>
+              <Text style={styles.btnNovoRelatorioIcon}>+</Text>
               <Text style={styles.btnNovoRelatorioText}>Iniciar Novo Relatório</Text>
             </TouchableOpacity>
           </View>
@@ -2791,38 +2789,28 @@ const styles = StyleSheet.create({
   btnNovoRelatorio: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.slate900,
+    backgroundColor: colors.slate50,
     borderWidth: 1,
-    borderColor: colors.slate700,
+    borderColor: colors.slate300,
     paddingVertical: 9,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    gap: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    gap: 8,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  btnNovoRelatorioIconBox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.blue600,
-    alignItems: 'center',
-    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   btnNovoRelatorioIcon: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: 'bold',
-    lineHeight: 16,
+    color: colors.slate600,
+    fontSize: 16,
+    fontWeight: '600',
   },
   btnNovoRelatorioText: {
-    color: colors.white,
-    fontWeight: '800',
+    color: colors.slate700,
+    fontWeight: '700',
     fontSize: 13,
-    letterSpacing: 0.5,
     fontFamily: modernFont,
   },
   mainTitle: {
