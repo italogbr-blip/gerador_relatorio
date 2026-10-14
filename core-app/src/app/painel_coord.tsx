@@ -673,7 +673,7 @@ export default function PainelCoordScreen() {
                   <Text style={styles.filterApplyBtnText}>FILTRAR</Text>
                 </TouchableOpacity>
 
-                {(filtroBusca || filtroEmpresa !== 'TODAS' || filtroDataInicio || filtroDataFim) && (
+                {Boolean(filtroBusca || filtroEmpresa !== 'TODAS' || filtroDataInicio || filtroDataFim) ? (
                   <TouchableOpacity
                     style={styles.filterClearBtn}
                     onPress={() => {
@@ -687,7 +687,7 @@ export default function PainelCoordScreen() {
                   >
                     <Text style={styles.filterClearBtnText}>LIMPAR</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </View>
             </View>
 

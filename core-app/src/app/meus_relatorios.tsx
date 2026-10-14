@@ -637,7 +637,7 @@ export default function MeusRelatoriosScreen() {
                   <View style={styles.detailSectionBox}>
                     <Text style={styles.detailSectionTitle}>⏰ HORÁRIOS REGISTRADOS</Text>
 
-                    {saidasHotel.length > 0 && (
+                    {saidasHotel.length > 0 ? (
                       <View style={{ marginBottom: 10 }}>
                         <Text style={styles.detailSubLabel}>SAÍDAS DO HOTEL:</Text>
                         {saidasHotel.map((sh: any, sIdx: number) => (
@@ -648,7 +648,7 @@ export default function MeusRelatoriosScreen() {
                           </View>
                         ))}
                       </View>
-                    )}
+                    ) : null}
 
                     <View style={styles.detailGridRow}>
                       <View style={styles.detailCol}>
@@ -674,7 +674,7 @@ export default function MeusRelatoriosScreen() {
                   </View>
 
                   {/* Grupo 3: Informações e Observações */}
-                  {(dataObj?.info_troca || dataObj?.observacao_nome_arquivo) && (
+                  {Boolean(dataObj?.info_troca || dataObj?.observacao_nome_arquivo) ? (
                     <View style={styles.detailSectionBox}>
                       <Text style={styles.detailSectionTitle}>📝 PASSAGEM DE INFORMAÇÕES & OBSERVAÇÕES</Text>
                       {dataObj?.info_troca ? (
@@ -690,7 +690,7 @@ export default function MeusRelatoriosScreen() {
                         </View>
                       ) : null}
                     </View>
-                  )}
+                  ) : null}
 
                   {/* Grupo 4: PAX Embarcando / Desembarcando */}
                   <View style={styles.detailSectionBox}>
@@ -714,7 +714,7 @@ export default function MeusRelatoriosScreen() {
                   </View>
 
                   {/* Grupo 5: Fotos Anexadas */}
-                  {fotos.length > 0 && (
+                  {fotos.length > 0 ? (
                     <View style={styles.detailSectionBox}>
                       <Text style={styles.detailSectionTitle}>📷 ANEXOS FOTOGRÁFICOS ({fotos.length})</Text>
                       <View style={styles.fotosDetailGrid}>
@@ -728,7 +728,7 @@ export default function MeusRelatoriosScreen() {
                         ))}
                       </View>
                     </View>
-                  )}
+                  ) : null}
                 </ScrollView>
               );
             })()}
