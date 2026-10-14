@@ -25,7 +25,7 @@ const corporateFont = Platform.OS === 'web'
   ? '"Times New Roman", Times, serif'
   : undefined;
 
-const EMPRESAS = ['TODAS', 'TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'];
+const EMPRESAS = ['TODAS', 'ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
 
 export default function MeusRelatoriosScreen() {
   const router = useRouter();
@@ -68,6 +68,8 @@ export default function MeusRelatoriosScreen() {
   // Filtros
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('TODAS');
   const [filtroBusca, setFiltroBusca] = useState<string>('');
+  const [filtroDataInicio, setFiltroDataInicio] = useState<string>('');
+  const [filtroDataFim, setFiltroDataFim] = useState<string>('');
   const [pagina, setPagina] = useState<number>(1);
   const porPagina = 15;
 
@@ -86,7 +88,7 @@ export default function MeusRelatoriosScreen() {
     message: '',
   });
 
-  // Carregar Relatórios do Supabase (Apenas do Usuário Logado)
+  // Carregar Relatórios do Supabase
   const fetchRelatorios = async (sessionParam = userSession) => {
     setLoading(true);
     try {
@@ -94,12 +96,9 @@ export default function MeusRelatoriosScreen() {
         .from('relatorios')
         .select('*', { count: 'exact' });
 
-      // IMPORTANTE: Na página "Meus Relatórios", traz SOMENTE os relatórios do usuário logado!
+      // Se houver usuário autenticado, filtra os dele; se for visitante em demonstração, exibe os disponíveis
       if (sessionParam?.user?.id) {
         query = query.eq('usuario_id', sessionParam.user.id);
-      } else {
-        // Se não estiver logado, não carrega relatórios de terceiros
-        query = query.eq('usuario_id', -1);
       }
 
       // Se filtro de empresa selecionado (diferente de TODAS)
@@ -111,6 +110,15 @@ export default function MeusRelatoriosScreen() {
       if (filtroBusca.trim()) {
         const term = `%${filtroBusca.trim()}%`;
         query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term}`);
+      }
+
+      // Filtro por Intervalo de Data (Início e Fim)
+      if (filtroDataInicio) {
+        query = query.gte('data_criacao', `${filtroDataInicio}T00:00:00`);
+      }
+
+      if (filtroDataFim) {
+        query = query.lte('data_criacao', `${filtroDataFim}T23:59:59`);
       }
 
       // Paginação
@@ -159,7 +167,7 @@ export default function MeusRelatoriosScreen() {
 
   useEffect(() => {
     fetchRelatorios(userSession);
-  }, [filtroEmpresa, pagina]);
+  }, [filtroEmpresa, pagina, filtroDataInicio, filtroDataFim]);
 
   const handleApplyFilter = () => {
     setPagina(1);
@@ -169,6 +177,8 @@ export default function MeusRelatoriosScreen() {
   const handleClearFilter = () => {
     setFiltroEmpresa('TODAS');
     setFiltroBusca('');
+    setFiltroDataInicio('');
+    setFiltroDataFim('');
     setPagina(1);
   };
 
@@ -225,11 +235,11 @@ export default function MeusRelatoriosScreen() {
     let bg = '#f1f5f9';
     let text = '#475569';
 
-    if (emp === 'TECHNIP') { bg = '#f3e8ff'; text = '#7e22ce'; }
-    else if (emp === 'DOF') { bg = '#ffedd5'; text = '#c2410c'; }
-    else if (emp === 'TECHNIP/DOF') { bg = '#fce7f3'; text = '#be185d'; }
-    else if (emp === 'CONSTELLATION') { bg = '#dbeafe'; text = '#1d4ed8'; }
-    else if (emp === 'ZONDA') { bg = '#ecfccb'; text = '#3f6212'; }
+    if (emp.includes('ALPHA')) { bg = '#f3e8ff'; text = '#7e22ce'; }
+    else if (emp.includes('NEXUS')) { bg = '#ffedd5'; text = '#c2410c'; }
+    else if (emp.includes('OCEANIC')) { bg = '#dbeafe'; text = '#1d4ed8'; }
+    else if (emp.includes('SOLARIS')) { bg = '#fef3c7'; text = '#b45309'; }
+    else if (emp.includes('VANGUARD')) { bg = '#d1fae5'; text = '#047857'; }
 
     return (
       <View style={[styles.badgeContainer, { backgroundColor: bg }]}>
@@ -307,6 +317,33 @@ export default function MeusRelatoriosScreen() {
                       </Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+              </View>
+
+              {/* Filtro por Intervalo de Data */}
+              <View style={styles.filterGroup}>
+                <Text style={styles.filterLabel}>PERÍODO (INTERVALO DE DATAS)</Text>
+                <View style={styles.dateFilterContainer}>
+                  <View style={styles.dateFieldWrapper}>
+                    <Text style={styles.dateFieldTag}>DE:</Text>
+                    <TextInput
+                      style={styles.dateInputBox}
+                      placeholder="AAAA-MM-DD"
+                      placeholderTextColor="#94a3b8"
+                      value={filtroDataInicio}
+                      onChangeText={setFiltroDataInicio}
+                    />
+                  </View>
+                  <View style={styles.dateFieldWrapper}>
+                    <Text style={styles.dateFieldTag}>ATÉ:</Text>
+                    <TextInput
+                      style={styles.dateInputBox}
+                      placeholder="AAAA-MM-DD"
+                      placeholderTextColor="#94a3b8"
+                      value={filtroDataFim}
+                      onChangeText={setFiltroDataFim}
+                    />
+                  </View>
                 </View>
               </View>
 
@@ -542,7 +579,11 @@ export default function MeusRelatoriosScreen() {
               const fotos = dataObj?.fotos || [];
 
               return (
-                <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={true}>
+                <ScrollView
+                  style={styles.detailScroll}
+                  contentContainerStyle={styles.detailScrollContent}
+                  showsVerticalScrollIndicator={true}
+                >
                   {/* Botão ABRIR PDF */}
                   <TouchableOpacity
                     style={styles.btnPdfDownloadModal}
@@ -859,6 +900,35 @@ const styles = StyleSheet.create({
   empresaChipTextActive: {
     color: '#ffffff',
   },
+  dateFilterContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  dateFieldWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  dateFieldTag: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#64748b',
+    letterSpacing: 0.5,
+  },
+  dateInputBox: {
+    fontSize: 13,
+    color: '#1e293b',
+    fontFamily: modernFont,
+    minWidth: 100,
+    padding: 0,
+  },
   searchRow: {
     flexDirection: 'row',
     gap: 8,
@@ -1173,6 +1243,11 @@ const styles = StyleSheet.create({
   },
   detailScroll: {
     flex: 1,
+    marginTop: 4,
+  },
+  detailScrollContent: {
+    paddingRight: 16, // Espaçamento elegante entre os boxes de conteúdo e a barra de rolagem
+    paddingBottom: 16,
   },
   btnPdfDownloadModal: {
     backgroundColor: '#2563eb',

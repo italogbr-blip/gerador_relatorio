@@ -84,9 +84,37 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap';
     document.head.appendChild(link);
   }
+
+  if (!document.getElementById('pax-focus-styles')) {
+    const style = document.createElement('style');
+    style.id = 'pax-focus-styles';
+    style.innerHTML = `
+      #field-pax1 {
+        outline: none !important;
+        border: 1.5px solid #a7f3d0 !important;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+      }
+      #field-pax1:focus {
+        outline: none !important;
+        border: 2px solid #10b981 !important;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+      }
+      #field-pax2 {
+        outline: none !important;
+        border: 1.5px solid #fecdd3 !important;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+      }
+      #field-pax2:focus {
+        outline: none !important;
+        border: 2px solid #f43f5e !important;
+        box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 }
 
-const GRUPO_OPTIONS = ['TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'];
+const GRUPO_OPTIONS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
 
 interface SaidaItem {
   id: string;
@@ -132,7 +160,7 @@ interface TabData {
 }
 
 const createDefaultTab = (prepostoDefault = ''): TabData => ({
-  grupo: 'TECHNIP',
+  grupo: 'ALPHA OFFSHORE',
   unidade: '',
   data: '',
   local: '',
@@ -255,7 +283,7 @@ const InfoBoxEditor = ({
     if (Platform.OS === 'web') {
       if (webEditorRef.current) {
         webEditorRef.current.focus();
-        document.execCommand('insertHTML', false, '▪&nbsp;');
+        document.execCommand('insertHTML', false, '▪ ');
         onUpdateInfo(webEditorRef.current.innerHTML);
       }
     } else {
@@ -517,7 +545,11 @@ export default function ReportGenerator() {
       confirmText: 'OK',
       onConfirm: () => {
         setCustomDialog((prev) => ({ ...prev, visible: false }));
-        if (onConfirm) onConfirm();
+        if (onConfirm) {
+          setTimeout(() => {
+            onConfirm();
+          }, 180);
+        }
       },
     });
   };
@@ -560,30 +592,59 @@ export default function ReportGenerator() {
     rotation: 0,
   });
 
-  // Animação de pulso suave para o Banner Demo
+  // Animação de pulso e rotação suave para o Loading Elegante
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 0.65,
-          duration: 1100,
+          toValue: 0.5,
+          duration: 900,
           useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1100,
+          duration: 900,
           useNativeDriver: Platform.OS !== 'web',
         }),
       ])
     );
+    const spinLoop = Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 1400,
+        useNativeDriver: Platform.OS !== 'web',
+      })
+    );
     pulseLoop.start();
-    return () => pulseLoop.stop();
-  }, [pulseAnim]);
+    spinLoop.start();
+    return () => {
+      pulseLoop.stop();
+      spinLoop.stop();
+    };
+  }, [pulseAnim, spinAnim]);
+
+  const spinDegree = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   // Supabase Auth State & User Level
-  const [userSession, setUserSession] = useState<any>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
+  const [userSession, setUserSession] = useState<any>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('app_user_session');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed?.user) return parsed;
+        }
+      } catch (e) {}
+    }
+    return null;
+  });
   const [isAuthModalVisible, setIsAuthModalVisible] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'cadastro'>('login');
   const [authEmail, setAuthEmail] = useState<string>('');
@@ -601,18 +662,9 @@ export default function ReportGenerator() {
 
   // Listen to Supabase Session & Local Session
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      try {
-        const saved = localStorage.getItem('app_user_session');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed?.user) {
-            setUserSession(parsed);
-            const userName = parsed.user.user_metadata?.name || parsed.user.email?.split('@')[0] || '';
-            updateCurrentTab({ preposto: userName });
-          }
-        }
-      } catch (e) {}
+    if (userSession?.user) {
+      const userName = userSession.user.user_metadata?.name || userSession.user.email?.split('@')[0] || '';
+      updateCurrentTab({ preposto: userName });
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -621,6 +673,9 @@ export default function ReportGenerator() {
         const userName = session.user.user_metadata?.name || session.user.email?.split('@')[0] || '';
         updateCurrentTab({ preposto: userName });
       }
+      setIsAuthChecking(false);
+    }).catch(() => {
+      setIsAuthChecking(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -628,7 +683,10 @@ export default function ReportGenerator() {
         setUserSession(session);
         const userName = session.user.user_metadata?.name || session.user.email?.split('@')[0] || '';
         updateCurrentTab({ preposto: userName });
+      } else if (_event === 'SIGNED_OUT') {
+        setUserSession(null);
       }
+      setIsAuthChecking(false);
     });
 
     return () => subscription.unsubscribe();
@@ -1091,6 +1149,42 @@ export default function ReportGenerator() {
     return `${unidadeClean}_${dateFormatted}${obsFormatted}.pdf`;
   };
 
+  const scrollToField = (fieldKey: string | null) => {
+    if (!fieldKey || Platform.OS !== 'web' || typeof document === 'undefined') return;
+
+    setTimeout(() => {
+      let el: HTMLElement | null =
+        document.getElementById(`field-${fieldKey}`) ||
+        document.querySelector(`#field-${fieldKey}`) ||
+        document.querySelector(`[nativeID="field-${fieldKey}"]`) ||
+        document.querySelector(`[data-field="${fieldKey}"]`);
+
+      if (!el) {
+        const errEls = document.querySelectorAll('.inputError, [style*="f87171"], [style*="ffe4e6"]');
+        if (errEls.length > 0) {
+          el = errEls[0] as HTMLElement;
+        }
+      }
+
+      if (el) {
+        try {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (e) {}
+
+        try {
+          const rect = el.getBoundingClientRect();
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const targetY = rect.top + scrollTop - 140;
+          window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+        } catch (e) {}
+
+        try {
+          el.focus();
+        } catch (e) {}
+      }
+    }, 120);
+  };
+
   const handleGerarPDF = () => {
     const errors: { [key: string]: boolean } = {};
     let firstErr: string | null = null;
@@ -1138,20 +1232,15 @@ export default function ReportGenerator() {
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       setFirstErrorField(firstErr);
+
+      const triggerScroll = () => {
+        scrollToField(firstErr);
+      };
+
       showCustomAlert(
         'AVISO',
         'Por favor, preencha todos os campos obrigatórios destacados em vermelho antes de gerar o relatório.',
-        () => {
-          if (firstErr && Platform.OS === 'web') {
-            setTimeout(() => {
-              const el = document.getElementById(`field-${firstErr}`);
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.focus();
-              }
-            }, 150);
-          }
-        }
+        triggerScroll
       );
       setPdfGenerated(false);
       return;
@@ -1169,32 +1258,161 @@ export default function ReportGenerator() {
     }
   };
 
-  const salvarRelatorioNoSupabase = async () => {
-    try {
-      const jsonPayload = {
-        grupo: currentData.grupo,
-        unidade: currentData.unidade,
-        data: currentData.data,
-        local: currentData.local,
-        modal: currentData.modal,
-        preposto: currentData.preposto,
-        observacao_nome_arquivo: currentData.observacao,
-        horarios: {
-          saida_hotel: currentData.listaSaidas,
-          embarque_previsto: currentData.semEmbarquePrev ? 'N/A' : `${currentData.h3}:${currentData.m3}`,
-          embarque_real: currentData.semEmbarque ? 'N/A' : `${currentData.h4}:${currentData.m4}`,
-          atendimento_inicio: `${currentData.h5}:${currentData.m5}`,
-          atendimento_fim: `${currentData.h6}:${currentData.m6}`,
-        },
-        info_troca: currentData.info,
-        pax_embarcando: currentData.pax1,
-        pax_desembarcando: currentData.pax2,
-        fotos: currentData.fotosAnexadas,
-      };
+  // Geração Nativa de Documento e PDF Offline (Passo 2)
+  const handleExportarPdfOffline = (modo: 'imprimir' | 'download_html' = 'imprimir') => {
+    const saidasHtml = currentData.listaSaidas.map((item) => `
+      <div style="margin-bottom: 4px;">
+        ${item.label1 ? `<b>${item.label1}:</b> ` : ''}
+        <span>${item.h1 === 'N/A' ? 'N/A' : `${item.h1 || '00'}h${item.m1 || '00'}min`}</span>
+        <span style="margin-left: 14px;"><b>Real:</b> ${item.h2 === 'N/A' ? 'N/A' : `${item.h2 || '00'}h${item.m2 || '00'}min`}</span>
+      </div>
+    `).join('');
 
+    const pax1Html = currentData.pax1 ? currentData.pax1.replace(/\n/g, '<br/>') : '<i>Nenhum passageiro</i>';
+    const pax2Html = currentData.pax2 ? currentData.pax2.replace(/\n/g, '<br/>') : '<i>Nenhum passageiro</i>';
+    const infoHtml = currentData.info ? currentData.info.replace(/\n/g, '<br/>') : '<i>Sem observações registradas.</i>';
+
+    const docHtml = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório Operacional - ${currentData.unidade || 'Atendimento'} - ${currentData.data || ''}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    * { box-sizing: border-box; font-family: "Times New Roman", Times, serif; }
+    body { margin: 0; padding: 0; background: #fff; color: #000; font-size: 13px; line-height: 1.4; }
+    .container { width: 100%; max-width: 800px; margin: 0 auto; border: 1px solid #ccc; padding: 24px; position: relative; }
+    .header-title { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 8px; }
+    .field-row { margin-bottom: 6px; font-size: 14px; }
+    .field-label { font-weight: bold; }
+    .box-section { background: #f9f9f9; border: 1px solid #ddd; padding: 10px; margin: 8px 0 14px 0; border-radius: 4px; }
+    .pax-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    .pax-table th { background: #eee; border: 1px solid #999; padding: 8px; font-size: 13px; text-align: left; }
+    .pax-table td { border: 1px solid #ccc; padding: 8px; vertical-align: top; width: 50%; }
+    .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #555; border-top: 1px solid #ccc; padding-top: 8px; }
+    @media print {
+      body { background: #fff !important; }
+      .container { border: none !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-title">RELATÓRIO DE TROCA DE TURMA</div>
+    <div class="field-row"><span class="field-label">Empresa:</span> ${currentData.grupo || 'OUTROS'}</div>
+    <div class="field-row"><span class="field-label">Unidade:</span> ${currentData.unidade || 'N/A'}</div>
+    <div class="field-row"><span class="field-label">Data:</span> ${formatarData(currentData.data) || 'N/A'}</div>
+    <div class="field-row"><span class="field-label">Local:</span> ${currentData.local || 'N/A'}</div>
+    <div class="field-row"><span class="field-label">Modal:</span> ${currentData.modal || 'N/A'}</div>
+    
+    <div style="margin-top: 10px; font-weight: bold;">Horário de Saída do Hotel (Previsto e Real):</div>
+    <div class="box-section">${saidasHtml}</div>
+
+    <div style="font-weight: bold;">Horários de Embarque (Previsto e Real):</div>
+    <div class="box-section">
+      <b>Previsto:</b> ${currentData.semEmbarquePrev ? 'N/A' : `${currentData.h3 || '00'}h${currentData.m3 || '00'}min`}
+      <span style="margin-left: 20px;"><b>Real:</b> ${currentData.semEmbarque ? 'N/A' : `${currentData.h4 || '00'}h${currentData.m4 || '00'}min`}</span>
+    </div>
+
+    <div style="font-weight: bold;">Horário Inicial e de Finalização do Atendimento:</div>
+    <div class="box-section">
+      <b>Início:</b> ${currentData.h5 || '00'}h${currentData.m5 || '00'}min às <b>Fim:</b> ${currentData.h6 || '00'}h${currentData.m6 || '00'}min
+    </div>
+
+    <div class="field-row"><span class="field-label">Nome do Preposto:</span> ${currentData.preposto || 'N/A'}</div>
+
+    <div style="margin-top: 10px; font-weight: bold;">Informações sobre a troca de turma:</div>
+    <div class="box-section">${infoHtml}</div>
+
+    <table class="pax-table">
+      <thead>
+        <tr>
+          <th style="color: #047857;">Nomes Passageiros Embarcando</th>
+          <th style="color: #be123c;">Nomes Passageiros Desembarcando</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>${pax1Html}</td>
+          <td>${pax2Html}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="footer">
+      Av. Atlântica, 1500 – Centro Empresarial – Rio de Janeiro RJ – CEP 22.000-000<br/>
+      E-Mail: contato@demologistics.com | Tel.: (21) 3000-0000
+    </div>
+  </div>
+</body>
+</html>`;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (modo === 'download_html') {
+        const blob = new Blob([docHtml], { type: 'text/html;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Relatorio_Operacional_${(currentData.unidade || 'Atendimento').replace(/\s+/g, '_')}_${currentData.data || 'data'}.html`;
+        link.click();
+        return;
+      }
+
+      // Impressão / Salvar como PDF
+      const printWin = window.open('', '_blank');
+      if (printWin) {
+        printWin.document.write(docHtml);
+        printWin.document.close();
+        setTimeout(() => {
+          printWin.focus();
+          printWin.print();
+        }, 300);
+      } else {
+        window.print();
+      }
+    } else {
+      Alert.alert('Exportação Offline', 'Documento gerado e pronto para exportação.');
+    }
+  };
+
+  const salvarRelatorioNoSupabase = async () => {
+    const jsonPayload = {
+      grupo: currentData.grupo,
+      unidade: currentData.unidade,
+      data: currentData.data,
+      local: currentData.local,
+      modal: currentData.modal,
+      preposto: currentData.preposto,
+      observacao_nome_arquivo: currentData.observacao,
+      horarios: {
+        saida_hotel: currentData.listaSaidas,
+        embarque_previsto: currentData.semEmbarquePrev ? 'N/A' : `${currentData.h3}:${currentData.m3}`,
+        embarque_real: currentData.semEmbarque ? 'N/A' : `${currentData.h4}:${currentData.m4}`,
+        atendimento_inicio: `${currentData.h5}:${currentData.m5}`,
+        atendimento_fim: `${currentData.h6}:${currentData.m6}`,
+      },
+      info_troca: currentData.info,
+      pax_embarcando: currentData.pax1,
+      pax_desembarcando: currentData.pax2,
+      fotos: currentData.fotosAnexadas,
+    };
+
+    const isOffline = Platform.OS === 'web' && typeof navigator !== 'undefined' && !navigator.onLine;
+
+    // Se estiver explicitamente offline, salva localmente
+    if (isOffline) {
+      salvarOfflineLocal(jsonPayload);
+      showCustomAlert(
+        'MODO OFFLINE ATIVADO',
+        'Você está sem conexão com a internet. O relatório foi salvo localmente no seu dispositivo e está disponível para download ou impressão em PDF offline!'
+      );
+      return;
+    }
+
+    try {
       let pdfUrlResult: string | null = null;
 
-      // 1. Tenta enviar para o servidor PHP (mmssuportelogistica.com.br/salvar_relatorio.php)
+      // 1. Tenta enviar para o servidor PHP
       try {
         const phpResp = await fetch(PHP_SAVE_ENDPOINT, {
           method: 'POST',
@@ -1209,7 +1427,7 @@ export default function ReportGenerator() {
           }
         }
       } catch (phpErr) {
-        console.log('Servidor PHP pendente de deploy ou offline. Salvando no Supabase.');
+        console.log('Servidor PHP offline ou sem rota. Prosseguindo com Supabase.');
       }
 
       // 2. Registra o relatório no banco Supabase
@@ -1226,7 +1444,12 @@ export default function ReportGenerator() {
       }]);
 
       if (error) {
-        console.error('Aviso ao salvar no Supabase:', error.message);
+        console.warn('Falha na sincronização online. Armazenando cópia offline.', error.message);
+        salvarOfflineLocal(jsonPayload);
+        showCustomAlert(
+          'SALVO LOCALMENTE (OFFLINE)',
+          'Houve uma oscilação na conexão com a nuvem, mas seu relatório foi salvo com segurança na memória local do aparelho.'
+        );
       } else {
         showCustomAlert(
           'RELATÓRIO SALVO',
@@ -1234,7 +1457,26 @@ export default function ReportGenerator() {
         );
       }
     } catch (err: any) {
-      console.error('Exceção ao salvar relatório:', err.message);
+      salvarOfflineLocal(jsonPayload);
+      showCustomAlert(
+        'SALVO EM MODO OFFLINE',
+        'Relatório gerado e armazenado localmente no dispositivo para exportação direta de PDF offline.'
+      );
+    }
+  };
+
+  const salvarOfflineLocal = (payload: any) => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const salvosStr = localStorage.getItem('mms_relatorios_offline_salvos') || '[]';
+        const lista = JSON.parse(salvosStr);
+        lista.push({
+          ...payload,
+          id_offline: Date.now(),
+          data_criacao: new Date().toISOString(),
+        });
+        localStorage.setItem('mms_relatorios_offline_salvos', JSON.stringify(lista));
+      } catch (e) {}
     }
   };
 
@@ -1262,19 +1504,35 @@ export default function ReportGenerator() {
       return <Text style={styles.a4Value}>N/A</Text>;
     }
 
+    // 1. Decodificar entidades HTML comuns (evita expor &nbsp; na tela)
     let cleanText = text
+      .replace(/&amp;/gi, '&')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&nbsp/gi, ' ')
+      .replace(/&bull;/gi, '▪ ')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&nbsp/gi, ' ');
+
+    // 2. Normalizar quebras de linha de tags HTML
+    cleanText = cleanText
       .replace(/<div><br><\/div>/gi, '\n')
       .replace(/<div>/gi, '\n')
       .replace(/<\/div>/gi, '')
       .replace(/<p>/gi, '')
       .replace(/<\/p>/gi, '\n')
-      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<br\s*\/?>/gi, '\n');
+
+    // 3. Converter tags HTML para a sintaxe de marcação unificada
+    cleanText = cleanText
       .replace(/<b>(.*?)<\/b>/gi, '*$1*')
       .replace(/<strong>(.*?)<\/strong>/gi, '*$1*')
       .replace(/<i>(.*?)<\/i>/gi, '_$1_')
       .replace(/<em>(.*?)<\/em>/gi, '_$1_')
       .replace(/<u>(.*?)<\/u>/gi, '[$1]');
 
+    // 4. Remover qualquer outra tag HTML residual
     cleanText = cleanText.replace(/<[^>]+>/g, '');
 
     const lines = cleanText.split('\n');
@@ -1353,19 +1611,13 @@ export default function ReportGenerator() {
         >
           <Text style={[styles.navMenuBtnText, showMenu && styles.navMenuBtnTextActive]}>MENU</Text>
 
-          {userSession?.user ? (
-            <View style={styles.userInitialCircle}>
-              <Text style={styles.userInitialText}>
-                {(userSession.user.user_metadata?.name || userSession.user.email || 'U')[0].toLowerCase()}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.hamburgerLinesContainer}>
-              <View style={[styles.hamburgerLineBar, showMenu && styles.hamburgerLineBarActive]} />
-              <View style={[styles.hamburgerLineBar, showMenu && styles.hamburgerLineBarActive]} />
-              <View style={[styles.hamburgerLineBar, showMenu && styles.hamburgerLineBarActive]} />
-            </View>
-          )}
+          <View style={styles.menuIconCircle}>
+            <Text style={styles.menuIconCircleText}>
+              {userSession?.user
+                ? (userSession.user.user_metadata?.name || userSession.user.email || 'i')[0].toLowerCase()
+                : 'i'}
+            </Text>
+          </View>
         </TouchableOpacity>
 
         {/* Dropdown Menu Modal (Elimina qualquer travamento, estouro de tela ou bug de z-index) */}
@@ -1456,66 +1708,34 @@ export default function ReportGenerator() {
                       )}
                     </TouchableOpacity>
 
-                    {/* Opções exclusivas para Usuários Nível 2 (Admin / Coordenação) */}
-                    {((userSession.user.user_metadata?.nivel_autoridade ?? 2) === 2) && (
-                      <>
-                        <TouchableOpacity
+                    {/* Painel de Coordenação liberado no modo demonstração */}
+                    <TouchableOpacity
+                      style={[
+                        styles.menuItem,
+                        selectedMenuItem === 'painel_coord' && styles.menuItemSelectedAmber,
+                      ]}
+                      onPress={() => {
+                        setSelectedMenuItem('painel_coord');
+                        toggleMenu();
+                        router.push('/painel_coord');
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.menuItemIcon}>🛡️</Text>
+                        <Text
                           style={[
-                            styles.menuItem,
-                            selectedMenuItem === 'painel_coord' && styles.menuItemSelectedAmber,
+                            styles.menuItemText,
+                            { color: colors.amber800 },
+                            selectedMenuItem === 'painel_coord' && styles.menuItemTextSelected,
                           ]}
-                          onPress={() => {
-                            setSelectedMenuItem('painel_coord');
-                            toggleMenu();
-                            showCustomAlert('Painel Coordenação', 'Acessando painel de gerenciamento de solicitações e coordenação (Nível 2).');
-                          }}
                         >
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Text style={styles.menuItemIcon}>⚙️</Text>
-                            <Text
-                              style={[
-                                styles.menuItemText,
-                                { color: colors.amber800 },
-                                selectedMenuItem === 'painel_coord' && styles.menuItemTextSelected,
-                              ]}
-                            >
-                              Painel Coordenação
-                            </Text>
-                          </View>
-                          {selectedMenuItem === 'painel_coord' && (
-                            <Text style={[styles.menuItemSelectedCheck, { color: colors.amber800 }]}>✓</Text>
-                          )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[
-                            styles.menuItem,
-                            selectedMenuItem === 'webview' && styles.menuItemSelectedEmerald,
-                          ]}
-                          onPress={() => {
-                            setSelectedMenuItem('webview');
-                            toggleMenu();
-                            showCustomAlert('Navegador WebView', 'Modo WebView embutido ativado.');
-                          }}
-                        >
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Text style={styles.menuItemIcon}>🌐</Text>
-                            <Text
-                              style={[
-                                styles.menuItemText,
-                                { color: colors.emerald600 },
-                                selectedMenuItem === 'webview' && styles.menuItemTextSelected,
-                              ]}
-                            >
-                              Navegador WebView
-                            </Text>
-                          </View>
-                          {selectedMenuItem === 'webview' && (
-                            <Text style={[styles.menuItemSelectedCheck, { color: colors.emerald600 }]}>✓</Text>
-                          )}
-                        </TouchableOpacity>
-                      </>
-                    )}
+                          Painel Coordenação (Demo)
+                        </Text>
+                      </View>
+                      {selectedMenuItem === 'painel_coord' && (
+                        <Text style={[styles.menuItemSelectedCheck, { color: colors.amber800 }]}>✓</Text>
+                      )}
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                       style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100 }]}
@@ -1532,6 +1752,42 @@ export default function ReportGenerator() {
                   </>
                 ) : (
                   <>
+                    <TouchableOpacity
+                      style={[
+                        styles.menuItem,
+                        selectedMenuItem === 'meus_relatorios' && styles.menuItemSelected,
+                      ]}
+                      onPress={() => {
+                        setSelectedMenuItem('meus_relatorios');
+                        toggleMenu();
+                        router.push('/meus_relatorios');
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.menuItemIcon}>📁</Text>
+                        <Text style={[styles.menuItemText, { color: colors.blue600 }]}>Histórico de Relatórios</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.menuItem,
+                        selectedMenuItem === 'painel_coord' && styles.menuItemSelectedAmber,
+                      ]}
+                      onPress={() => {
+                        setSelectedMenuItem('painel_coord');
+                        toggleMenu();
+                        router.push('/painel_coord');
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.menuItemIcon}>🛡️</Text>
+                        <Text style={[styles.menuItemText, { color: colors.amber800 }]}>Painel Coordenação (Demo)</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <View style={styles.menuDivider} />
+
                     <TouchableOpacity
                       style={[
                         styles.menuItem,
@@ -1745,9 +2001,10 @@ export default function ReportGenerator() {
                 <Text style={styles.label}>LOCAL:</Text>
                 <TextInput
                   nativeID="field-local"
+                  id="field-local"
                   style={[styles.input, fieldErrors.local && styles.inputError]}
                   value={currentData.local}
-                  onChangeText={(val) => updateCurrentTab({ local: val })}
+                  onChangeText={(val) => updateCurrentTab({ local:val })}
                   placeholder="Local de atendimento"
                   placeholderTextColor={colors.slate400}
                 />
@@ -1756,6 +2013,7 @@ export default function ReportGenerator() {
                 <Text style={styles.label}>MODAL:</Text>
                 <TextInput
                   nativeID="field-modal"
+                  id="field-modal"
                   style={[styles.input, fieldErrors.modal && styles.inputError]}
                   value={currentData.modal}
                   onChangeText={(val) => updateCurrentTab({ modal: val })}
@@ -1783,12 +2041,29 @@ export default function ReportGenerator() {
 
             {/* Nome do Preposto */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>NOME DO PREPOSTO:</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text style={styles.label}>NOME DO PREPOSTO:</Text>
+                {userSession?.user && (
+                  <View style={styles.prepostoLockBadge}>
+                    <Text style={styles.prepostoLockText}>🔒 Preenchido via conta logada</Text>
+                  </View>
+                )}
+              </View>
               <TextInput
                 nativeID="field-preposto"
-                style={[styles.input, fieldErrors.preposto && styles.inputError]}
+                id="field-preposto"
+                style={[
+                  styles.input,
+                  userSession?.user && styles.inputDisabledPreposto,
+                  fieldErrors.preposto && styles.inputError,
+                ]}
                 value={currentData.preposto}
-                onChangeText={(val) => updateCurrentTab({ preposto: val })}
+                onChangeText={(val) => {
+                  if (!userSession?.user) {
+                    updateCurrentTab({ preposto: val });
+                  }
+                }}
+                editable={!userSession?.user}
                 placeholder="Seu nome"
                 placeholderTextColor={colors.slate400}
               />
@@ -2050,9 +2325,10 @@ export default function ReportGenerator() {
                   </View>
                   <TextInput
                     nativeID="field-pax1"
+                    id="field-pax1"
                     style={[
                       styles.paxTextInputEmbarque,
-                      isPax1Focused && styles.paxTextInputEmbarqueFocused,
+                      isPax1Focused ? styles.paxTextInputEmbarqueFocused : styles.paxTextInputEmbarqueUnfocused,
                       fieldErrors.pax1 && styles.inputError,
                     ]}
                     multiline
@@ -2072,9 +2348,10 @@ export default function ReportGenerator() {
                   </View>
                   <TextInput
                     nativeID="field-pax2"
+                    id="field-pax2"
                     style={[
                       styles.paxTextInputDesembarque,
-                      isPax2Focused && styles.paxTextInputDesembarqueFocused,
+                      isPax2Focused ? styles.paxTextInputDesembarqueFocused : styles.paxTextInputDesembarqueUnfocused,
                       fieldErrors.pax2 && styles.inputError,
                     ]}
                     multiline
@@ -2144,12 +2421,14 @@ export default function ReportGenerator() {
             <View style={styles.filenamePreviewBox}>
               <Text style={styles.filenamePreviewLabel}>PRÉVIA DO NOME DO ARQUIVO:</Text>
               {!(currentData.unidade || currentData.data || currentData.observacao) ? (
-                <Animated.View style={{ opacity: pulseAnim, flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
-                  <ActivityIndicator size="small" color={colors.indigo600} />
-                  <Text style={[styles.filenamePreviewValue, { color: colors.indigo600, fontStyle: 'italic' }]}>
+                <View style={styles.elegantLoadingContainer}>
+                  <Animated.View style={[styles.elegantSpinnerRing, { transform: [{ rotate: spinDegree }] }]}>
+                    <View style={styles.elegantSpinnerDot} />
+                  </Animated.View>
+                  <Animated.Text style={[styles.elegantLoadingText, { opacity: pulseAnim }]}>
                     AGUARDANDO INFORMAÇÕES...
-                  </Text>
-                </Animated.View>
+                  </Animated.Text>
+                </View>
               ) : (
                 <Text style={styles.filenamePreviewValue}>📄 {getFilenamePreview()}</Text>
               )}
@@ -2166,22 +2445,26 @@ export default function ReportGenerator() {
                 <View style={styles.sucessoPdfActions}>
                   <TouchableOpacity
                     style={styles.btnDownloadManual}
-                    onPress={() => {
-                      if (Platform.OS === 'web') window.print();
-                      else Alert.alert('Imprimir / Salvar', 'Visualizando impressão do relatório.');
-                    }}
+                    onPress={() => handleExportarPdfOffline('imprimir')}
                   >
-                    <Text style={styles.btnDownloadManualText}>📥 Baixar / Imprimir</Text>
+                    <Text style={styles.btnDownloadManualText}>📥 Imprimir / Salvar PDF</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.btnDownloadManual, { backgroundColor: '#059669', borderColor: '#059669' }]}
+                    onPress={() => handleExportarPdfOffline('download_html')}
+                  >
+                    <Text style={styles.btnDownloadManualText}>💾 Cópia Offline (HTML/PDF)</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             )}
 
-            {/* Banner Oficial de Alerta com Animação Pulsante: Versão de Demonstração (Sem MMS SUPORTE LOGÍSTICA) */}
+            {/* Banner Oficial de Alerta com Animação Pulsante: Versão de Demonstração Pública */}
             <Animated.View style={[styles.demoBannerBox, { opacity: pulseAnim }]}>
               <View style={styles.demoBadgeDot} />
               <Text style={styles.demoBannerText}>
-                ⚠️ ESTA É UMA VERSÃO DE DEMONSTRAÇÃO
+                ⚠️ SISTEMA DE DEMONSTRAÇÃO PÚBLICA — DADOS FICTÍCIOS
               </Text>
             </Animated.View>
           </View>
@@ -2199,7 +2482,7 @@ export default function ReportGenerator() {
               resizeMode="cover"
             />
 
-            {/* Header do PDF (Logo MMS posicionado no topo esquerdo) */}
+            {/* Header do PDF */}
             <View style={styles.a4FixedLogo}>
               <Image
                 source={require('../../assets/images/logo.png')}
@@ -2304,11 +2587,11 @@ export default function ReportGenerator() {
               </View>
             </View>
 
-            {/* Footer Oficial MMS */}
+            {/* Footer Corporativo Fictício */}
             <View style={styles.a4Footer}>
               <Text style={styles.a4FooterText}>
-                Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
-                E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+                Av. Atlântica, 1500 – Centro Empresarial – Rio de Janeiro RJ – CEP 22.000-000{'\n'}
+                E-Mail: contato@demologistics.com | Tel.: (21) 3000-0000
               </Text>
             </View>
           </View>
@@ -2634,26 +2917,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: 8,
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'transparent',
+    borderWidth: 0,
   },
   navMenuBtnActive: {
-    backgroundColor: colors.slate800,
-    borderColor: colors.slate700,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   navMenuBtnText: {
-    color: colors.slate200,
-    fontWeight: '900',
-    fontSize: 13, // Aumentado em 2px (de 11px para 13px)
-    letterSpacing: 1.5,
+    color: colors.white,
+    fontWeight: '700', // Removido o negrito extra pesado (900), idêntico ao Anexo 2
+    fontSize: 14,
+    letterSpacing: 0.5,
     fontFamily: modernFont,
   },
   navMenuBtnTextActive: {
     color: colors.white,
+  },
+  menuIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#06b6d4', // Ciano idêntico ao Anexo 2
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuIconCircleText: {
+    color: colors.white,
+    fontWeight: '700',
+    fontSize: 14,
+    fontFamily: modernFont,
   },
   hamburgerLinesContainer: {
     width: 18,
@@ -2963,7 +3258,7 @@ const styles = StyleSheet.create({
     fontFamily: modernFont,
   },
   mainTitle: {
-    fontSize: 22, // Aumentado em 2px (de 20px para 22px)
+    fontSize: 24, // Aumentado em +2px para destaque elegante (de 22px para 24px)
     fontWeight: '900',
     textAlign: 'center',
     marginTop: 12,
@@ -3559,8 +3854,6 @@ const styles = StyleSheet.create({
   },
   paxTextInputEmbarque: {
     backgroundColor: colors.white,
-    borderWidth: 1.5,
-    borderColor: '#a7f3d0',
     borderRadius: 8,
     padding: 12,
     minHeight: 380,
@@ -3569,14 +3862,20 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     fontFamily: corporateFont,
   },
+  paxTextInputEmbarqueUnfocused: {
+    borderWidth: 1.5,
+    borderColor: '#a7f3d0',
+  },
   paxTextInputEmbarqueFocused: {
-    borderColor: '#10b981',
     borderWidth: 2,
+    borderColor: '#10b981',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   paxTextInputDesembarque: {
     backgroundColor: colors.white,
-    borderWidth: 1.5,
-    borderColor: '#fda4af',
     borderRadius: 8,
     padding: 12,
     minHeight: 380,
@@ -3585,9 +3884,37 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     fontFamily: corporateFont,
   },
+  paxTextInputDesembarqueUnfocused: {
+    borderWidth: 1.5,
+    borderColor: '#fecdd3',
+  },
   paxTextInputDesembarqueFocused: {
-    borderColor: '#e11d48',
     borderWidth: 2,
+    borderColor: '#f43f5e',
+    shadowColor: '#e11d48',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  inputDisabledPreposto: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+    color: '#475569',
+    fontWeight: '700',
+  },
+  prepostoLockBadge: {
+    backgroundColor: '#e0e7ff',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+  },
+  prepostoLockText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#3730a3',
+    fontFamily: modernFont,
   },
   anexosCard: {
     backgroundColor: colors.slate50,
@@ -3694,26 +4021,63 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   filenamePreviewBox: {
-    backgroundColor: colors.indigo50,
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: colors.indigo100,
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 8,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginTop: 10,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   filenamePreviewLabel: {
     fontSize: 9,
     fontWeight: '900',
-    color: colors.indigo400,
+    color: colors.indigo600,
     textTransform: 'uppercase',
-    fontFamily: corporateFont,
+    letterSpacing: 1,
+    fontFamily: modernFont,
   },
   filenamePreviewValue: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.slate800,
+    marginTop: 4,
+    fontFamily: modernFont,
+  },
+  elegantLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 10,
+  },
+  elegantSpinnerRing: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: '#c7d2fe',
+    borderTopColor: colors.indigo600,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  elegantSpinnerDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: colors.indigo600,
+    marginTop: -1,
+  },
+  elegantLoadingText: {
+    fontSize: 11,
     fontWeight: '700',
-    color: colors.indigo800,
-    marginTop: 2,
-    fontFamily: corporateFont,
+    color: colors.indigo600,
+    letterSpacing: 1.2,
+    fontFamily: modernFont,
   },
   btnGerarPdf: {
     backgroundColor: colors.emerald600,
