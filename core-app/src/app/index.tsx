@@ -1867,28 +1867,6 @@ export default function ReportGenerator() {
                         <Text style={styles.menuItemSelectedCheck}>✓</Text>
                       )}
                     </TouchableOpacity>
-
-                    <View style={styles.menuDivider} />
-
-                    <TouchableOpacity
-                      style={[
-                        styles.menuItem,
-                        selectedMenuItem === 'meus_relatorios' && styles.menuItemSelected,
-                      ]}
-                      onPress={() => {
-                        setSelectedMenuItem('meus_relatorios');
-                        toggleMenu();
-                        router.push('/meus_relatorios');
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.menuItemIcon}>📁</Text>
-                        <Text style={[styles.menuItemText, { color: colors.slate700 }]}>Histórico de Relatórios</Text>
-                      </View>
-                      {selectedMenuItem === 'meus_relatorios' && (
-                        <Text style={styles.menuItemSelectedCheck}>✓</Text>
-                      )}
-                    </TouchableOpacity>
                   </>
                 )}
               </TouchableOpacity>

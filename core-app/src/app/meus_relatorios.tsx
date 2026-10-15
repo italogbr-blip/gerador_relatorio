@@ -35,6 +35,7 @@ export default function MeusRelatoriosScreen() {
   const isMobile = width < 768;
 
   const [userSession, setUserSession] = useState<AppUserSession | null>(() => getSavedSessionSync());
+  const [authChecked, setAuthChecked] = useState<boolean>(false);
   const [relatorios, setRelatorios] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalRegistros, setTotalRegistros] = useState<number>(0);
@@ -148,20 +149,30 @@ export default function MeusRelatoriosScreen() {
   useEffect(() => {
     getValidatedUserSession().then((session) => {
       setUserSession(session);
-      fetchRelatorios(session);
+      setAuthChecked(true);
+      if (session?.user) {
+        fetchRelatorios(session);
+      } else {
+        setLoading(false);
+      }
     }).catch(() => {
       setUserSession(null);
-      fetchRelatorios(null);
+      setAuthChecked(true);
+      setLoading(false);
     });
   }, []);
 
   useEffect(() => {
-    fetchRelatorios(userSession);
+    if (authChecked && userSession?.user) {
+      fetchRelatorios(userSession);
+    }
   }, [filtroEmpresa, pagina, filtroDataInicio, filtroDataFim]);
 
   const handleApplyFilter = () => {
     setPagina(1);
-    fetchRelatorios(userSession);
+    if (userSession?.user) {
+      fetchRelatorios(userSession);
+    }
   };
 
   const handleClearFilter = () => {
@@ -310,6 +321,56 @@ export default function MeusRelatoriosScreen() {
 
   const totalPaginas = Math.ceil(totalRegistros / porPagina) || 1;
   const username = userSession?.user?.user_metadata?.name || userSession?.user?.email?.split('@')[0] || 'Usuário';
+
+  if (authChecked && !userSession) {
+    return (
+      <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
+        <View style={[styles.navbar, !isDarkMode && { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
+          <View style={styles.navLeft}>
+            <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>HISTÓRICO DE RELATÓRIOS</Text>
+          </View>
+          <View style={styles.navRight}>
+            <TouchableOpacity style={styles.btnThemeToggle} onPress={toggleTheme}>
+              <Text style={styles.btnThemeToggleText}>{isDarkMode ? '🌙' : '☀️'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.btnVoltar} onPress={() => router.replace('/')}>
+              <Text style={styles.btnVoltarText}>← VOLTAR AO GERADOR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{
+            backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+            borderRadius: 16,
+            padding: 32,
+            alignItems: 'center',
+            maxWidth: 440,
+            width: '90%',
+            borderWidth: 1,
+            borderColor: isDarkMode ? '#334155' : '#e2e8f0',
+            shadowColor: '#000',
+            shadowOpacity: 0.1,
+            shadowRadius: 10,
+          }}>
+            <Text style={{ fontSize: 36, marginBottom: 12 }}>🔒</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: isDarkMode ? '#ffffff' : '#0f172a', marginBottom: 8, textAlign: 'center', fontFamily: modernFont }}>
+              ACESSO RESTRITO
+            </Text>
+            <Text style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', lineHeight: 20, marginBottom: 20, fontFamily: modernFont }}>
+              O Histórico de Relatórios é exclusivo para usuários autenticados. Faça login para visualizar e consultar os relatórios da sua conta.
+            </Text>
+            <TouchableOpacity
+              style={[styles.btnVoltar, { width: '100%', alignItems: 'center', paddingVertical: 12 }]}
+              onPress={() => router.replace('/')}
+            >
+              <Text style={styles.btnVoltarText}>🔑 IR PARA LOGIN NO GERADOR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
