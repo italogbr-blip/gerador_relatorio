@@ -2806,13 +2806,16 @@ export default function ReportGenerator() {
 
             <View style={styles.cloudBannerPopUpHeader}>
               <View style={styles.cloudBannerIconBoxPopUp}>
-                <Text style={styles.cloudBannerIcon}>☁️</Text>
+                <Text style={{ fontSize: 28 }}>☁️</Text>
               </View>
-              <Text style={styles.cloudBannerTitlePopUp}>Salvar na Nuvem</Text>
+              <Text style={styles.cloudBannerTitlePopUp}>Sincronização em Nuvem</Text>
+              <Text style={styles.cloudBannerPopUpSubtitle}>
+                Acesse seus relatórios de qualquer dispositivo
+              </Text>
             </View>
 
             <Text style={styles.cloudBannerPopUpBody}>
-              Crie uma conta gratuita para salvar, organizar e acessar facilmente todos os seus relatórios em qualquer lugar.
+              Conecte sua conta para salvar relatórios com segurança no banco de dados, sincronizar fotos de atendimentos e consultar todo o seu histórico em tempo real.
             </Text>
 
             <View style={styles.cloudBannerPopUpActions}>
@@ -2825,7 +2828,7 @@ export default function ReportGenerator() {
                 }}
                 activeOpacity={0.8}
               >
-                <Text style={styles.btnBannerEntrarText}>ENTRAR</Text>
+                <Text style={styles.btnBannerEntrarPopUpText}>🔑 ENTRAR</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -2837,9 +2840,16 @@ export default function ReportGenerator() {
                 }}
                 activeOpacity={0.8}
               >
-                <Text style={styles.btnBannerCriarContaText}>CRIAR CONTA</Text>
+                <Text style={styles.btnBannerCriarContaPopUpText}>✨ CRIAR CONTA</Text>
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              onPress={() => setIsBannerDismissed(true)}
+              style={{ marginTop: 14, paddingVertical: 4 }}
+            >
+              <Text style={styles.btnBannerContinuarVisitante}>Continuar como visitante por enquanto</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -4584,71 +4594,112 @@ const styles = StyleSheet.create({
     fontFamily: modernFont,
   },
   cloudBannerPopUpCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 24,
-    width: '90%',
-    maxWidth: 420,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    paddingHorizontal: 28,
+    paddingTop: 32,
+    paddingBottom: 22,
+    width: '92%',
+    maxWidth: 440,
     alignItems: 'center',
     position: 'relative',
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 10 },
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowRadius: 24,
+    elevation: 12,
     borderWidth: 1,
-    borderColor: colors.slate200,
+    borderColor: '#e2e8f0',
   },
   cloudBannerPopUpHeader: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   cloudBannerIconBoxPopUp: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.blue50,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#eff6ff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.blue200,
+    marginBottom: 14,
+    borderWidth: 2,
+    borderColor: '#bfdbfe',
   },
   cloudBannerTitlePopUp: {
-    color: colors.slate800,
+    color: '#0f172a',
     fontWeight: '900',
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: modernFont,
-    letterSpacing: 0.5,
+    letterSpacing: -0.3,
+    textAlign: 'center',
+  },
+  cloudBannerPopUpSubtitle: {
+    color: '#0284c7',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 4,
     textAlign: 'center',
   },
   cloudBannerPopUpBody: {
-    fontSize: 13,
-    color: colors.slate600,
+    fontSize: 14,
+    color: '#334155',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
+    lineHeight: 22,
+    marginTop: 8,
+    marginBottom: 22,
     fontFamily: modernFont,
   },
   cloudBannerPopUpActions: {
     flexDirection: 'row',
     width: '100%',
-    gap: 10,
+    gap: 12,
   },
   btnBannerEntrarPopUp: {
     flex: 1,
-    backgroundColor: colors.blue600,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: '#2563eb',
+    paddingVertical: 13,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  btnBannerEntrarPopUpText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 13,
+    fontFamily: modernFont,
+    letterSpacing: 0.5,
   },
   btnBannerCriarContaPopUp: {
     flex: 1,
-    backgroundColor: colors.indigo600,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: '#4f46e5',
+    paddingVertical: 13,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#4f46e5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  btnBannerCriarContaPopUpText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 13,
+    fontFamily: modernFont,
+    letterSpacing: 0.5,
+  },
+  btnBannerContinuarVisitante: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
 });
