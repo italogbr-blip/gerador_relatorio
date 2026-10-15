@@ -17,6 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
+import { getSavedSessionSync, getValidatedUserSession, AppUserSession } from '../lib/auth';
 
 const modernFont = Platform.OS === 'web'
   ? "'Inter', system-ui, -apple-system, sans-serif"
@@ -33,7 +34,7 @@ export default function MeusRelatoriosScreen() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
 
-  const [userSession, setUserSession] = useState<any>(null);
+  const [userSession, setUserSession] = useState<AppUserSession | null>(() => getSavedSessionSync());
   const [relatorios, setRelatorios] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [totalRegistros, setTotalRegistros] = useState<number>(0);
@@ -143,26 +144,14 @@ export default function MeusRelatoriosScreen() {
     }
   };
 
-  // Carregar Sessão do Usuário ao montar
+  // Carregar e Validar Sessão do Usuário ao montar
   useEffect(() => {
-    let currentSession: any = null;
-    if (Platform.OS === 'web') {
-      try {
-        const saved = localStorage.getItem('app_user_session');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed?.user) {
-            currentSession = parsed;
-            setUserSession(parsed);
-          }
-        }
-      } catch (e) {}
-    }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const active = session?.user ? session : currentSession;
-      if (active) setUserSession(active);
-      fetchRelatorios(active);
+    getValidatedUserSession().then((session) => {
+      setUserSession(session);
+      fetchRelatorios(session);
+    }).catch(() => {
+      setUserSession(null);
+      fetchRelatorios(null);
     });
   }, []);
 

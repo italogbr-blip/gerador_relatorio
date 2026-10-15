@@ -16,6 +16,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
+import { verifyCoordinatorAccess, logoutUserSession, AppUserSession } from '../lib/auth';
 
 const modernFont = Platform.OS === 'web'
   ? "'Inter', system-ui, -apple-system, sans-serif"
@@ -32,9 +33,11 @@ export default function PainelCoordScreen() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
 
-  // Sessão do Usuário
-  const [userSession, setUserSession] = useState<any>(null);
+  // Sessão do Usuário e Controle Estrito de Autoridade Nível 2
+  const [userSession, setUserSession] = useState<AppUserSession | null>(null);
   const [authChecked, setAuthChecked] = useState<boolean>(false);
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
+  const [unauthReason, setUnauthReason] = useState<'unauthenticated' | 'forbidden' | null>(null);
 
   // Tema Claro / Escuro Persistente
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -125,32 +128,24 @@ export default function PainelCoordScreen() {
     });
   };
 
-  // Carregar Sessão do Usuário
+  // Carregar e Verificar Autorização de Acesso (Exclusivo Nível 2)
   useEffect(() => {
-    let sessionFound: any = null;
-    if (Platform.OS === 'web') {
-      try {
-        const saved = localStorage.getItem('app_user_session');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed?.user) {
-            sessionFound = parsed;
-            setUserSession(parsed);
-          }
-        }
-      } catch (e) {}
-    }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const active = session?.user ? session : sessionFound;
-      setUserSession(active);
+    verifyCoordinatorAccess().then((res) => {
+      setUserSession(res.session);
+      setIsAuthorized(res.authorized);
+      setUnauthReason(res.reason);
       setAuthChecked(true);
-      carregarDadosIniciais();
+
+      if (res.authorized) {
+        carregarDadosIniciais();
+      }
+    }).catch((err) => {
+      console.warn('Erro na verificação de acesso à coordenação:', err);
+      setIsAuthorized(false);
+      setUnauthReason('unauthenticated');
+      setAuthChecked(true);
     });
   }, []);
-
-  // Modo demonstração pública aberta a todos os visitantes
-  const isCoordenador = true;
 
   // Carregamento de Métricas e Dados Iniciais
   const carregarDadosIniciais = async () => {
@@ -265,7 +260,7 @@ export default function PainelCoordScreen() {
   };
 
   useEffect(() => {
-    if (authChecked && isCoordenador) {
+    if (authChecked && isAuthorized) {
       carregarRelatorios();
     }
   }, [filtroEmpresa, paginaRelatorios, filtroDataInicio, filtroDataFim]);
@@ -538,6 +533,127 @@ export default function PainelCoordScreen() {
     );
   };
 
+  // 1. Tela de Carregamento da Autorização
+  if (!authChecked) {
+    return (
+      <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }, { justifyContent: 'center', alignItems: 'center' }]}>
+        <View style={{ alignItems: 'center', padding: 24 }}>
+          <ActivityIndicator size="large" color="#06b6d4" />
+          <Text style={{ marginTop: 16, fontSize: 15, fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a', fontFamily: modernFont }}>
+            VERIFICANDO AUTORIZAÇÃO DE COORDENAÇÃO...
+          </Text>
+          <Text style={{ marginTop: 6, fontSize: 13, color: '#94a3b8', fontFamily: modernFont }}>
+            Checando credenciais e nível de autoridade no banco de dados.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // 2. Tela de Acesso Não Autorizado (Não logado ou Nível 1)
+  if (!isAuthorized) {
+    return (
+      <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
+        <View style={[styles.navbar, !isDarkMode && { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
+          <View style={styles.navLeft}>
+            <View style={[styles.coordBadgeIcon, { backgroundColor: '#fef2f2', borderColor: '#f87171' }]}>
+              <Text style={{ fontSize: 16 }}>⛔</Text>
+            </View>
+            <View>
+              <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
+              <Text style={[styles.navSubtitle, { color: '#ef4444' }]}>ACESSO NÃO AUTORIZADO (RESTRITO NÍVEL 2)</Text>
+            </View>
+          </View>
+
+          <View style={styles.navRight}>
+            <TouchableOpacity
+              style={[styles.themeBtn, !isDarkMode && { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' }]}
+              onPress={toggleTheme}
+              title="Alternar Tema Claro/Escuro"
+            >
+              <Text style={{ fontSize: 14 }}>{isDarkMode ? '☀️' : '🌙'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.replace('/')}
+            >
+              <Text style={styles.backButtonText}>← GERADOR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.restrictedContainer}>
+          <View style={[styles.restrictedCard, !isDarkMode && styles.restrictedCardLight]}>
+            <View style={[styles.restrictedIconCircle, !isDarkMode && { backgroundColor: '#fee2e2' }]}>
+              <Text style={{ fontSize: 32 }}>🔒</Text>
+            </View>
+
+            <Text style={[styles.restrictedTitle, !isDarkMode && { color: '#0f172a' }]}>
+              ACESSO NÃO AUTORIZADO
+            </Text>
+
+            {unauthReason === 'unauthenticated' ? (
+              <>
+                <Text style={[styles.restrictedSubtitle, !isDarkMode && { color: '#475569' }]}>
+                  Você não está conectado ao sistema.{'\n\n'}
+                  O Painel de Coordenação possui relatórios gerais de todas as empresas, métricas e gestão de usuários, sendo de uso restrito a prepostos com autoridade <Text style={{ fontWeight: 'bold', color: '#0284c7' }}>Nível 2 (Coordenação)</Text>.
+                </Text>
+
+                <View style={styles.restrictedBtnRow}>
+                  <TouchableOpacity
+                    style={styles.restrictedLoginBtn}
+                    onPress={() => router.replace('/')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.restrictedBackBtnText}>🔑 FAZER LOGIN NO GERADOR</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.restrictedBackBtn, { marginTop: 10 }]}
+                    onPress={() => router.replace('/')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.restrictedBackBtnText}>← VOLTAR AO INÍCIO</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.restrictedSubtitle, !isDarkMode && { color: '#475569' }]}>
+                  Olá, <Text style={{ fontWeight: 'bold', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>{userSession?.user?.user_metadata?.name || 'Usuário'}</Text>.{'\n'}
+                  Sua conta está registrada com perfil <Text style={{ fontWeight: 'bold', color: '#0284c7' }}>Nível 1 (Básico / Preposto)</Text>.{'\n\n'}
+                  Você não possui autorização para acessar os dados operacionais consolidados e configurações globais da Coordenação.
+                </Text>
+
+                <View style={styles.restrictedBtnRow}>
+                  <TouchableOpacity
+                    style={styles.restrictedBackBtn}
+                    onPress={() => router.replace('/')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.restrictedBackBtnText}>← VOLTAR AO GERADOR</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.restrictedLogoutBtn, { marginTop: 10 }]}
+                    onPress={async () => {
+                      await logoutUserSession();
+                      router.replace('/');
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.restrictedLogoutBtnText}>🚪 SAIR DESTA CONTA</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // 3. Painel de Coordenação Autorizado (Nível 2)
   return (
     <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
       {/* Top Navbar */}
@@ -548,11 +664,17 @@ export default function PainelCoordScreen() {
           </View>
           <View>
             <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
-            <Text style={styles.navSubtitle}>SISTEMA OPERACIONAL (DEMONSTRAÇÃO PÚBLICA)</Text>
+            <Text style={styles.navSubtitle}>SISTEMA OPERACIONAL • ACESSO COORDENAÇÃO (NÍVEL 2)</Text>
           </View>
         </View>
 
         <View style={styles.navRight}>
+          <View style={styles.userCoordTag}>
+            <Text style={styles.userCoordTagText}>
+              ⭐ {userSession?.user?.user_metadata?.name || 'Coordenador'}
+            </Text>
+          </View>
+
           <TouchableOpacity
             style={[styles.themeBtn, !isDarkMode && { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' }]}
             onPress={toggleTheme}
@@ -2281,36 +2403,106 @@ const styles = StyleSheet.create({
   restrictedCard: {
     backgroundColor: '#1e293b',
     borderRadius: 16,
-    padding: 28,
+    padding: 32,
     alignItems: 'center',
-    maxWidth: 440,
+    maxWidth: 480,
+    width: '90%',
     borderWidth: 1,
     borderColor: '#f59e0b',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  restrictedCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+    shadowColor: '#64748b',
+    shadowOpacity: 0.15,
+  },
+  restrictedIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   restrictedTitle: {
     fontSize: 20,
     fontWeight: '900',
     color: '#ffffff',
-    marginBottom: 8,
+    marginBottom: 10,
     letterSpacing: 1,
+    textAlign: 'center',
+    fontFamily: modernFont,
   },
   restrictedSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#94a3b8',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
+    lineHeight: 22,
+    marginBottom: 24,
+    fontFamily: modernFont,
+  },
+  restrictedBtnRow: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  restrictedLoginBtn: {
+    backgroundColor: '#0284c7',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
   },
   restrictedBackBtn: {
-    backgroundColor: '#0284c7',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    backgroundColor: '#334155',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
   },
   restrictedBackBtnText: {
     color: '#ffffff',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  restrictedLogoutBtn: {
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  restrictedLogoutBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  userCoordTag: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  userCoordTagText: {
+    color: '#b45309',
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: modernFont,
   },
 
   loadingBox: {

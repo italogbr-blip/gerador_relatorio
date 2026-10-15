@@ -74,6 +74,14 @@ O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/U
 - **Certificado SSL:** HTTPS automático via Vercel Edge Network.
 - **Pré-renderização Estática:** Suporte a rotas SPA com arquivos HTML pré-compilados para `/`, `/painel_coord` e `/meus_relatorios`.
 
+### 11. 🛡️ Refinamento de Sessão & Controle Estrito de Acesso (Nível 2)
+- **Separação Rigorosa de Menus:** Usuários visitantes (não logados) visualizam exclusivamente o menu simplificado com ações de Login, Cadastro, Histórico e Alternador de Tema, sem qualquer exposição de dados ou opções de coordenação.
+- **Validação de Sessão em Banco de Dados (`auth.ts`):** Todas as inicializações e restaurações de sessão são checadas e enriquecidas com o campo `nivel_autoridade` da tabela `public.usuarios`, prevenindo manipulações locais no navegador.
+- **Exibição Condicional do Painel no Menu:** O item "Painel de Coordenação" é renderizado única e exclusivamente para usuários autenticados cujo perfil possui autoridade `nivel_autoridade === 2`.
+- **Bloqueio de Rota Não Autorizada (`/painel_coord`):**
+  - Usuários não logados ou prepostos comuns (Nível 1) que tentarem abrir o painel diretamente têm o carregamento de métricas, relatórios e usuários interrompido.
+  - Exibição de tela dedicada de **"⛔ Acesso Não Autorizado"** com orientações claras e botões para login ou retorno ao gerador.
+
 ---
 
 ## 🚀 STATUS DO BACKLOG
@@ -83,14 +91,16 @@ O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/U
 - [x] **Filtros Avançados por Intervalo de Data:** Seletores de período (data início e fim) no histórico concluídos.
 - [x] **Deploy de Produção & Domínio Próprio:** Online em `relatorios.atmai.com.br` com SSL.
 - [x] **Compartilhamento WhatsApp:** Resumo de atendimento e link direto para o WhatsApp.
+- [x] **Controle Estrito de Acesso Nível 2 & Refinamento de Auth:** Isolamento de menus e bloqueio da rota do painel.
 
 ---
 
 ## 🛠️ ESTRUTURA DE ARQUIVOS CHAVE
 
-- 📄 `core-app/src/app/index.tsx` - Gerador Principal, Formulário, Editor WYSIWYG, Preview A4, Exportação Offline de PDF e Modais de Auth/Alertas.
+- 📄 `core-app/src/lib/auth.ts` - Helper centralizado de validação de sessão, verificação estrita de Nível 2 e logout seguro.
+- 📄 `core-app/src/app/index.tsx` - Gerador Principal, Formulário, Menus condicionais Visitante/Logado/Coordenação e Autenticação.
 - 📄 `core-app/src/app/meus_relatorios.tsx` - Histórico de Relatórios, Filtros Avançados por Data/Empresa, Modal de Detalhes e Integração Supabase.
-- 📄 `core-app/src/app/painel_coord.tsx` - Painel de Coordenação Nível 2 (KPIs, Relatórios Globais, Ranking, Usuários e Comunicados).
+- 📄 `core-app/src/app/painel_coord.tsx` - Painel de Coordenação Nível 2 com barreira de autorização estrita e tela de bloqueio.
 - 📄 `core-app/src/app/_layout.tsx` - Stack Navigation do Expo Router com suporte a todas as rotas.
 - 📄 `core-app/src/lib/supabase.ts` - Cliente Supabase Auth & Database.
 - 📄 `core-app/src/lib/config.ts` - Configurações de endpoints PHP e URLs de PDF.

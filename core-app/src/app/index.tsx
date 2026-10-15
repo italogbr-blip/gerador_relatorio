@@ -19,6 +19,14 @@ import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
 import { PHP_SAVE_ENDPOINT, formatReportPdfUrl } from '../lib/config';
 import { useRouter } from 'expo-router';
+import {
+  getSavedSessionSync,
+  getValidatedUserSession,
+  saveSessionLocal,
+  logoutUserSession,
+  isUserCoordinator,
+  AppUserSession,
+} from '../lib/auth';
 
 // Cores Curadas do Layout Original Tailwind / PHP
 const colors = {
@@ -634,18 +642,7 @@ export default function ReportGenerator() {
 
   // Supabase Auth State & User Level
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
-  const [userSession, setUserSession] = useState<any>(() => {
-    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('app_user_session');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed?.user) return parsed;
-        }
-      } catch (e) {}
-    }
-    return null;
-  });
+  const [userSession, setUserSession] = useState<AppUserSession | null>(() => getSavedSessionSync());
   const [isAuthModalVisible, setIsAuthModalVisible] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'cadastro'>('login');
   const [authEmail, setAuthEmail] = useState<string>('');
@@ -663,29 +660,32 @@ export default function ReportGenerator() {
 
   // Listen to Supabase Session & Local Session
   useEffect(() => {
-    if (userSession?.user) {
-      const userName = userSession.user.user_metadata?.name || userSession.user.email?.split('@')[0] || '';
-      updateCurrentTab({ preposto: userName });
-    }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Valida com o banco de dados e atualiza a sessão ativa
+    getValidatedUserSession().then((session) => {
+      setUserSession(session);
       if (session?.user) {
-        setUserSession(session);
         const userName = session.user.user_metadata?.name || session.user.email?.split('@')[0] || '';
         updateCurrentTab({ preposto: userName });
+      } else {
+        updateCurrentTab({ preposto: '' });
       }
       setIsAuthChecking(false);
     }).catch(() => {
       setIsAuthChecking(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        setUserSession(session);
-        const userName = session.user.user_metadata?.name || session.user.email?.split('@')[0] || '';
-        updateCurrentTab({ preposto: userName });
+        const validated = await getValidatedUserSession();
+        setUserSession(validated);
+        if (validated?.user) {
+          const userName = validated.user.user_metadata?.name || validated.user.email?.split('@')[0] || '';
+          updateCurrentTab({ preposto: userName });
+        }
       } else if (_event === 'SIGNED_OUT') {
+        await logoutUserSession();
         setUserSession(null);
+        updateCurrentTab({ preposto: '' });
       }
       setIsAuthChecking(false);
     });
@@ -797,24 +797,20 @@ export default function ReportGenerator() {
 
         if (dbUser) {
           // Usuário encontrado na base migrada! Login aprovado e sessão gerada instantaneamente.
-          const userSessionObj = {
+          const userSessionObj: AppUserSession = {
             user: {
               id: dbUser.id,
               email: dbUser.email || `${dbUser.username}@app.local`,
               user_metadata: {
                 name: dbUser.nome || dbUser.username,
                 username: dbUser.username,
-                nivel_autoridade: dbUser.nivel_autoridade,
+                nivel_autoridade: Number(dbUser.nivel_autoridade || 1),
               },
             },
           };
 
+          saveSessionLocal(userSessionObj);
           setUserSession(userSessionObj);
-          if (Platform.OS === 'web') {
-            try {
-              localStorage.setItem('app_user_session', JSON.stringify(userSessionObj));
-            } catch (e) {}
-          }
 
           const userName = dbUser.nome || dbUser.username;
           updateCurrentTab({ preposto: userName });
@@ -846,7 +842,32 @@ export default function ReportGenerator() {
               : (authErr.message || 'Erro ao realizar login.'),
           });
         } else if (authData.session) {
-          setUserSession(authData.session);
+          // Busca o nivel_autoridade e nome em public.usuarios
+          const { data: dbUser } = await supabase
+            .from('usuarios')
+            .select('*')
+            .eq('email', inputStr.toLowerCase())
+            .maybeSingle();
+
+          const nivel = Number(dbUser?.nivel_autoridade ?? authData.session.user.user_metadata?.nivel_autoridade ?? 1);
+          const userName = dbUser?.nome || authData.session.user.user_metadata?.name || inputStr.split('@')[0];
+
+          const enrichedSession: AppUserSession = {
+            user: {
+              id: dbUser?.id || authData.session.user.id,
+              email: inputStr.toLowerCase(),
+              user_metadata: {
+                name: userName,
+                username: dbUser?.username || authData.session.user.user_metadata?.username || inputStr.split('@')[0],
+                nivel_autoridade: nivel,
+              },
+            },
+          };
+
+          saveSessionLocal(enrichedSession);
+          setUserSession(enrichedSession);
+          updateCurrentTab({ preposto: userName });
+
           setAuthMsg({ type: 'sucesso', text: 'Login realizado com sucesso!' });
           setTimeout(() => setIsAuthModalVisible(false), 600);
         }
@@ -892,7 +913,7 @@ export default function ReportGenerator() {
         });
 
         if (!dbErr || !authErr || signUpData?.user) {
-          const userSessionObj = {
+          const userSessionObj: AppUserSession = {
             user: {
               id: signUpData?.user?.id || Date.now(),
               email: cleanEmail,
@@ -904,13 +925,8 @@ export default function ReportGenerator() {
             },
           };
 
+          saveSessionLocal(userSessionObj);
           setUserSession(userSessionObj);
-          if (Platform.OS === 'web') {
-            try {
-              localStorage.setItem('app_user_session', JSON.stringify(userSessionObj));
-            } catch (e) {}
-          }
-
           updateCurrentTab({ preposto: cleanName });
 
           setAuthMsg({ type: 'sucesso', text: 'Conta criada e ativada com sucesso!' });
@@ -930,11 +946,9 @@ export default function ReportGenerator() {
   };
 
   const handleSignOut = async () => {
-    if (Platform.OS === 'web') {
-      try { localStorage.removeItem('app_user_session'); } catch (e) {}
-    }
+    await logoutUserSession();
     setUserSession(null);
-    await supabase.auth.signOut();
+    updateCurrentTab({ preposto: '' });
     setShowMenu(false);
   };
 
@@ -1382,8 +1396,8 @@ export default function ReportGenerator() {
     </table>
 
     <div class="footer">
-      Av. Atlântica, 1500 – Centro Empresarial – Rio de Janeiro RJ – CEP 22.000-000<br/>
-      E-Mail: contato@demologistics.com | Tel.: (21) 3000-0000
+      Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
+      E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
     </div>
   </div>
 </body>
@@ -1713,10 +1727,23 @@ export default function ReportGenerator() {
 
                 <View style={styles.menuDivider} />
 
-                {userSession ? (
+                {userSession?.user ? (
                   <>
                     <View style={styles.menuHeader}>
-                      <Text style={styles.menuHeaderLabel}>SESSÃO ATIVA</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <Text style={styles.menuHeaderLabel}>SESSÃO ATIVA</Text>
+                        <View style={[
+                          styles.nivelBadge,
+                          isUserCoordinator(userSession) ? styles.nivelBadgeCoord : styles.nivelBadgePreposto
+                        ]}>
+                          <Text style={[
+                            styles.nivelBadgeText,
+                            isUserCoordinator(userSession) ? styles.nivelBadgeCoordText : styles.nivelBadgePrepostoText
+                          ]}>
+                            {isUserCoordinator(userSession) ? 'COORDENAÇÃO (NÍVEL 2)' : 'PREPOSTO (NÍVEL 1)'}
+                          </Text>
+                        </View>
+                      </View>
                       <Text style={styles.menuHeaderName} numberOfLines={1}>
                         {userSession.user.user_metadata?.name || userSession.user.email?.split('@')[0]}
                       </Text>
@@ -1749,34 +1776,36 @@ export default function ReportGenerator() {
                       )}
                     </TouchableOpacity>
 
-                    {/* Painel de Coordenação liberado no modo demonstração */}
-                    <TouchableOpacity
-                      style={[
-                        styles.menuItem,
-                        selectedMenuItem === 'painel_coord' && styles.menuItemSelectedAmber,
-                      ]}
-                      onPress={() => {
-                        setSelectedMenuItem('painel_coord');
-                        toggleMenu();
-                        router.push('/painel_coord');
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.menuItemIcon}>🛡️</Text>
-                        <Text
-                          style={[
-                            styles.menuItemText,
-                            { color: colors.amber800 },
-                            selectedMenuItem === 'painel_coord' && styles.menuItemTextSelected,
-                          ]}
-                        >
-                          Painel Coordenação (Demo)
-                        </Text>
-                      </View>
-                      {selectedMenuItem === 'painel_coord' && (
-                        <Text style={[styles.menuItemSelectedCheck, { color: colors.amber800 }]}>✓</Text>
-                      )}
-                    </TouchableOpacity>
+                    {/* Painel de Coordenação: EXCLUSIVO PARA USUÁRIOS LOGADOS NÍVEL 2 */}
+                    {isUserCoordinator(userSession) && (
+                      <TouchableOpacity
+                        style={[
+                          styles.menuItem,
+                          selectedMenuItem === 'painel_coord' && styles.menuItemSelectedAmber,
+                        ]}
+                        onPress={() => {
+                          setSelectedMenuItem('painel_coord');
+                          toggleMenu();
+                          router.push('/painel_coord');
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={styles.menuItemIcon}>🛡️</Text>
+                          <Text
+                            style={[
+                              styles.menuItemText,
+                              { color: colors.amber800 },
+                              selectedMenuItem === 'painel_coord' && styles.menuItemTextSelected,
+                            ]}
+                          >
+                            Painel de Coordenação
+                          </Text>
+                        </View>
+                        {selectedMenuItem === 'painel_coord' && (
+                          <Text style={[styles.menuItemSelectedCheck, { color: colors.amber800 }]}>✓</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
 
                     <TouchableOpacity
                       style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100 }]}
@@ -1793,41 +1822,12 @@ export default function ReportGenerator() {
                   </>
                 ) : (
                   <>
-                    <TouchableOpacity
-                      style={[
-                        styles.menuItem,
-                        selectedMenuItem === 'meus_relatorios' && styles.menuItemSelected,
-                      ]}
-                      onPress={() => {
-                        setSelectedMenuItem('meus_relatorios');
-                        toggleMenu();
-                        router.push('/meus_relatorios');
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.menuItemIcon}>📁</Text>
-                        <Text style={[styles.menuItemText, { color: colors.blue600 }]}>Histórico de Relatórios</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.menuItem,
-                        selectedMenuItem === 'painel_coord' && styles.menuItemSelectedAmber,
-                      ]}
-                      onPress={() => {
-                        setSelectedMenuItem('painel_coord');
-                        toggleMenu();
-                        router.push('/painel_coord');
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.menuItemIcon}>🛡️</Text>
-                        <Text style={[styles.menuItemText, { color: colors.amber800 }]}>Painel Coordenação (Demo)</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <View style={styles.menuDivider} />
+                    <View style={styles.menuHeader}>
+                      <Text style={styles.menuHeaderLabel}>MODO VISITANTE</Text>
+                      <Text style={[styles.menuHeaderName, { fontSize: 13, color: colors.slate500, fontWeight: 'normal' }]}>
+                        Não autenticado
+                      </Text>
+                    </View>
 
                     <TouchableOpacity
                       style={[
@@ -1863,6 +1863,31 @@ export default function ReportGenerator() {
                         <Text style={styles.menuItemIcon}>📝</Text>
                         <Text style={[styles.menuItemText, { color: colors.emerald600 }]}>Criar Nova Conta</Text>
                       </View>
+                      {selectedMenuItem === 'cadastro' && (
+                        <Text style={styles.menuItemSelectedCheck}>✓</Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <View style={styles.menuDivider} />
+
+                    <TouchableOpacity
+                      style={[
+                        styles.menuItem,
+                        selectedMenuItem === 'meus_relatorios' && styles.menuItemSelected,
+                      ]}
+                      onPress={() => {
+                        setSelectedMenuItem('meus_relatorios');
+                        toggleMenu();
+                        router.push('/meus_relatorios');
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.menuItemIcon}>📁</Text>
+                        <Text style={[styles.menuItemText, { color: colors.slate700 }]}>Histórico de Relatórios</Text>
+                      </View>
+                      {selectedMenuItem === 'meus_relatorios' && (
+                        <Text style={styles.menuItemSelectedCheck}>✓</Text>
+                      )}
                     </TouchableOpacity>
                   </>
                 )}
@@ -2566,17 +2591,13 @@ export default function ReportGenerator() {
             <View style={[styles.a4Row, { marginTop: 6 }]}>
               <Text style={styles.a4Label}>Horário de Saída do Hotel (Previsto e Real):</Text>
             </View>
-            <View style={styles.a4ContentBox}>
+            <View style={{ marginBottom: 4 }}>
               {currentData.listaSaidas.map((item) => (
-                <View key={item.id} style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 2 }}>
-                  {item.label1 ? <Text style={styles.a4Label}>{item.label1}: </Text> : null}
-                  <Text style={styles.a4Value}>
-                    {item.h1 === 'N/A' ? 'N/A' : `${item.h1 || '00'}h${item.m1 || '00'}min`}
-                  </Text>
-                  <Text style={[styles.a4Label, { marginLeft: 12 }]}>Real: </Text>
-                  <Text style={styles.a4Value}>
-                    {item.h2 === 'N/A' ? 'N/A' : `${item.h2 || '00'}h${item.m2 || '00'}min`}
-                  </Text>
+                <View key={item.id} style={[styles.a4ContentBox, { flexWrap: 'wrap', marginBottom: 2 }]}>
+                  <Text style={styles.a4Label}>{item.label1 || 'Previsto'}: </Text>
+                  <Text style={styles.a4Value}>{fmtHoraA4(item.h1, item.m1)}</Text>
+                  <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
+                  <Text style={styles.a4Value}>{fmtHoraA4(item.h2, item.m2)}</Text>
                 </View>
               ))}
             </View>
@@ -2587,13 +2608,9 @@ export default function ReportGenerator() {
             </View>
             <View style={styles.a4ContentBox}>
               <Text style={styles.a4Label}>Previsto: </Text>
-              <Text style={styles.a4Value}>
-                {currentData.h3 === 'N/A' ? 'N/A' : `${currentData.h3 || '00'}h${currentData.m3 || '00'}min`}
-              </Text>
+              <Text style={styles.a4Value}>{fmtHoraA4(currentData.h3, currentData.m3)}</Text>
               <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
-              <Text style={styles.a4Value}>
-                {currentData.h4 === 'N/A' ? 'N/A' : `${currentData.h4 || '00'}h${currentData.m4 || '00'}min`}
-              </Text>
+              <Text style={styles.a4Value}>{fmtHoraA4(currentData.h4, currentData.m4)}</Text>
             </View>
 
             {/* Horário Inicial e de Finalização */}
@@ -2602,13 +2619,10 @@ export default function ReportGenerator() {
             </View>
             <View style={styles.a4ContentBox}>
               <Text style={styles.a4Label}>Início: </Text>
-              <Text style={styles.a4Value}>
-                {currentData.h5 || '00'}h{currentData.m5 || '00'}min
-              </Text>
-              <Text style={[styles.a4Label, { marginLeft: 12 }]}> às Fim: </Text>
-              <Text style={styles.a4Value}>
-                {currentData.h6 || '00'}h{currentData.m6 || '00'}min
-              </Text>
+              <Text style={styles.a4Value}>{fmtHoraA4(currentData.h5, currentData.m5)}</Text>
+              <Text style={styles.a4Value}> às </Text>
+              <Text style={styles.a4Label}>Fim: </Text>
+              <Text style={styles.a4Value}>{fmtHoraA4(currentData.h6, currentData.m6)}</Text>
             </View>
 
             {/* Preposto */}
@@ -2635,11 +2649,11 @@ export default function ReportGenerator() {
               </View>
             </View>
 
-            {/* Footer Corporativo Fictício */}
+            {/* Footer Corporativo (fixo no rodapé da página - Anexo 1) */}
             <View style={styles.a4Footer}>
               <Text style={styles.a4FooterText}>
-                Av. Atlântica, 1500 – Centro Empresarial – Rio de Janeiro RJ – CEP 22.000-000{'\n'}
-                E-Mail: contato@demologistics.com | Tel.: (21) 3000-0000
+                Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
+                E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
               </Text>
             </View>
           </View>
@@ -2948,6 +2962,13 @@ export default function ReportGenerator() {
   );
 }
 
+// Formata horas no preview A4 no padrão do documento oficial: "HH h MM min" (campos vazios ficam em branco)
+const fmtHoraA4 = (h?: string, m?: string) => {
+  if (h === 'N/A') return 'N/A';
+  const blank = '\u00A0\u00A0\u00A0';
+  return `${h || blank} h ${m || blank} min`;
+};
+
 const styles = StyleSheet.create({
   body: {
     flex: 1,
@@ -3107,6 +3128,33 @@ const styles = StyleSheet.create({
     color: colors.slate800,
     marginTop: 2,
     fontFamily: modernFont,
+  },
+  nivelBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  nivelBadgeCoord: {
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  nivelBadgePreposto: {
+    backgroundColor: '#e0f2fe',
+    borderWidth: 1,
+    borderColor: '#0284c7',
+  },
+  nivelBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  nivelBadgeCoordText: {
+    color: '#b45309',
+  },
+  nivelBadgePrepostoText: {
+    color: '#0369a1',
   },
   menuItem: {
     flexDirection: 'row',
@@ -4240,9 +4288,9 @@ const styles = StyleSheet.create({
     minHeight: 1123,
     aspectRatio: 1 / 1.414,
     borderRadius: 4,
-    paddingHorizontal: 32,
-    paddingBottom: 32,
-    paddingTop: 105,
+    paddingHorizontal: 40,
+    paddingBottom: 120,
+    paddingTop: 110,
     borderWidth: 1,
     borderColor: colors.slate200,
     shadowColor: colors.black,
@@ -4262,7 +4310,7 @@ const styles = StyleSheet.create({
   a4DocumentTitle: {
     textAlign: 'center',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 20,
     textDecorationLine: 'underline',
     textTransform: 'uppercase',
     marginBottom: 16,
@@ -4276,17 +4324,17 @@ const styles = StyleSheet.create({
   },
   a4Label: {
     fontWeight: 'bold',
-    fontSize: 13,
+    fontSize: 16,
     color: colors.black,
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
   },
   a4Value: {
-    fontSize: 13,
+    fontSize: 16,
     color: colors.black,
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
   },
   a4ContentBox: {
-    marginLeft: 12,
+    marginLeft: 16,
     marginBottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
@@ -4294,9 +4342,9 @@ const styles = StyleSheet.create({
   a4InfoBox: {
     minHeight: 60,
     padding: 6,
-    fontSize: 13,
+    fontSize: 16,
     color: colors.black,
-    lineHeight: 18,
+    lineHeight: 22,
   },
   a4PaxTable: {
     flexDirection: 'row',
@@ -4315,20 +4363,21 @@ const styles = StyleSheet.create({
   },
   a4PaxTitle: {
     fontWeight: 'bold',
-    fontSize: 15,
+    fontSize: 17,
     marginBottom: 12,
     color: colors.black,
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
   },
   a4Footer: {
-    marginTop: 32,
-    borderTopWidth: 1,
-    borderTopColor: colors.slate200,
-    paddingTop: 8,
+    position: 'absolute',
+    left: 40,
+    right: 40,
+    bottom: 48,
     alignItems: 'center',
   },
   a4FooterText: {
-    fontSize: 10,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: 'bold',
     color: colors.black,
     textAlign: 'center',
