@@ -12,6 +12,7 @@ import {
   SafeAreaView,
   Image,
   useWindowDimensions,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
@@ -215,6 +216,76 @@ export default function MeusRelatoriosScreen() {
     // Fallback para download no servidor PHP caso não haja URL salva no banco
     if (Platform.OS === 'web') {
       window.open(`${PHP_SERVER_URL}/download_pdf.php?id=${report.id}`, '_blank');
+    }
+  };
+
+  // Compartilhar Resumo do Relatório via WhatsApp
+  const shareWhatsApp = (report: any) => {
+    if (!report) return;
+    const parsed = parseReportData(report);
+    const dataFormatada = report.data_criacao
+      ? new Date(report.data_criacao).toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : new Date().toLocaleDateString('pt-BR');
+
+    const preposto = parsed?.preposto || report.preposto || 'Não informado';
+    const empresa = (report.empresa || 'N/A').toUpperCase();
+    const unidade = report.unidade || 'N/A';
+    const local = report.local_atendimento || 'N/A';
+
+    let embCount = 0;
+    let desCount = 0;
+    if (parsed?.embarcando && Array.isArray(parsed.embarcando)) {
+      embCount = parsed.embarcando.length;
+    } else if (parsed?.pax_embarcando && typeof parsed.pax_embarcando === 'string') {
+      embCount = parsed.pax_embarcando.split('\n').filter((l: string) => l.trim().length > 0).length;
+    }
+    if (parsed?.desembarcando && Array.isArray(parsed.desembarcando)) {
+      desCount = parsed.desembarcando.length;
+    } else if (parsed?.pax_desembarcando && typeof parsed.pax_desembarcando === 'string') {
+      desCount = parsed.pax_desembarcando.split('\n').filter((l: string) => l.trim().length > 0).length;
+    }
+
+    const rawPdf = report.pdf_url || report.caminho_pdf;
+    const pdfUrl = formatReportPdfUrl(rawPdf) || `${PHP_SERVER_URL}/download_pdf.php?id=${report.id}`;
+
+    let msg = `📋 *RESUMO DO ATENDIMENTO OPERACIONAL*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `🏢 *Empresa:* ${empresa}\n`;
+    msg += `⚓ *Unidade:* ${unidade}\n`;
+    msg += `📍 *Local:* ${local}\n`;
+    msg += `👤 *Preposto:* ${preposto}\n`;
+    msg += `📅 *Data/Hora:* ${dataFormatada}\n`;
+
+    if (parsed?.horarios?.embarque_previsto || parsed?.horarios?.embarque_real) {
+      msg += `⏰ *Embarque:* Prev. ${parsed.horarios.embarque_previsto || 'N/A'} | Real ${parsed.horarios.embarque_real || 'N/A'}\n`;
+    }
+
+    if (embCount > 0 || desCount > 0) {
+      msg += `👥 *Passageiros (PAX):* 🟢 ${embCount} Emb. | 🔴 ${desCount} Des.\n`;
+    }
+
+    if (parsed?.info_troca) {
+      msg += `📝 *Observação:* ${parsed.info_troca}\n`;
+    }
+
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    if (pdfUrl) {
+      msg += `📄 *Acessar PDF:* ${pdfUrl}\n`;
+    }
+    msg += `🌐 *Sistema Online:* https://relatorios.atmai.com.br`;
+
+    const encoded = encodeURIComponent(msg);
+    const waUrl = `https://api.whatsapp.com/send?text=${encoded}`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(waUrl, '_blank');
+    } else {
+      Linking.openURL(waUrl);
     }
   };
 
@@ -451,10 +522,17 @@ export default function MeusRelatoriosScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                      style={styles.btnActionWhats}
+                      onPress={() => shareWhatsApp(r)}
+                    >
+                      <Text style={styles.btnActionWhatsText}>💬 ZAP</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                       style={styles.btnActionExcluir}
                       onPress={() => handleExcluir(r.id)}
                     >
-                      <Text style={styles.btnActionExcluirText}>🗑️ EXCLUIR</Text>
+                      <Text style={styles.btnActionExcluirText}>🗑️</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -468,8 +546,8 @@ export default function MeusRelatoriosScreen() {
                 <Text style={[styles.thCell, { flex: 2 }]}>UNIDADE</Text>
                 <Text style={[styles.thCell, { flex: 2 }]}>LOCAL DE ATENDIMENTO</Text>
                 <Text style={[styles.thCell, { flex: 1.5, textAlign: 'center' }]}>EMPRESA</Text>
-                <Text style={[styles.thCell, { flex: 1, textAlign: 'center' }]}>FOTOS</Text>
-                <Text style={[styles.thCell, { flex: 2.2, textAlign: 'center' }]}>AÇÃO</Text>
+                <Text style={[styles.thCell, { flex: 0.8, textAlign: 'center' }]}>FOTOS</Text>
+                <Text style={[styles.thCell, { flex: 2.6, textAlign: 'center' }]}>AÇÃO</Text>
               </View>
 
               {relatorios.map((r, idx) => (
@@ -492,7 +570,7 @@ export default function MeusRelatoriosScreen() {
                   <View style={[{ flex: 1.5, alignItems: 'center', justifyContent: 'center' }]}>
                     {renderEmpresaBadge(r.empresa)}
                   </View>
-                  <View style={[{ flex: 1, alignItems: 'center', justifyContent: 'center' }]}>
+                  <View style={[{ flex: 0.8, alignItems: 'center', justifyContent: 'center' }]}>
                     {r.teve_anexo ? (
                       <View style={[styles.anexoBadge, { backgroundColor: '#ecfdf5' }]}>
                         <Text style={[styles.anexoBadgeText, { color: '#047857' }]}>SIM</Text>
@@ -504,7 +582,7 @@ export default function MeusRelatoriosScreen() {
                     )}
                   </View>
 
-                  <View style={[{ flex: 2.2, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' }]}>
+                  <View style={[{ flex: 2.6, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' }]}>
                     <TouchableOpacity
                       style={styles.btnActionVer}
                       onPress={() => setSelectedReport(r)}
@@ -520,10 +598,17 @@ export default function MeusRelatoriosScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                      style={styles.btnActionWhats}
+                      onPress={() => shareWhatsApp(r)}
+                    >
+                      <Text style={styles.btnActionWhatsText}>💬 ZAP</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                       style={styles.btnActionExcluir}
                       onPress={() => handleExcluir(r.id)}
                     >
-                      <Text style={styles.btnActionExcluirText}>🗑️ EXCLUIR</Text>
+                      <Text style={styles.btnActionExcluirText}>🗑️</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -584,14 +669,24 @@ export default function MeusRelatoriosScreen() {
                   contentContainerStyle={styles.detailScrollContent}
                   showsVerticalScrollIndicator={true}
                 >
-                  {/* Botão ABRIR PDF */}
-                  <TouchableOpacity
-                    style={styles.btnPdfDownloadModal}
-                    onPress={() => openReportPdf(selectedReport)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.btnPdfDownloadModalText}>📄 ABRIR / BAIXAR RELATÓRIO PDF</Text>
-                  </TouchableOpacity>
+                  {/* Botões Ações no Modal (PDF e WhatsApp) */}
+                  <View style={styles.modalActionButtonsRow}>
+                    <TouchableOpacity
+                      style={styles.btnPdfDownloadModal}
+                      onPress={() => openReportPdf(selectedReport)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.btnPdfDownloadModalText}>📄 BAIXAR PDF</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.btnWhatsModal}
+                      onPress={() => shareWhatsApp(selectedReport)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.btnWhatsModalText}>💬 WHATSAPP</Text>
+                    </TouchableOpacity>
+                  </View>
 
                   {/* Grupo 1: Informações Principais */}
                   <View style={styles.detailSectionBox}>
@@ -1103,6 +1198,20 @@ const styles = StyleSheet.create({
     color: '#4946e5',
     fontFamily: modernFont,
   },
+  btnActionWhats: {
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  btnActionWhatsText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#059669',
+    fontFamily: modernFont,
+  },
   btnActionExcluir: {
     backgroundColor: '#fff1f2',
     borderWidth: 1,
@@ -1249,20 +1358,51 @@ const styles = StyleSheet.create({
     paddingRight: 16, // Espaçamento elegante entre os boxes de conteúdo e a barra de rolagem
     paddingBottom: 16,
   },
+  modalActionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
   btnPdfDownloadModal: {
+    flex: 1,
     backgroundColor: '#2563eb',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   btnPdfDownloadModalText: {
     color: '#ffffff',
     fontWeight: '900',
     fontSize: 12,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  btnWhatsModal: {
+    flex: 1,
+    backgroundColor: '#059669',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  btnWhatsModalText: {
+    color: '#ffffff',
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.5,
     fontFamily: modernFont,
   },
   detailSectionBox: {

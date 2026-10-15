@@ -11,6 +11,7 @@ import {
   Platform,
   SafeAreaView,
   useWindowDimensions,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
@@ -333,6 +334,68 @@ export default function PainelCoordScreen() {
 
     if (Platform.OS === 'web') {
       window.open(`${PHP_SERVER_URL}/download_pdf.php?id=${report.id}`, '_blank');
+    }
+  };
+
+  // Compartilhar Resumo do Relatório via WhatsApp
+  const shareWhatsApp = (report: any) => {
+    if (!report) return;
+    const parsed = parseReportData(report);
+    const dataFormatada = report.data_criacao
+      ? new Date(report.data_criacao).toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : new Date().toLocaleDateString('pt-BR');
+
+    const preposto = parsed?.preposto || report.preposto || 'Não informado';
+    const empresa = (report.empresa || 'N/A').toUpperCase();
+    const unidade = report.unidade || 'N/A';
+    const local = report.local_atendimento || 'N/A';
+
+    let embCount = 0;
+    let desCount = 0;
+    if (parsed?.embarcando && Array.isArray(parsed.embarcando)) {
+      embCount = parsed.embarcando.length;
+    }
+    if (parsed?.desembarcando && Array.isArray(parsed.desembarcando)) {
+      desCount = parsed.desembarcando.length;
+    }
+
+    const rawPdf = report.pdf_url || report.caminho_pdf;
+    const pdfUrl = formatReportPdfUrl(rawPdf) || `${PHP_SERVER_URL}/download_pdf.php?id=${report.id}`;
+
+    let msg = `📋 *RESUMO DO ATENDIMENTO OPERACIONAL*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `🏢 *Empresa:* ${empresa}\n`;
+    msg += `⚓ *Unidade:* ${unidade}\n`;
+    msg += `📍 *Local:* ${local}\n`;
+    msg += `👤 *Preposto:* ${preposto}\n`;
+    msg += `📅 *Data/Hora:* ${dataFormatada}\n`;
+
+    if (embCount > 0 || desCount > 0) {
+      msg += `👥 *Passageiros (PAX):* 🟢 ${embCount} Emb. | 🔴 ${desCount} Des.\n`;
+    }
+
+    if (parsed?.info_troca) {
+      msg += `📝 *Observação:* ${parsed.info_troca}\n`;
+    }
+
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    if (pdfUrl) {
+      msg += `📄 *Acessar PDF:* ${pdfUrl}\n`;
+    }
+    msg += `🌐 *Portal:* https://relatorios.atmai.com.br`;
+
+    const encoded = encodeURIComponent(msg);
+    const waUrl = `https://api.whatsapp.com/send?text=${encoded}`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(waUrl, '_blank');
+    } else {
+      Linking.openURL(waUrl);
     }
   };
 
@@ -759,6 +822,13 @@ export default function PainelCoordScreen() {
                         </TouchableOpacity>
 
                         <TouchableOpacity
+                          style={[styles.actionBtn, styles.actionBtnWhats]}
+                          onPress={() => shareWhatsApp(item)}
+                        >
+                          <Text style={styles.actionBtnWhatsText}>💬 Zap</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
                           style={[styles.actionBtn, styles.actionBtnDelete]}
                           onPress={() => handleExcluirRelatorio(item.id)}
                         >
@@ -1130,7 +1200,14 @@ export default function PainelCoordScreen() {
                       style={styles.modalDownloadPdfBtn}
                       onPress={() => openReportPdf(selectedReport)}
                     >
-                      <Text style={styles.modalDownloadPdfBtnText}>📥 BAIXAR DOCUMENTO PDF</Text>
+                      <Text style={styles.modalDownloadPdfBtnText}>📥 BAIXAR PDF</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.modalWhatsAppBtn}
+                      onPress={() => shareWhatsApp(selectedReport)}
+                    >
+                      <Text style={styles.modalWhatsAppBtnText}>💬 WHATSAPP</Text>
                     </TouchableOpacity>
                   </View>
                 </ScrollView>
@@ -1614,6 +1691,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
+  actionBtnWhats: {
+    backgroundColor: '#10b981',
+  },
+  actionBtnWhatsText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
   actionBtnDelete: {
     backgroundColor: '#e11d48',
     paddingHorizontal: 10,
@@ -2029,15 +2114,32 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   modalBottomActions: {
+    flexDirection: 'row',
+    gap: 10,
     marginTop: 12,
   },
   modalDownloadPdfBtn: {
+    flex: 1,
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalDownloadPdfBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  modalWhatsAppBtn: {
+    flex: 1,
     backgroundColor: '#059669',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  modalDownloadPdfBtnText: {
+  modalWhatsAppBtnText: {
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '900',

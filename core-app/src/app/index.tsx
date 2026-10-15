@@ -11,7 +11,8 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
-  Animated
+  Animated,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -1258,6 +1259,46 @@ export default function ReportGenerator() {
     }
   };
 
+  // Compartilhar Resumo Formatado via WhatsApp
+  const handleCompartilharWhatsApp = () => {
+    const dataFormatada = data ? formatarData(data) : new Date().toLocaleDateString('pt-BR');
+    const embLines = (embarcandoText || '').split('\n').filter((l) => l.trim().length > 0);
+    const desLines = (desembarcandoText || '').split('\n').filter((l) => l.trim().length > 0);
+
+    let msg = `📋 *RESUMO DO ATENDIMENTO OPERACIONAL*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `🏢 *Empresa:* ${(empresa || 'N/A').toUpperCase()}\n`;
+    msg += `⚓ *Unidade:* ${unidade || 'N/A'}\n`;
+    msg += `📍 *Local:* ${local || 'N/A'}\n`;
+    msg += `👤 *Preposto:* ${preposto || 'Não informado'}\n`;
+    msg += `📅 *Data:* ${dataFormatada}\n`;
+
+    if (embarquePrevistoHora || embarqueRealHora) {
+      const prev = embarquePrevistoHora ? `${embarquePrevistoHora}:${embarquePrevistoMin || '00'}` : 'N/A';
+      const real = embarqueRealHora ? `${embarqueRealHora}:${embarqueRealMin || '00'}` : 'N/A';
+      msg += `⏰ *Embarque:* Prev. ${prev} | Real ${real}\n`;
+    }
+
+    if (embLines.length > 0 || desLines.length > 0) {
+      msg += `👥 *Passageiros (PAX):* 🟢 ${embLines.length} Emb. | 🔴 ${desLines.length} Des.\n`;
+    }
+
+    if (infoTroca && infoTroca.trim()) {
+      msg += `📝 *Observação:* ${infoTroca.trim()}\n`;
+    }
+
+    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `🌐 *Consultar Relatório:* https://relatorios.atmai.com.br/meus_relatorios`;
+
+    const encoded = encodeURIComponent(msg);
+    const waUrl = `https://api.whatsapp.com/send?text=${encoded}`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(waUrl, '_blank');
+    } else {
+      Linking.openURL(waUrl);
+    }
+  };
+
   // Geração Nativa de Documento e PDF Offline (Passo 2)
   const handleExportarPdfOffline = (modo: 'imprimir' | 'download_html' = 'imprimir') => {
     const saidasHtml = currentData.listaSaidas.map((item) => `
@@ -2455,6 +2496,13 @@ export default function ReportGenerator() {
                     onPress={() => handleExportarPdfOffline('download_html')}
                   >
                     <Text style={styles.btnDownloadManualText}>💾 Cópia Offline (HTML/PDF)</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.btnDownloadManual, { backgroundColor: '#10b981', borderColor: '#059669' }]}
+                    onPress={handleCompartilharWhatsApp}
+                  >
+                    <Text style={styles.btnDownloadManualText}>💬 Enviar via WhatsApp</Text>
                   </TouchableOpacity>
                 </View>
               </View>
