@@ -64,6 +64,16 @@ O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/U
 - **Filtragem no Supabase:** Consultas com `.gte()` e `.lte()` na coluna `data_criacao`, combináveis com a busca textual e o seletor de empresas.
 - **Botões Filtrar e Limpar:** Atualização instantânea com restauração rápida de filtros.
 
+### 9. 💬 Compartilhamento Rápido no WhatsApp
+- **Resumo Operacional Estruturado:** Geração automática de texto profissional formatado para o WhatsApp com emojis, empresa, unidade, local, preposto, data/hora, horários de embarque, contagem de passageiros (PAX) e link direto para o PDF.
+- **Integração Global:** Botão `💬 ZAP / WHATSAPP` disponível no Gerador Principal (`index.tsx`), nos cards e tabela de Histórico (`meus_relatorios.tsx`), e no Modal de Detalhes do Painel de Coordenação (`painel_coord.tsx`).
+- **Compatibilidade Multiplataforma:** Abertura direta via WhatsApp Web ou aplicativo nativo do WhatsApp no celular/desktop sem requisições intermediárias.
+
+### 10. 🌐 Deploy de Produção e Domínio Oficial
+- **Domínio Ativo:** Publicado com sucesso em `https://relatorios.atmai.com.br`.
+- **Certificado SSL:** HTTPS automático via Vercel Edge Network.
+- **Pré-renderização Estática:** Suporte a rotas SPA com arquivos HTML pré-compilados para `/`, `/painel_coord` e `/meus_relatorios`.
+
 ---
 
 ## 🚀 STATUS DO BACKLOG
@@ -71,6 +81,8 @@ O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/U
 - [x] **Painel de Coordenação (Nível 2):** Interface e gerenciamento de solicitações e usuários Nível 2 concluídos.
 - [x] **Geração Nativa de PDF offline no Mobile:** Suporte a exportação direta para PDF local e salvamento offline concluídos.
 - [x] **Filtros Avançados por Intervalo de Data:** Seletores de período (data início e fim) no histórico concluídos.
+- [x] **Deploy de Produção & Domínio Próprio:** Online em `relatorios.atmai.com.br` com SSL.
+- [x] **Compartilhamento WhatsApp:** Resumo de atendimento e link direto para o WhatsApp.
 
 ---
 
