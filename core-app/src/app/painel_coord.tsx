@@ -48,7 +48,7 @@ export default function PainelCoordScreen() {
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [unauthReason, setUnauthReason] = useState<'unauthenticated' | 'forbidden' | null>(null);
 
-  // Tema Claro / Escuro Persistente
+  // Tema Claro / Escuro Persistente (Padrão: Light)
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem('app_theme_dark');
@@ -56,7 +56,7 @@ export default function PainelCoordScreen() {
         return saved === 'true';
       }
     }
-    return true;
+    return false;
   });
 
   const toggleTheme = () => {
@@ -106,6 +106,27 @@ export default function PainelCoordScreen() {
 
   // Filtro de Usuários
   const [filtroBuscaUsuario, setFiltroBuscaUsuario] = useState<string>('');
+
+  // Header Anexo 6: Data/Hora e IP
+  const [dataHoraAtual, setDataHoraAtual] = useState<string>('17/10/2026 18:43');
+  const [userIp, setUserIp] = useState<string>('2804:14d:2a23:9...');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const d = new Date();
+      const formatted = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      setDataHoraAtual(formatted);
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 30000);
+    fetch('https://api.ipify.org?format=json')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ip) setUserIp(data.ip);
+      })
+      .catch(() => {});
+    return () => clearInterval(timer);
+  }, []);
 
   // Modal de Detalhes do Relatório
   const [selectedReport, setSelectedReport] = useState<any>(null);
@@ -392,6 +413,18 @@ export default function PainelCoordScreen() {
     }
   };
 
+  const formatarDataFiltro = (d: string) => {
+    if (!d) return '';
+    const trimmed = d.trim();
+    if (trimmed.includes('/')) {
+      const parts = trimmed.split('/');
+      if (parts.length === 3) {
+        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+    return trimmed;
+  };
+
   const carregarRelatorios = async () => {
     try {
       let query = supabase
@@ -404,15 +437,22 @@ export default function PainelCoordScreen() {
 
       if (filtroBusca.trim()) {
         const term = `%${filtroBusca.trim()}%`;
-        query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term},dados_json.ilike.${term}`);
+        query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term}`);
       }
 
-      if (filtroDataInicio) {
-        query = query.gte('data_criacao', `${filtroDataInicio}T00:00:00`);
+      if (filtroBuscaUsuario.trim()) {
+        const userTerm = `%${filtroBuscaUsuario.trim()}%`;
+        query = query.or(`dados_json.ilike.${userTerm},ip_origem.ilike.${userTerm}`);
       }
 
-      if (filtroDataFim) {
-        query = query.lte('data_criacao', `${filtroDataFim}T23:59:59`);
+      const dtIni = formatarDataFiltro(filtroDataInicio);
+      if (dtIni) {
+        query = query.gte('data_criacao', `${dtIni}T00:00:00`);
+      }
+
+      const dtFim = formatarDataFiltro(filtroDataFim);
+      if (dtFim) {
+        query = query.lte('data_criacao', `${dtFim}T23:59:59`);
       }
 
       const from = (paginaRelatorios - 1) * porPagina;
@@ -796,13 +836,14 @@ export default function PainelCoordScreen() {
                 USUÁRIO
               </Text>
               <TextInput
-                style={[styles.coordLockInput, !isDarkMode && styles.coordLockInputLight]}
-                value={inputUsuarioPainel}
-                onChangeText={setInputUsuarioPainel}
-                placeholder="Ex: italogabriel"
-                placeholderTextColor="#64748b"
-                autoCapitalize="none"
-                autoCorrect={false}
+                style={[
+                  styles.coordLockInput,
+                  styles.coordLockInputDisabled,
+                  !isDarkMode && styles.coordLockInputDisabledLight,
+                ]}
+                value="italogabriel"
+                editable={false}
+                selectTextOnFocus={false}
               />
             </View>
 
@@ -850,47 +891,58 @@ export default function PainelCoordScreen() {
   // 4. Painel de Coordenação Autorizado e Desbloqueado
   return (
     <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
-      {/* Top Navbar */}
-      <View style={[styles.navbar, !isDarkMode && { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
-        <View style={styles.navLeft}>
-          <View style={styles.coordBadgeIcon}>
-            <Text style={{ fontSize: 16 }}>🛡️</Text>
+      {/* Top Navbar Escuro Fiel ao Anexo 6 */}
+      <View style={styles.anexo6Header}>
+        <View style={styles.anexo6TopRow}>
+          <View style={styles.anexo6LogoGroup}>
+            <View style={styles.anexo6LogoIcon}>
+              <Text style={styles.anexo6LogoRay}>⚡</Text>
+            </View>
+            <Text style={styles.anexo6LogoText}>COORDENAÇÃO</Text>
           </View>
-          <View>
-            <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
-            <Text style={styles.navSubtitle}>SISTEMA OPERACIONAL • ACESSO COORDENAÇÃO (NÍVEL 2)</Text>
+          <View style={styles.anexo6DateTimeGroup}>
+            <Text style={styles.anexo6DateTimeText}>{dataHoraAtual}</Text>
+            <Text style={styles.anexo6IpText}>IP: {userIp}</Text>
           </View>
         </View>
 
-        <View style={styles.navRight}>
-          <View style={styles.userCoordTag}>
-            <Text style={styles.userCoordTagText}>
-              ⭐ {userSession?.user?.user_metadata?.name || 'Coordenador'}
-            </Text>
+        <View style={styles.anexo6UserControlRow}>
+          <Text style={styles.anexo6UserGreeting}>
+            Olá, <Text style={styles.anexo6UserName}>italogabriel</Text>
+          </Text>
+          <View style={styles.anexo6ButtonsGroup}>
+            <TouchableOpacity
+              style={styles.anexo6NotificationBtn}
+              onPress={() => setActiveTab('popups')}
+              activeOpacity={0.8}
+            >
+              <Text style={{ fontSize: 16 }}>🔔</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.anexo6VoltarBtn}
+              onPress={() => router.push('/')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.anexo6VoltarBtnText}>VOLTAR</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.anexo6SairBtn}
+              onPress={handleBloquearPainel}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.anexo6SairBtnText}>SAIR</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.anexo6ThemeBtn}
+              onPress={toggleTheme}
+              title="Alternar Tema"
+            >
+              <Text style={{ fontSize: 13 }}>{isDarkMode ? '☀️' : '🌙'}</Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={[styles.lockPanelBtn, !isDarkMode && { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}
-            onPress={handleBloquearPainel}
-            title="Bloquear Painel"
-          >
-            <Text style={styles.lockPanelBtnText}>🔒 Bloquear</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.themeBtn, !isDarkMode && { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' }]}
-            onPress={toggleTheme}
-            title="Alternar Tema Claro/Escuro"
-          >
-            <Text style={{ fontSize: 14 }}>{isDarkMode ? '☀️' : '🌙'}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.push('/')}
-          >
-            <Text style={styles.backButtonText}>← GERADOR</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -994,147 +1046,132 @@ export default function PainelCoordScreen() {
         {/* ════════════════ ABA 1: RELATÓRIOS GERAIS ════════════════ */}
         {activeTab === 'relatorios' && (
           <View style={styles.tabContent}>
-            {/* Filtros */}
-            <View style={[styles.filterCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
-              <View style={styles.filterRow}>
-                <View style={styles.searchBox}>
-                  <Text style={styles.searchIcon}>🔍</Text>
+            {/* Filtros conforme Anexo 6 */}
+            <View style={[styles.anexo6FilterCard, !isDarkMode && styles.anexo6FilterCardLight]}>
+              <View style={styles.anexo6FilterRow}>
+                <View style={styles.anexo6DateBox}>
+                  <Text style={styles.anexo6FilterLabel}>DE:</Text>
                   <TextInput
-                    style={[styles.searchInput, !isDarkMode && { color: '#0f172a' }]}
-                    placeholder="Buscar unidade, local ou preposto..."
-                    placeholderTextColor="#64748b"
-                    value={filtroBusca}
-                    onChangeText={setFiltroBusca}
-                    onSubmitEditing={() => carregarRelatorios()}
-                  />
-                </View>
-
-                {/* Filtro por Empresa (Estilo Select Dropdown de EMPRESA / GRUPO) */}
-                <View style={styles.companySelectWrapper}>
-                  <Text style={[styles.companySelectLabel, !isDarkMode && { color: '#475569' }]}>
-                    FILTRAR EMPRESA / GRUPO:
-                  </Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.coordSelectBoxContainer,
-                      !isDarkMode && styles.coordSelectBoxContainerLight,
-                    ]}
-                    onPress={() => setIsEmpresaDropdownOpen(!isEmpresaDropdownOpen)}
-                    activeOpacity={0.8}
-                  >
-                    <Text
-                      style={[
-                        styles.coordSelectBoxText,
-                        !isDarkMode && { color: '#0f172a' },
-                      ]}
-                    >
-                      {filtroEmpresa || 'TODAS'}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.coordSelectBoxChevron,
-                        !isDarkMode && { color: '#475569' },
-                      ]}
-                    >
-                      {isEmpresaDropdownOpen ? '▲' : '▼'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  {isEmpresaDropdownOpen && (
-                    <View
-                      style={[
-                        styles.coordDropdownOptionsList,
-                        !isDarkMode && styles.coordDropdownOptionsListLight,
-                      ]}
-                    >
-                      {EMPRESAS.map((opt) => {
-                        const isSelected = filtroEmpresa === opt;
-                        return (
-                          <TouchableOpacity
-                            key={opt}
-                            style={[
-                              styles.coordDropdownOptionItem,
-                              !isDarkMode && styles.coordDropdownOptionItemLight,
-                              isSelected && styles.coordDropdownOptionItemActive,
-                            ]}
-                            onPress={() => {
-                              setFiltroEmpresa(opt);
-                              setIsEmpresaDropdownOpen(false);
-                            }}
-                          >
-                            <Text
-                              style={[
-                                styles.coordDropdownOptionText,
-                                !isDarkMode && { color: '#334155' },
-                                isSelected && styles.coordDropdownOptionTextActive,
-                              ]}
-                            >
-                              {opt}
-                            </Text>
-                            {isSelected && (
-                              <Text style={styles.coordDropdownOptionCheck}>✓</Text>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              {/* Filtro de Datas */}
-              <View style={styles.dateFilterRow}>
-                <View style={styles.dateInputWrapper}>
-                  <Text style={styles.dateLabel}>DE:</Text>
-                  <TextInput
-                    style={[styles.dateInput, !isDarkMode && { backgroundColor: '#f8fafc', color: '#0f172a', borderColor: '#cbd5e1' }]}
-                    placeholder="AAAA-MM-DD"
+                    style={[styles.anexo6FilterInput, !isDarkMode && styles.anexo6FilterInputLight]}
+                    placeholder="dd/mm/aaaa"
                     placeholderTextColor="#94a3b8"
                     value={filtroDataInicio}
                     onChangeText={setFiltroDataInicio}
                   />
                 </View>
-
-                <View style={styles.dateInputWrapper}>
-                  <Text style={styles.dateLabel}>ATÉ:</Text>
+                <View style={styles.anexo6DateBox}>
+                  <Text style={styles.anexo6FilterLabel}>ATÉ:</Text>
                   <TextInput
-                    style={[styles.dateInput, !isDarkMode && { backgroundColor: '#f8fafc', color: '#0f172a', borderColor: '#cbd5e1' }]}
-                    placeholder="AAAA-MM-DD"
+                    style={[styles.anexo6FilterInput, !isDarkMode && styles.anexo6FilterInputLight]}
+                    placeholder="dd/mm/aaaa"
                     placeholderTextColor="#94a3b8"
                     value={filtroDataFim}
                     onChangeText={setFiltroDataFim}
                   />
                 </View>
+              </View>
+
+              <View style={styles.anexo6FilterRow}>
+                <TextInput
+                  style={[styles.anexo6SearchInput, !isDarkMode && styles.anexo6FilterInputLight]}
+                  placeholder="Buscar usuário..."
+                  placeholderTextColor="#94a3b8"
+                  value={filtroBuscaUsuario}
+                  onChangeText={setFiltroBuscaUsuario}
+                />
+                <TextInput
+                  style={[styles.anexo6SearchInput, !isDarkMode && styles.anexo6FilterInputLight]}
+                  placeholder="Unidade..."
+                  placeholderTextColor="#94a3b8"
+                  value={filtroBusca}
+                  onChangeText={setFiltroBusca}
+                />
+              </View>
+
+              <View style={styles.anexo6FilterRow}>
+                <TouchableOpacity
+                  style={[styles.anexo6SelectBox, !isDarkMode && styles.anexo6SelectBoxLight]}
+                  onPress={() => setIsEmpresaDropdownOpen(!isEmpresaDropdownOpen)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.anexo6SelectBoxText, !isDarkMode && { color: '#0f172a' }]}>
+                    {filtroEmpresa === 'TODAS' ? 'Empresa...' : filtroEmpresa}
+                  </Text>
+                  <Text style={styles.anexo6SelectChevron}>⇅</Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.filterApplyBtn}
+                  style={[styles.anexo6SelectBox, !isDarkMode && styles.anexo6SelectBoxLight]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.anexo6SelectBoxText, !isDarkMode && { color: '#0f172a' }]}>
+                    Usuário...
+                  </Text>
+                  <Text style={styles.anexo6SelectChevron}>⇅</Text>
+                </TouchableOpacity>
+              </View>
+
+              {isEmpresaDropdownOpen && (
+                <View style={[styles.coordDropdownOptionsList, !isDarkMode && styles.coordDropdownOptionsListLight]}>
+                  {EMPRESAS.map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.coordDropdownOptionItem,
+                        !isDarkMode && styles.coordDropdownOptionItemLight,
+                        filtroEmpresa === opt && styles.coordDropdownOptionItemActive,
+                      ]}
+                      onPress={() => {
+                        setFiltroEmpresa(opt);
+                        setIsEmpresaDropdownOpen(false);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.coordDropdownOptionText,
+                          !isDarkMode && { color: '#334155' },
+                          filtroEmpresa === opt && styles.coordDropdownOptionTextActive,
+                        ]}
+                      >
+                        {opt}
+                      </Text>
+                      {filtroEmpresa === opt && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              <View style={styles.anexo6FilterButtonsRow}>
+                <TouchableOpacity
+                  style={styles.anexo6BtnFiltrar}
                   onPress={() => {
                     setPaginaRelatorios(1);
                     carregarRelatorios();
                   }}
+                  activeOpacity={0.85}
                 >
-                  <Text style={styles.filterApplyBtnText}>FILTRAR</Text>
+                  <Text style={styles.anexo6BtnFiltrarText}>FILTRAR</Text>
                 </TouchableOpacity>
 
-                {Boolean(filtroBusca || filtroEmpresa !== 'TODAS' || filtroDataInicio || filtroDataFim) ? (
-                  <TouchableOpacity
-                    style={styles.filterClearBtn}
-                    onPress={() => {
-                      setFiltroBusca('');
-                      setFiltroEmpresa('TODAS');
-                      setFiltroDataInicio('');
-                      setFiltroDataFim('');
-                      setPaginaRelatorios(1);
-                      carregarRelatorios();
-                    }}
-                  >
-                    <Text style={styles.filterClearBtnText}>LIMPAR</Text>
-                  </TouchableOpacity>
-                ) : null}
+                <TouchableOpacity
+                  style={styles.anexo6BtnLimpar}
+                  onPress={() => {
+                    setFiltroBusca('');
+                    setFiltroBuscaUsuario('');
+                    setFiltroEmpresa('TODAS');
+                    setFiltroDataInicio('');
+                    setFiltroDataFim('');
+                    setPaginaRelatorios(1);
+                    carregarRelatorios();
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.anexo6BtnLimparText}>LIMPAR</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
-            {/* Listagem */}
+            {/* Listagem conforme Anexo 6 */}
             {loading ? (
               <View style={styles.loadingBox}>
                 <ActivityIndicator size="large" color="#06b6d4" />
@@ -1147,7 +1184,13 @@ export default function PainelCoordScreen() {
                 <Text style={styles.emptySubtitle}>Ajuste os filtros ou verifique a conexão com o banco de dados.</Text>
               </View>
             ) : (
-              <View style={styles.reportsGrid}>
+              <View style={[styles.anexo6TableCard, !isDarkMode && styles.anexo6TableCardLight]}>
+                {/* Header da Lista conforme Anexo 6 */}
+                <View style={styles.anexo6ListHeaderRow}>
+                  <Text style={styles.anexo6ListHeaderText}>UNIDADE / AUTOR</Text>
+                  <Text style={styles.anexo6ListHeaderText}>EMPRESA</Text>
+                </View>
+
                 {relatorios.map((item) => {
                   const parsed = parseReportData(item);
                   const dataFormatada = item.data_criacao
@@ -1160,59 +1203,69 @@ export default function PainelCoordScreen() {
                       })
                     : 'N/A';
                   const preposto = parsed?.preposto || 'Não informado';
+                  const ipOrigem = item.ip_origem || '2804:14d...';
 
                   return (
-                    <View
-                      key={item.id}
-                      style={[styles.reportCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}
-                    >
-                      <View style={styles.reportCardHeader}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <Text style={styles.reportIdBadge}>#{item.id}</Text>
-                          {renderEmpresaBadge(item.empresa)}
-                        </View>
-                        <Text style={styles.reportDateText}>{dataFormatada}</Text>
-                      </View>
-
-                      <View style={styles.reportCardBody}>
-                        <Text style={[styles.reportUnidadeText, !isDarkMode && { color: '#0f172a' }]} numberOfLines={1}>
+                    <View key={item.id} style={styles.anexo6ItemCard}>
+                      <View style={styles.anexo6ItemTop}>
+                        <Text style={styles.anexo6ItemUnidade} numberOfLines={1}>
                           {item.unidade || 'Sem unidade'}
                         </Text>
-                        <Text style={styles.reportLocalText} numberOfLines={1}>
-                          📍 {item.local_atendimento || 'Local não definido'}
-                        </Text>
-                        <Text style={styles.reportPrepostoText} numberOfLines={1}>
-                          👤 Preposto: <Text style={{ fontWeight: 'bold' }}>{preposto}</Text>
-                        </Text>
+                        <View style={styles.anexo6EmpresaBadge}>
+                          <Text style={styles.anexo6EmpresaBadgeText}>
+                            {(item.empresa || 'OUTROS').toUpperCase()}
+                          </Text>
+                        </View>
                       </View>
 
-                      <View style={styles.reportCardActions}>
-                        <TouchableOpacity
-                          style={[styles.actionBtn, styles.actionBtnView]}
-                          onPress={() => setSelectedReport(item)}
-                        >
-                          <Text style={styles.actionBtnViewText}>👁️ Ver Detalhes</Text>
-                        </TouchableOpacity>
+                      <Text style={styles.anexo6ItemSub} numberOfLines={1}>
+                        POR: 🌐 IP: {ipOrigem} ({preposto.toUpperCase()})
+                      </Text>
 
+                      <View style={styles.anexo6ItemTimeRow}>
+                        <Text style={styles.anexo6ItemTimeText}>🕒 {dataFormatada}</Text>
+                      </View>
+
+                      {/* Botões Flats / Pílulas conforme Anexo 6 */}
+                      <View style={styles.anexo6ActionPillsRow}>
                         <TouchableOpacity
-                          style={[styles.actionBtn, styles.actionBtnPdf]}
+                          style={[styles.anexo6Pill, styles.anexo6PillDownload]}
                           onPress={() => openReportPdf(item)}
+                          activeOpacity={0.8}
                         >
-                          <Text style={styles.actionBtnPdfText}>📥 PDF</Text>
+                          <Text style={styles.anexo6PillDownloadText}>📥 DOWNLOAD</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                          style={[styles.actionBtn, styles.actionBtnWhats]}
+                          style={[styles.anexo6Pill, styles.anexo6PillVisualizar]}
+                          onPress={() => setSelectedReport(item)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.anexo6PillVisualizarText}>👁️ VISUALIZAR</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.anexo6Pill, styles.anexo6PillEditar]}
+                          onPress={() => router.push(`/?editId=${item.id}`)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.anexo6PillEditarText}>✏️ EDITAR</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.anexo6Pill, styles.anexo6PillCompartilhar]}
                           onPress={() => shareWhatsApp(item)}
+                          activeOpacity={0.8}
                         >
-                          <Text style={styles.actionBtnWhatsText}>💬 Zap</Text>
+                          <Text style={styles.anexo6PillCompartilharText}>📤 COMPARTILHAR</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                          style={[styles.actionBtn, styles.actionBtnDelete]}
+                          style={[styles.anexo6Pill, styles.anexo6PillExcluir]}
                           onPress={() => handleExcluirRelatorio(item.id)}
+                          activeOpacity={0.8}
                         >
-                          <Text style={styles.actionBtnDeleteText}>🗑️</Text>
+                          <Text style={styles.anexo6PillExcluirText}>🗑️ EXCLUIR</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -2705,10 +2758,12 @@ const styles = StyleSheet.create({
   // Modais
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
   },
   modalContent: {
     backgroundColor: '#1e293b',
@@ -3362,6 +3417,18 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
     color: '#0f172a',
   },
+  coordLockInputDisabled: {
+    backgroundColor: '#0a0f1d',
+    borderColor: '#1e293b',
+    color: '#cbd5e1',
+    opacity: 0.9,
+    fontWeight: '700',
+  },
+  coordLockInputDisabledLight: {
+    backgroundColor: '#e2e8f0',
+    borderColor: '#cbd5e1',
+    color: '#334155',
+  },
   btnDesbloquearPainel: {
     width: '100%',
     backgroundColor: '#2563eb',
@@ -3663,5 +3730,389 @@ const styles = StyleSheet.create({
     color: '#cbd5e1',
     fontFamily: modernFont,
   },
+
+  // ─── ESTILOS FIÉIS AO ANEXO 6 ───
+  anexo6Header: {
+    backgroundColor: '#0b1329',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+  },
+  anexo6TopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  anexo6LogoGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  anexo6LogoIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#3b82f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  anexo6LogoRay: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  anexo6LogoText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    fontFamily: modernFont,
+  },
+  anexo6DateTimeGroup: {
+    alignItems: 'flex-end',
+  },
+  anexo6DateTimeText: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: modernFont,
+  },
+  anexo6IpText: {
+    color: '#64748b',
+    fontSize: 10,
+    fontFamily: modernFont,
+  },
+  anexo6UserControlRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 4,
+  },
+  anexo6UserGreeting: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontFamily: modernFont,
+  },
+  anexo6UserName: {
+    color: '#ffffff',
+    fontWeight: '900',
+  },
+  anexo6ButtonsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  anexo6NotificationBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  anexo6VoltarBtn: {
+    backgroundColor: '#1e293b',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  anexo6VoltarBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    fontFamily: modernFont,
+  },
+  anexo6SairBtn: {
+    backgroundColor: '#e11d48',
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  anexo6SairBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    fontFamily: modernFont,
+  },
+  anexo6ThemeBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+
+  // Filtros Anexo 6
+  anexo6FilterCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  anexo6FilterCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  anexo6FilterRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  anexo6DateBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+  },
+  anexo6FilterLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+    marginRight: 6,
+    fontFamily: modernFont,
+  },
+  anexo6FilterInput: {
+    flex: 1,
+    height: 38,
+    fontSize: 12,
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  anexo6FilterInputLight: {
+    color: '#0f172a',
+  },
+  anexo6SearchInput: {
+    flex: 1,
+    height: 40,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 12,
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  anexo6SelectBox: {
+    flex: 1,
+    height: 40,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  anexo6SelectBoxLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  anexo6SelectBoxText: {
+    fontSize: 12,
+    color: '#475569',
+    fontFamily: modernFont,
+  },
+  anexo6SelectChevron: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  anexo6FilterButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  anexo6BtnFiltrar: {
+    backgroundColor: '#1e293b',
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anexo6BtnFiltrarText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    fontFamily: modernFont,
+  },
+  anexo6BtnLimpar: {
+    backgroundColor: '#e2e8f0',
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anexo6BtnLimparText: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    fontFamily: modernFont,
+  },
+
+  // Listagem de Relatórios Anexo 6
+  anexo6TableCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+  },
+  anexo6TableCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  anexo6ListHeaderRow: {
+    backgroundColor: '#f8fafc',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  anexo6ListHeaderText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#475569',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  anexo6ItemCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#ffffff',
+  },
+  anexo6ItemTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  anexo6ItemUnidade: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#2563eb',
+    fontFamily: modernFont,
+    flex: 1,
+    marginRight: 8,
+  },
+  anexo6EmpresaBadge: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  anexo6EmpresaBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#0284c7',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  anexo6ItemSub: {
+    fontSize: 11,
+    color: '#64748b',
+    marginBottom: 4,
+    fontFamily: modernFont,
+  },
+  anexo6ItemTimeRow: {
+    marginBottom: 10,
+  },
+  anexo6ItemTimeText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
+    fontFamily: modernFont,
+  },
+  anexo6ActionPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  anexo6Pill: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  anexo6PillDownload: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  anexo6PillDownloadText: {
+    color: '#1d4ed8',
+    fontSize: 11,
+    fontWeight: '900',
+    fontFamily: modernFont,
+  },
+  anexo6PillVisualizar: {
+    backgroundColor: '#f5f3ff',
+    borderColor: '#ddd6fe',
+  },
+  anexo6PillVisualizarText: {
+    color: '#6d28d9',
+    fontSize: 11,
+    fontWeight: '900',
+    fontFamily: modernFont,
+  },
+  anexo6PillEditar: {
+    backgroundColor: '#fefce8',
+    borderColor: '#fef08a',
+  },
+  anexo6PillEditarText: {
+    color: '#b45309',
+    fontSize: 11,
+    fontWeight: '900',
+    fontFamily: modernFont,
+  },
+  anexo6PillCompartilhar: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+  },
+  anexo6PillCompartilharText: {
+    color: '#15803d',
+    fontSize: 11,
+    fontWeight: '900',
+    fontFamily: modernFont,
+  },
+  anexo6PillExcluir: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+  },
+  anexo6PillExcluirText: {
+    color: '#b91c1c',
+    fontSize: 11,
+    fontWeight: '900',
+    fontFamily: modernFont,
+  },
+
 });
 
