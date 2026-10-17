@@ -142,20 +142,64 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   }
 }
 
-// Ícones Flat Vetoriais (SVG Data URIs para compatibilidade total Web e Mobile)
-const iconRefreshSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><path d='M21 2v6h-6'/><path d='M3 12a9 9 0 0 1 15-6.7L21 8'/><path d='M3 22v-6h6'/><path d='M21 12a9 9 0 0 1-15 6.7L3 16'/></svg>`;
+// Ícones Flat Material Design Oficiais (Google Material Design)
+const MATERIAL_PATHS = {
+  refresh: 'M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
+  settings: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
+  public: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
+  logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
+  info: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
+  help: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-2h2v2zm1.07-7.75l-.9.92C12.45 11.9 12 12.5 12 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z',
+  link: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z',
+  close: 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+  check: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+  warning: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
+};
 
-const iconGearSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c4b5fd' stroke='%238b5cf6' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='3.2' fill='%23ffffff'/><path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/></svg>`;
+type MaterialIconName = keyof typeof MATERIAL_PATHS;
 
-const iconGlobeSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/></svg>`;
+const MaterialFlatIcon = ({
+  name,
+  size = 24,
+  color = '#2563eb',
+  style,
+}: {
+  name: MaterialIconName;
+  size?: number;
+  color?: string;
+  style?: any;
+}) => {
+  const path = MATERIAL_PATHS[name] || MATERIAL_PATHS.info;
 
-const iconLogoutSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><path d='M13 8H8a4 4 0 0 0 0 8h8'/><polyline points='13 12 17 16 13 20'/></svg>`;
+  if (Platform.OS === 'web') {
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        width={size}
+        height={size}
+        fill={color}
+        style={{
+          display: 'inline-block',
+          verticalAlign: 'middle',
+          flexShrink: 0,
+          ...style,
+        }}
+      >
+        <path d={path} />
+      </svg>
+    );
+  }
 
-const iconInfoSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='16' x2='12' y2='12'/><line x1='12' y1='8' x2='12.01' y2='8'/></svg>`;
-
-const iconQuestionSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d97706' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>`;
-
-const iconLinkSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230284c7' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/><path d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/></svg>`;
+  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" fill="${color}"><path d="${path}"/></svg>`;
+  return (
+    <Image
+      source={{ uri: `data:image/svg+xml;utf8,${encodeURIComponent(svgStr)}` }}
+      style={[{ width: size, height: size }, style]}
+      resizeMode="contain"
+    />
+  );
+};
 
 const GRUPO_OPTIONS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
 
@@ -3360,46 +3404,42 @@ export default function ReportGenerator() {
           <View style={styles.floatingNavPill}>
             {/* 1ª Opção: Refresh na página */}
             <TouchableOpacity
-              style={styles.floatingNavItem}
+              style={[styles.floatingNavBtn, styles.navBtnRefresh]}
               onPress={handleRefresh}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
               accessibilityLabel="Atualizar Página"
             >
-              <View style={styles.navSquareBtn}>
-                <Image source={{ uri: iconRefreshSvg }} style={styles.navSquareIcon} resizeMode="contain" />
-              </View>
+              <MaterialFlatIcon name="refresh" size={24} color="#2563eb" />
             </TouchableOpacity>
 
             {/* 2ª Opção: Painel Coordenação */}
             <TouchableOpacity
-              style={styles.floatingNavItem}
+              style={[styles.floatingNavBtn, styles.navBtnCoord]}
               onPress={handleGoCoord}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
               accessibilityLabel="Painel Coordenação"
             >
-              <Image source={{ uri: iconGearSvg }} style={styles.navStandaloneIcon} resizeMode="contain" />
+              <MaterialFlatIcon name="settings" size={23} color="#7c3aed" />
             </TouchableOpacity>
 
             {/* 3ª Opção: Navegador de URL (com URL atual pré-preenchida) */}
             <TouchableOpacity
-              style={styles.floatingNavItem}
+              style={[styles.floatingNavBtn, styles.navBtnUrl]}
               onPress={handleOpenUrlModal}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
               accessibilityLabel="Navegador de URL"
             >
-              <Image source={{ uri: iconGlobeSvg }} style={styles.navStandaloneIcon} resizeMode="contain" />
+              <MaterialFlatIcon name="public" size={23} color="#0284c7" />
             </TouchableOpacity>
 
             {/* 4ª Opção: Logout */}
             <TouchableOpacity
-              style={styles.floatingNavItem}
+              style={[styles.floatingNavBtn, styles.navBtnLogout]}
               onPress={handleMenuLogout}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
               accessibilityLabel="Encerrar Sessão"
             >
-              <View style={styles.navSquareBtn}>
-                <Image source={{ uri: iconLogoutSvg }} style={styles.navSquareIcon} resizeMode="contain" />
-              </View>
+              <MaterialFlatIcon name="logout" size={22} color="#e11d48" />
             </TouchableOpacity>
           </View>
         </View>
@@ -3641,7 +3681,7 @@ export default function ReportGenerator() {
         <View style={styles.modalOverlay}>
           <View style={styles.flatUrlCard}>
             <View style={styles.flatUrlIconWrapper}>
-              <Image source={{ uri: iconLinkSvg }} style={{ width: 28, height: 28 }} resizeMode="contain" />
+              <MaterialFlatIcon name="link" size={28} color="#0284c7" />
             </View>
 
             <Text style={styles.flatUrlTitle}>NAVEGADOR DE URL</Text>
@@ -3705,15 +3745,10 @@ export default function ReportGenerator() {
                   : styles.flatAlertIconWrapperInfo,
               ]}
             >
-              <Image
-                source={{
-                  uri:
-                    customDialog.type === 'confirm'
-                      ? iconQuestionSvg
-                      : iconInfoSvg,
-                }}
-                style={{ width: 32, height: 32 }}
-                resizeMode="contain"
+              <MaterialFlatIcon
+                name={customDialog.type === 'confirm' ? 'help' : 'info'}
+                size={34}
+                color={customDialog.type === 'confirm' ? '#d97706' : '#2563eb'}
               />
             </View>
 
@@ -5328,54 +5363,57 @@ const styles = StyleSheet.create({
   },
   floatingNavWrapper: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 22,
     left: 0,
     right: 0,
     alignItems: 'center',
-    zIndex: 99,
+    zIndex: 9999,
   },
   floatingNavPill: {
     backgroundColor: '#ffffff',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 22,
+    paddingHorizontal: 16,
     borderRadius: 9999,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
-    shadowRadius: 12,
+    shadowRadius: 16,
     elevation: 8,
-    gap: 20,
+    gap: 14,
   },
-  floatingNavItem: {
-    padding: 2,
+  floatingNavBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  navSquareBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    backgroundColor: '#2563eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#1d4ed8',
+    borderWidth: 1,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
-  navSquareIcon: {
-    width: 20,
-    height: 20,
+  navBtnRefresh: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
   },
-  navStandaloneIcon: {
-    width: 30,
-    height: 30,
+  navBtnCoord: {
+    backgroundColor: '#f5f3ff',
+    borderColor: '#ddd6fe',
+  },
+  navBtnUrl: {
+    backgroundColor: '#f0f9ff',
+    borderColor: '#bae6fd',
+  },
+  navBtnLogout: {
+    backgroundColor: '#fff1f2',
+    borderColor: '#fecdd3',
   },
   demoBannerBox: {
     marginTop: 24,
