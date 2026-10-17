@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Animated,
   Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -517,6 +518,15 @@ export default function ReportGenerator() {
       if (cfg) setFooterConfig(cfg);
     });
   }, []);
+
+  // Escala Responsiva do Documento A4 (Proporcional para Mobiles e Telas Menores)
+  const { width: windowWidth } = useWindowDimensions();
+  const a4BaseWidth = 794;
+  const a4BaseHeight = 1123;
+  const previewScale = windowWidth < (a4BaseWidth + 24)
+    ? Math.min(1, Math.max(0.32, (windowWidth - 20) / a4BaseWidth))
+    : 1;
+
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const menuAnim = useRef(new Animated.Value(0)).current;
 
@@ -3074,11 +3084,34 @@ export default function ReportGenerator() {
           </View>
         </View>
 
-        {/* PREVIEW COMPLETO DO DOCUMENTO - SEPARADO E EXTERNO AO CARD PRINCIPAL (RÉPLICA DO ANEXO 4) */}
+        {/* PREVIEW COMPLETO DO DOCUMENTO (RESPONSIVO COM ESCALA VETORIAL PARA MOBILES) */}
         <Text style={styles.previewTitleMain}>PREVIEW DO DOCUMENTO</Text>
 
-        <View style={styles.previewWrap}>
-          <View style={styles.pageA4}>
+        <View
+          style={[
+            styles.previewWrap,
+            previewScale < 1 && {
+              width: windowWidth < (a4BaseWidth + 24) ? windowWidth - 16 : a4BaseWidth,
+              height:
+                (a4BaseHeight * (1 + currentData.fotosAnexadas.length) +
+                  currentData.fotosAnexadas.length * 20) *
+                  previewScale +
+                40,
+              overflow: 'hidden',
+              alignItems: 'center',
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.previewScaleContainer,
+              previewScale < 1 && {
+                transform: [{ scale: previewScale }],
+                transformOrigin: 'top center',
+              },
+            ]}
+          >
+            <View style={styles.pageA4}>
             {/* Imagem de Fundo Geométrico / Marca D'água */}
             <Image
               source={require('../../assets/images/background.png')}
@@ -3213,6 +3246,7 @@ export default function ReportGenerator() {
               </View>
             </View>
           ))}
+          </View>
         </View>
       </ScrollView>
 
@@ -5287,11 +5321,15 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 794,
     alignItems: 'center',
+    alignSelf: 'center',
+  },
+  previewScaleContainer: {
+    width: 794,
+    alignItems: 'center',
   },
   pageA4: {
     backgroundColor: colors.white,
-    width: '100%',
-    maxWidth: 794,
+    width: 794,
     minHeight: 1123,
     aspectRatio: 1 / 1.414,
     borderRadius: 4,
