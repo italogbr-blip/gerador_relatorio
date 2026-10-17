@@ -22,6 +22,9 @@ import {
   saveFooterConfig,
   FooterConfig,
   defaultFooterConfig,
+  fetchAllAppVersions,
+  insertAppVersion,
+  AppVersionRecord,
 } from '../lib/footerConfig';
 
 const modernFont = Platform.OS === 'web'
@@ -73,8 +76,16 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // Abas do Painel: 'relatorios' | 'ranking' | 'usuarios' | 'popups' | 'sistema'
-  const [activeTab, setActiveTab] = useState<'relatorios' | 'ranking' | 'usuarios' | 'popups' | 'sistema'>('relatorios');
+  // Abas do Painel: 'relatorios' | 'ranking' | 'usuarios' | 'popups' | 'sistema' | 'version'
+  const [activeTab, setActiveTab] = useState<'relatorios' | 'ranking' | 'usuarios' | 'popups' | 'sistema' | 'version'>('relatorios');
+
+  // Estados de Controle de Versões (Supabase mms_versao_app)
+  const [versoesList, setVersoesList] = useState<AppVersionRecord[]>([]);
+  const [loadingVersoes, setLoadingVersoes] = useState<boolean>(false);
+  const [inputVersaoNumero, setInputVersaoNumero] = useState<string>('');
+  const [inputVersaoDescricao, setInputVersaoDescricao] = useState<string>('');
+  const [salvandoVersao, setSalvandoVersao] = useState<boolean>(false);
+  const [msgSucessoVersao, setMsgSucessoVersao] = useState<string>('');
 
   // Estados de Dados
   const [relatorios, setRelatorios] = useState<any[]>([]);
@@ -311,9 +322,44 @@ export default function PainelCoordScreen() {
         carregarRelatorios(),
         carregarUsuarios(),
         carregarPopups(),
+        carregarVersoes(),
       ]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const carregarVersoes = async () => {
+    setLoadingVersoes(true);
+    try {
+      const data = await fetchAllAppVersions();
+      setVersoesList(data);
+    } finally {
+      setLoadingVersoes(false);
+    }
+  };
+
+  const handleSalvarVersao = async () => {
+    const v = inputVersaoNumero.trim();
+    if (!v) {
+      showCustomAlert('CAMPO OBRIGATÓRIO', 'Por favor, informe a versão a ser registrada (Ex: V1.2.5).');
+      return;
+    }
+    setSalvandoVersao(true);
+    setMsgSucessoVersao('');
+    try {
+      const ok = await insertAppVersion(v, inputVersaoDescricao);
+      if (ok) {
+        setMsgSucessoVersao(`Nova versão (${v.toUpperCase()}) registrada com sucesso!`);
+        setInputVersaoNumero('');
+        setInputVersaoDescricao('');
+        await carregarVersoes();
+        showCustomAlert('VERSÃO REGISTRADA', `A versão ${v.toUpperCase()} foi registrada e agora é a versão padrão ativa no sistema!`);
+      } else {
+        showCustomAlert('ERRO AO SALVAR', 'Não foi possível gravar a nova versão no banco de dados.');
+      }
+    } finally {
+      setSalvandoVersao(false);
     }
   };
 
@@ -932,6 +978,15 @@ export default function PainelCoordScreen() {
           >
             <Text style={[styles.tabButtonText, activeTab === 'sistema' && styles.tabButtonTextActive]}>
               ⚙️ Sistema & Status
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'version' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('version')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'version' && styles.tabButtonTextActive]}>
+              🏷️ Controle de Versões
             </Text>
           </TouchableOpacity>
         </View>
@@ -1589,6 +1644,142 @@ export default function PainelCoordScreen() {
                   <Text style={styles.btnSalvarFooterText}>💾 SALVAR CONFIGURAÇÃO DO FOOTER</Text>
                 )}
               </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* ════════════════ ABA 6: CONTROLE DE VERSÕES ════════════════ */}
+        {activeTab === 'version' && (
+          <View style={styles.tabContent}>
+            <View style={[styles.cardContainer, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+              <View style={styles.cardHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.cardTitle, !isDarkMode && { color: '#0f172a' }]}>
+                    🏷️ CONTROLE DE VERSÕES (SUPABASE)
+                  </Text>
+                  <Text style={styles.cardSubtitle}>
+                    Registre e controle as atualizações do sistema manualmente. A versão cadastrada aqui é exibida no rodapé do gerador de relatórios.
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.versionRefreshBtn}
+                  onPress={carregarVersoes}
+                  disabled={loadingVersoes}
+                >
+                  <Text style={styles.versionRefreshBtnText}>{loadingVersoes ? '⏳' : '🔄 Atualizar'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {Boolean(msgSucessoVersao) && (
+                <View style={styles.versionSuccessAlert}>
+                  <Text style={styles.versionSuccessAlertText}>✓ {msgSucessoVersao}</Text>
+                </View>
+              )}
+
+              {/* Formulário Novo Registro de Versão */}
+              <View style={[styles.versionFormBox, !isDarkMode && styles.versionFormBoxLight]}>
+                <View style={styles.versionFormGrid}>
+                  <View style={styles.versionFieldSmall}>
+                    <Text style={[styles.versionInputLabel, !isDarkMode && { color: '#475569' }]}>
+                      VERSÃO (EX: V1.2.5) *
+                    </Text>
+                    <TextInput
+                      style={[styles.versionInput, !isDarkMode && styles.versionInputLight, { fontWeight: '900' }]}
+                      value={inputVersaoNumero}
+                      onChangeText={setInputVersaoNumero}
+                      placeholder="V1.2.5"
+                      placeholderTextColor="#94a3b8"
+                      autoCapitalize="characters"
+                    />
+                  </View>
+
+                  <View style={styles.versionFieldLarge}>
+                    <Text style={[styles.versionInputLabel, !isDarkMode && { color: '#475569' }]}>
+                      DESCRIÇÃO / NOTAS DE ATUALIZAÇÃO
+                    </Text>
+                    <TextInput
+                      style={[styles.versionInput, !isDarkMode && styles.versionInputLight]}
+                      value={inputVersaoDescricao}
+                      onChangeText={setInputVersaoDescricao}
+                      placeholder="Ex: Correções de layout e pequenos ajustes..."
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
+
+                  <View style={styles.versionFieldBtn}>
+                    <TouchableOpacity
+                      style={styles.btnSalvarVersao}
+                      onPress={handleSalvarVersao}
+                      disabled={salvandoVersao}
+                      activeOpacity={0.85}
+                    >
+                      {salvandoVersao ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <Text style={styles.btnSalvarVersaoText}>SALVAR VERSÃO</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              {/* Tabela / Lista de Versões Cadastradas */}
+              <View style={styles.versionTableContainer}>
+                <View style={[styles.versionTableHeaderRow, !isDarkMode && styles.versionTableHeaderRowLight]}>
+                  <Text style={[styles.versionColData, styles.versionHeaderColText]}>DATA</Text>
+                  <Text style={[styles.versionColVersao, styles.versionHeaderColText]}>VERSÃO</Text>
+                  <Text style={[styles.versionColDesc, styles.versionHeaderColText]}>DESCRIÇÃO</Text>
+                </View>
+
+                {loadingVersoes ? (
+                  <View style={{ padding: 32, alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#06b6d4" />
+                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando versões...</Text>
+                  </View>
+                ) : versoesList.length === 0 ? (
+                  <View style={{ padding: 32, alignItems: 'center' }}>
+                    <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma versão registrada no banco de dados.</Text>
+                  </View>
+                ) : (
+                  versoesList.map((v, index) => {
+                    const dataStr = v.data_criacao
+                      ? new Date(v.data_criacao).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'N/A';
+                    return (
+                      <View
+                        key={v.id || index}
+                        style={[
+                          styles.versionTableRow,
+                          !isDarkMode && styles.versionTableRowLight,
+                          index % 2 === 1 && (!isDarkMode ? styles.versionRowOddLight : styles.versionRowOddDark),
+                        ]}
+                      >
+                        <View style={styles.versionColData}>
+                          <Text style={[styles.versionDataText, !isDarkMode && { color: '#64748b' }]}>
+                            {dataStr}
+                          </Text>
+                        </View>
+                        <View style={styles.versionColVersao}>
+                          <View style={styles.versionBadge}>
+                            <Text style={styles.versionBadgeText}>{v.versao}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.versionColDesc}>
+                          <Text style={[styles.versionDescText, !isDarkMode && { color: '#334155' }]}>
+                            {v.descricao || '-'}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
             </View>
           </View>
         )}
@@ -3292,4 +3483,185 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#38bdf8',
   },
+  versionRefreshBtn: {
+    backgroundColor: '#0284c7',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  versionRefreshBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: modernFont,
+  },
+  versionSuccessAlert: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: '#10b981',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  versionSuccessAlertText: {
+    color: '#10b981',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: modernFont,
+  },
+  versionFormBox: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  versionFormBoxLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+  },
+  versionFormGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    alignItems: 'flex-end',
+  },
+  versionFieldSmall: {
+    flex: 1,
+    minWidth: 140,
+  },
+  versionFieldLarge: {
+    flex: 2,
+    minWidth: 220,
+  },
+  versionFieldBtn: {
+    minWidth: 160,
+  },
+  versionInputLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+    fontFamily: modernFont,
+  },
+  versionInput: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: '#f8fafc',
+    fontFamily: modernFont,
+  },
+  versionInputLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+    color: '#0f172a',
+  },
+  btnSalvarVersao: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  btnSalvarVersaoText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  versionTableContainer: {
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  versionTableHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: '#1e293b',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  versionTableHeaderRowLight: {
+    backgroundColor: '#f1f5f9',
+    borderBottomColor: '#e2e8f0',
+  },
+  versionHeaderColText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#94a3b8',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  versionTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+  },
+  versionTableRowLight: {
+    borderBottomColor: '#f1f5f9',
+  },
+  versionRowOddDark: {
+    backgroundColor: 'rgba(30, 41, 59, 0.4)',
+  },
+  versionRowOddLight: {
+    backgroundColor: 'rgba(248, 250, 252, 0.8)',
+  },
+  versionColData: {
+    width: 140,
+  },
+  versionDataText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontFamily: modernFont,
+  },
+  versionColVersao: {
+    width: 110,
+  },
+  versionBadge: {
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  versionBadgeText: {
+    color: '#2563eb',
+    fontSize: 12,
+    fontWeight: '900',
+    fontFamily: modernFont,
+  },
+  versionColDesc: {
+    flex: 1,
+  },
+  versionDescText: {
+    fontSize: 12,
+    color: '#cbd5e1',
+    fontFamily: modernFont,
+  },
 });
+
