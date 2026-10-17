@@ -104,18 +104,22 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     const style = document.createElement('style');
     style.id = 'pax-focus-styles';
     style.innerHTML = `
-      @keyframes mmsPingPulse {
+      @keyframes mmsHaloPulse {
         0% {
-          transform: scale(1);
-          opacity: 0.85;
+          transform: scale(0.92);
+          opacity: 0.35;
         }
-        75%, 100% {
-          transform: scale(2.4);
-          opacity: 0;
+        50% {
+          transform: scale(1.3);
+          opacity: 0.8;
+        }
+        100% {
+          transform: scale(0.92);
+          opacity: 0.35;
         }
       }
-      .mms-ping-animated {
-        animation: mmsPingPulse 1.4s cubic-bezier(0, 0, 0.2, 1) infinite !important;
+      .mms-halo-pulse {
+        animation: mmsHaloPulse 2s ease-in-out infinite !important;
       }
       #field-pax1 {
         outline: none !important;
@@ -149,7 +153,8 @@ const MATERIAL_PATHS = {
   public: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
   logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
   info: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
-  help: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-2h2v2zm1.07-7.75l-.9.92C12.45 11.9 12 12.5 12 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z',
+  alert: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z',
+  warningTriangle: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
   link: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z',
   close: 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
   check: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
@@ -509,10 +514,10 @@ const InfoBoxEditor = ({
   );
 };
 
-// Indicador pulsante de status sincronizado (fiel ao index.php e anexo)
+// Indicador pulsante de status sincronizado (idêntico ao anexo 2 e index.php)
 const PulsingStatusDot = () => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const opacityAnim = useRef(new Animated.Value(0.85)).current;
+  const opacityAnim = useRef(new Animated.Value(0.45)).current;
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -520,25 +525,25 @@ const PulsingStatusDot = () => {
         Animated.parallel([
           Animated.sequence([
             Animated.timing(pulseAnim, {
-              toValue: 2.3,
-              duration: 1400,
+              toValue: 1.35,
+              duration: 1200,
               useNativeDriver: true,
             }),
             Animated.timing(pulseAnim, {
               toValue: 1,
-              duration: 0,
+              duration: 1200,
               useNativeDriver: true,
             }),
           ]),
           Animated.sequence([
             Animated.timing(opacityAnim, {
-              toValue: 0,
-              duration: 1400,
+              toValue: 0.8,
+              duration: 1200,
               useNativeDriver: true,
             }),
             Animated.timing(opacityAnim, {
-              toValue: 0.85,
-              duration: 0,
+              toValue: 0.35,
+              duration: 1200,
               useNativeDriver: true,
             }),
           ]),
@@ -555,32 +560,31 @@ const PulsingStatusDot = () => {
         style={{
           position: 'relative',
           display: 'inline-flex',
-          width: '9px',
-          height: '9px',
+          width: '18px',
+          height: '18px',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
         }}
       >
         <span
-          className="mms-ping-animated"
+          className="mms-halo-pulse"
           style={{
             position: 'absolute',
-            display: 'inline-flex',
-            width: '100%',
-            height: '100%',
-            borderRadius: '9999px',
-            backgroundColor: '#4ade80',
+            width: '18px',
+            height: '18px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(34, 197, 94, 0.25)',
           }}
         />
         <span
           style={{
             position: 'relative',
-            display: 'inline-flex',
-            width: '9px',
-            height: '9px',
-            borderRadius: '9999px',
-            backgroundColor: '#22c55e',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: '#10b981',
+            boxShadow: '0 0 6px rgba(16, 185, 129, 0.5)',
           }}
         />
       </span>
@@ -3746,7 +3750,7 @@ export default function ReportGenerator() {
               ]}
             >
               <MaterialFlatIcon
-                name={customDialog.type === 'confirm' ? 'help' : 'info'}
+                name={customDialog.type === 'confirm' ? 'warningTriangle' : 'alert'}
                 size={34}
                 color={customDialog.type === 'confirm' ? '#d97706' : '#2563eb'}
               />
@@ -5317,30 +5321,35 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   pingContainer: {
-    width: 10,
-    height: 10,
+    width: 18,
+    height: 18,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   pingPulse: {
     position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#4ade80',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(34, 197, 94, 0.25)',
   },
   pingCore: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: '#22c55e',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 2,
   },
   sincronizadoText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#93a5c8',
-    letterSpacing: 2.6,
+    color: '#8da4c8',
+    letterSpacing: 2.8,
     textTransform: 'uppercase',
     fontFamily: corporateFont,
   },
@@ -6024,22 +6033,22 @@ const styles = StyleSheet.create({
     borderColor: '#f1f5f9',
   },
   flatAlertIconWrapper: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   flatAlertIconWrapperInfo: {
     backgroundColor: '#eff6ff',
-    borderWidth: 1,
-    borderColor: '#dbeafe',
+    borderWidth: 1.5,
+    borderColor: '#bfdbfe',
   },
   flatAlertIconWrapperWarning: {
     backgroundColor: '#fffbeb',
-    borderWidth: 1,
-    borderColor: '#fef3c7',
+    borderWidth: 1.5,
+    borderColor: '#fef08a',
   },
   flatAlertTitle: {
     fontSize: 15,
