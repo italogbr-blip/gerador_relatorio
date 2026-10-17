@@ -658,7 +658,7 @@ export default function ReportGenerator() {
   // Focus Refs & Auto-Advance
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({});
 
-  // Detecção se está em WebApp (PWA / Mobile) ou Aplicativo Nativo
+  // Detecção se está em WebApp (PWA / Mobile) ou Aplicativo Nativo & Telas Maiores Desktop
   const [isAppOrMobile, setIsAppOrMobile] = useState<boolean>(() => {
     if (Platform.OS !== 'web') return true;
     if (typeof window !== 'undefined') {
@@ -674,6 +674,13 @@ export default function ReportGenerator() {
     return false;
   });
 
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      return window.innerWidth >= 640;
+    }
+    return false;
+  });
+
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const checkMode = () => {
@@ -685,6 +692,7 @@ export default function ReportGenerator() {
           navigator.userAgent
         );
         setIsAppOrMobile(Boolean(isStandalone || isMobileScreen || isMobileUA));
+        setIsDesktop(window.innerWidth >= 640);
       };
       checkMode();
       window.addEventListener('resize', checkMode);
@@ -2107,7 +2115,7 @@ export default function ReportGenerator() {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.mainTitle}>PREENCHIMENTO DE RELATÓRIO</Text>
+          <Text style={[styles.mainTitle, isDesktop && styles.mainTitleDesktop]}>PREENCHIMENTO DE RELATÓRIO</Text>
           {/* Banner de Modo Edição Ativo */}
           {editingReportId && (
             <View style={styles.editingBannerCard}>
@@ -2132,12 +2140,12 @@ export default function ReportGenerator() {
             </View>
           )}
 
-          {/* Controle de Abas Simultâneas (Até 4) */}
+          {/* Controle de Abas Simultâneas (Até 4 - Estilo Anexos 4 e 5) */}
           <View style={styles.tabsSection}>
             <View style={styles.tabsTopRow}>
               <Text style={styles.tabsSectionTitle}>RELATÓRIOS EM ANDAMENTO</Text>
               {tabs.length < 4 && (
-                <TouchableOpacity onPress={addTab} style={styles.btnAddTab}>
+                <TouchableOpacity onPress={addTab} style={styles.btnAddTab} activeOpacity={0.8}>
                   <Text style={styles.btnAddTabText}>+ ADICIONAR RELATÓRIO</Text>
                 </TouchableOpacity>
               )}
@@ -2152,22 +2160,31 @@ export default function ReportGenerator() {
                 return (
                   <TouchableOpacity
                     key={tabId}
-                    style={[styles.tab, isActive && styles.tabActive]}
+                    style={[
+                      styles.tab,
+                      isActive ? styles.tabActive : styles.tabInactive,
+                      tabs.length === 1 && { maxWidth: 170, flex: 0, width: 170 },
+                    ]}
                     onPress={() => setActiveTab(tabId)}
+                    activeOpacity={0.85}
                   >
                     {tabs.length > 1 && (
                       <TouchableOpacity
                         style={styles.tabRemoveBtn}
-                        onPress={() => removeTab(tabId)}
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          removeTab(tabId);
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
                         <Text style={styles.tabRemoveText}>✕</Text>
                       </TouchableOpacity>
                     )}
                     <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
-                      Relatório {tabId}
+                      RELATÓRIO {tabId}
                     </Text>
                     <Text
-                      style={[styles.tabName, isActive ? { color: colors.slate800 } : { color: colors.slate500 }]}
+                      style={[styles.tabName, isActive ? styles.tabNameActive : styles.tabNameInactive]}
                       numberOfLines={1}
                     >
                       {tabName}
@@ -2376,8 +2393,8 @@ export default function ReportGenerator() {
 
                 {currentData.listaSaidas.map((item, idx) => (
                   <View key={item.id} style={styles.saidaRowContainer}>
-                    <View style={styles.timeSectionBlock}>
-                      <View style={styles.saidaLabelGroup}>
+                    <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop]}>
+                      <View style={[styles.saidaLabelGroup, isDesktop && styles.saidaLabelGroupDesktop]}>
                         <TextInput
                           style={[
                             styles.saidaLabelInput,
@@ -2419,8 +2436,8 @@ export default function ReportGenerator() {
                       </View>
                     </View>
 
-                    <View style={[styles.timeSectionBlock, { marginTop: 16 }]}>
-                      <Text style={styles.saidaRealLabel}>REAL:</Text>
+                    <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop, { marginTop: 14 }]}>
+                      <Text style={[styles.saidaRealLabel, isDesktop && styles.saidaRealLabelDesktop]}>REAL:</Text>
                       <View style={styles.timeInputsWrapper}>
                         <TextInput
                           nativeID={`field-saida_h2_${item.id}`}
@@ -2465,7 +2482,7 @@ export default function ReportGenerator() {
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.btnNovaSaida} onPress={addSaidaLine}>
-                  <Text style={styles.btnNovaSaidaText}>+ ADICIONAR NOVA SAÍDA</Text>
+                  <Text style={styles.btnNovaSaidaText}>- ADICIONAR NOVA SAÍDA</Text>
                 </TouchableOpacity>
               </View>
 
@@ -2477,8 +2494,8 @@ export default function ReportGenerator() {
 
                 {/* Previsão Embarque */}
                 <View style={styles.saidaRowContainer}>
-                  <View style={styles.timeSectionBlock}>
-                    <Text style={styles.timeSectionLabel}>PREVISÃO:</Text>
+                  <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop]}>
+                    <Text style={[styles.timeSectionLabel, isDesktop && styles.timeSectionLabelDesktop]}>PREVISÃO:</Text>
                     <View style={styles.timeInputsWrapper}>
                       <TextInput
                         nativeID="field-h3"
@@ -2506,19 +2523,19 @@ export default function ReportGenerator() {
                       <Text style={styles.timeSufix}>m</Text>
                     </View>
                   </View>
-                </View>
 
-                <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemEmbarquePrev}>
-                  <View style={[styles.checkbox, currentData.semEmbarquePrev && styles.checkboxChecked]}>
-                    {currentData.semEmbarquePrev && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={styles.checkboxLabel}>N/A EMBARQUE</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemEmbarquePrev}>
+                    <View style={[styles.checkbox, currentData.semEmbarquePrev && styles.checkboxChecked]}>
+                      {currentData.semEmbarquePrev && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                    <Text style={styles.checkboxLabel}>N/A EMBARQUE</Text>
+                  </TouchableOpacity>
+                </View>
 
                 {/* Real Embarque */}
                 <View style={styles.saidaRowContainer}>
-                  <View style={styles.timeSectionBlock}>
-                    <Text style={styles.timeSectionLabel}>REAL:</Text>
+                  <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop]}>
+                    <Text style={[styles.timeSectionLabel, isDesktop && styles.timeSectionLabelDesktop]}>REAL:</Text>
                     <View style={styles.timeInputsWrapper}>
                       <TextInput
                         nativeID="field-h4"
@@ -2546,14 +2563,14 @@ export default function ReportGenerator() {
                       <Text style={styles.timeSufix}>m</Text>
                     </View>
                   </View>
-                </View>
 
-                <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemEmbarque}>
-                  <View style={[styles.checkbox, currentData.semEmbarque && styles.checkboxChecked]}>
-                    {currentData.semEmbarque && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={styles.checkboxLabel}>N/A EMBARQUE</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemEmbarque}>
+                    <View style={[styles.checkbox, currentData.semEmbarque && styles.checkboxChecked]}>
+                      {currentData.semEmbarque && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                    <Text style={styles.checkboxLabel}>N/A EMBARQUE</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Card 3: Atendimento */}
@@ -2564,8 +2581,8 @@ export default function ReportGenerator() {
 
                 {/* Início Atendimento */}
                 <View style={styles.saidaRowContainer}>
-                  <View style={styles.timeSectionBlock}>
-                    <Text style={styles.timeSectionLabel}>INÍCIO:</Text>
+                  <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop]}>
+                    <Text style={[styles.timeSectionLabel, isDesktop && styles.timeSectionLabelDesktop]}>INÍCIO:</Text>
                     <View style={styles.timeInputsWrapper}>
                       <TextInput
                         nativeID="field-h5"
@@ -2595,8 +2612,8 @@ export default function ReportGenerator() {
 
                 {/* Fim Atendimento */}
                 <View style={styles.saidaRowContainer}>
-                  <View style={styles.timeSectionBlock}>
-                    <Text style={styles.timeSectionLabel}>FIM:</Text>
+                  <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop]}>
+                    <Text style={[styles.timeSectionLabel, isDesktop && styles.timeSectionLabelDesktop]}>FIM:</Text>
                     <View style={styles.timeInputsWrapper}>
                       <TextInput
                         nativeID="field-h6"
@@ -3698,20 +3715,25 @@ const styles = StyleSheet.create({
     fontFamily: modernFont,
   },
   mainTitle: {
-    fontSize: 24, // Aumentado em +2px para destaque elegante (de 22px para 24px)
-    fontWeight: '900',
-    textAlign: 'center',
-    marginTop: 12,
-    marginBottom: 4,
-    color: colors.slate800,
-    textTransform: 'uppercase',
-    letterSpacing: -0.5,
+    fontSize: 20, // text-xl
+    fontWeight: '900', // font-black
+    textAlign: 'center', // text-center
+    marginBottom: 16, // mb-4
+    borderBottomWidth: 2, // border-b-2
+    borderBottomColor: '#f1f5f9', // border-slate-100
+    paddingBottom: 16, // pb-4
+    color: '#1e293b', // text-slate-800
+    textTransform: 'uppercase', // uppercase
+    letterSpacing: -0.5, // tracking-tight
     fontFamily: corporateFont,
   },
+  mainTitleDesktop: {
+    fontSize: 24, // md:text-2xl
+  },
   headerDivider: {
-    height: 1,
-    backgroundColor: colors.slate200,
-    marginBottom: 24,
+    height: 0,
+    backgroundColor: 'transparent',
+    marginBottom: 0,
   },
   editingBannerCard: {
     backgroundColor: '#fffbeb',
@@ -3770,7 +3792,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   tabsSection: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   tabsTopRow: {
     flexDirection: 'row',
@@ -3779,86 +3801,104 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tabsSectionTitle: {
-    fontWeight: '900',
-    fontSize: 10,
-    color: colors.slate400,
+    fontWeight: '800',
+    fontSize: 11,
+    color: '#64748b',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontFamily: corporateFont,
+    letterSpacing: 0.8,
+    fontFamily: modernFont,
   },
   btnAddTab: {
-    backgroundColor: colors.blue50,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    backgroundColor: '#eff6ff',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.blue200,
+    borderWidth: 1.5,
+    borderColor: '#bfdbfe',
   },
   btnAddTabText: {
-    color: colors.blue600,
+    color: '#2563eb',
     fontWeight: '900',
-    fontSize: 10,
+    fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    fontFamily: corporateFont,
+    fontFamily: modernFont,
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: colors.slate100,
-    padding: 4,
-    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    padding: 6,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.slate200,
-    gap: 4,
+    borderColor: '#e2e8f0',
+    minHeight: 66,
+    alignItems: 'center',
+    gap: 6,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     position: 'relative',
   },
   tabActive: {
-    backgroundColor: colors.white,
-    borderColor: colors.slate200,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
     elevation: 2,
+  },
+  tabInactive: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   tabRemoveBtn: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.rose100,
+    top: 4,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#fee2e2',
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabRemoveText: {
-    color: colors.rose600,
+    color: '#ef4444',
     fontSize: 10,
     fontWeight: '900',
   },
   tabLabel: {
-    fontSize: 9,
-    fontWeight: '900',
+    fontSize: 10,
+    fontWeight: '800',
     textTransform: 'uppercase',
-    color: colors.slate400,
+    color: '#64748b',
     letterSpacing: 0.5,
-    fontFamily: corporateFont,
+    fontFamily: modernFont,
   },
   tabLabelActive: {
-    color: colors.blue600,
+    color: '#2563eb',
+    fontWeight: '900',
   },
   tabName: {
-    fontSize: 11,
-    fontWeight: '900',
+    fontSize: 13,
+    fontWeight: '800',
     marginTop: 2,
-    fontFamily: corporateFont,
+    fontFamily: modernFont,
+  },
+  tabNameActive: {
+    color: '#0f172a',
+    fontWeight: '900',
+  },
+  tabNameInactive: {
+    color: '#475569',
   },
   formContainer: {
     gap: 20, // Aumentado o espaçamento entre os grupos de campos
@@ -3994,23 +4034,23 @@ const styles = StyleSheet.create({
   horariosBox: {
     backgroundColor: '#ffffff',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    gap: 16,
+    gap: 12,
     marginVertical: 8,
   },
   horariosTitle: {
     fontWeight: '900',
-    fontSize: 16,
-    color: '#0f172a',
+    fontSize: 15,
+    color: '#1e3a8a',
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: '#e2e8f0',
     paddingBottom: 10,
-    marginBottom: 4,
+    marginBottom: 0,
     fontFamily: corporateFont,
   },
   horarioCard: {
@@ -4067,7 +4107,7 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     padding: 16,
     borderRadius: 12,
-    gap: 16,
+    gap: 14,
     position: 'relative',
     alignItems: 'center',
   },
@@ -4081,6 +4121,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
   },
+  timeSectionBlockDesktop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
   timeSectionLabel: {
     fontSize: 13,
     fontWeight: '900',
@@ -4091,11 +4137,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: corporateFont,
   },
+  timeSectionLabelDesktop: {
+    marginBottom: 0,
+    textAlign: 'left',
+  },
   saidaLabelGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
+  },
+  saidaLabelGroupDesktop: {
+    marginBottom: 0,
+    justifyContent: 'flex-start',
   },
   saidaLabelInput: {
     fontSize: 16,
@@ -4116,6 +4170,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
     fontFamily: corporateFont,
+  },
+  saidaRealLabelDesktop: {
+    marginBottom: 0,
+    textAlign: 'left',
   },
   colon: {
     fontWeight: 'bold',
@@ -4202,7 +4260,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderWidth: 1.5,
     borderColor: '#94a3b8',
-    borderRadius: 9,
+    borderRadius: 3,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#ffffff',
@@ -4225,18 +4283,18 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   btnNovaSaida: {
-    backgroundColor: '#ffffff',
-    paddingVertical: 12,
-    borderRadius: 10,
+    backgroundColor: '#f8fafc',
+    paddingVertical: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#dbeafe',
     alignItems: 'center',
     marginTop: 6,
   },
   btnNovaSaidaText: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#0f172a',
+    fontWeight: '900',
+    color: '#1e3a8a',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     fontFamily: corporateFont,

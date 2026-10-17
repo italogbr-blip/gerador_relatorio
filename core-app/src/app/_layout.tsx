@@ -5,6 +5,59 @@ import { Platform } from 'react-native';
 export default function Layout() {
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      // 1. Desativar Zoom via Viewport Meta Tag
+      let meta = document.querySelector('meta[name="viewport"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'viewport');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute(
+        'content',
+        'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no'
+      );
+
+      // 2. Desativar Zoom por Gestos (Pinch-to-zoom / Touch)
+      const preventGesture = (e: Event) => e.preventDefault();
+      document.addEventListener('gesturestart', preventGesture, { passive: false });
+      document.addEventListener('gesturechange', preventGesture, { passive: false });
+      document.addEventListener('gestureend', preventGesture, { passive: false });
+
+      const handleTouchMove = (e: TouchEvent) => {
+        if (e.touches && e.touches.length > 1) {
+          e.preventDefault();
+        }
+      };
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+      let lastTouchEnd = 0;
+      const handleTouchEnd = (e: TouchEvent) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      };
+      document.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+      // 3. Desativar Zoom por Teclado e Roda do Mouse (Ctrl + Scroll / Ctrl + +/-)
+      const handleWheel = (e: WheelEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+        }
+      };
+      window.addEventListener('wheel', handleWheel, { passive: false });
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (
+          (e.ctrlKey || e.metaKey) &&
+          (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0' || e.key === 'Add' || e.key === 'Subtract')
+        ) {
+          e.preventDefault();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
       if (!document.getElementById('inter-font-link')) {
         const link = document.createElement('link');
         link.id = 'inter-font-link';
@@ -17,6 +70,13 @@ export default function Layout() {
         const style = document.createElement('style');
         style.id = 'custom-scrollbar-style';
         style.innerHTML = `
+          /* Desativa zoom e salto de escala por toque */
+          html, body {
+            touch-action: pan-x pan-y;
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+          }
+
           /* Scrollbar Estilizado Conforme Anexo 1 */
           ::-webkit-scrollbar {
             width: 14px;
