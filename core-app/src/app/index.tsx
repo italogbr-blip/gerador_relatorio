@@ -3197,9 +3197,9 @@ export default function ReportGenerator() {
 
 
             {/* Footer Personalizável conforme Anexo 2 */}
-            <View style={styles.appFooterContainer}>
-              <View style={styles.appFooterSpacer} />
-              <Text style={styles.appFooterText}>
+            <View style={[styles.appFooterContainer, !isDesktop && styles.appFooterContainerMobile]}>
+              {isDesktop && <View style={styles.appFooterSpacer} />}
+              <Text style={[styles.appFooterText, !isDesktop && styles.appFooterTextMobile]}>
                 {footerConfig.prefixo}
                 <Text
                   style={[
@@ -3221,7 +3221,7 @@ export default function ReportGenerator() {
                   {footerConfig.destaque2}
                 </Text>
               </Text>
-              <View style={styles.appFooterVersionWrapper}>
+              <View style={[styles.appFooterVersionWrapper, !isDesktop && styles.appFooterVersionWrapperMobile]}>
                 <View style={styles.appFooterVersionBadge}>
                   <Text style={styles.appFooterVersionIcon}>⬡</Text>
                   <Text style={styles.appFooterVersionText}>{footerConfig.versao}</Text>
@@ -6223,19 +6223,22 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
     gap: 12,
   },
+  appFooterContainerMobile: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
   appFooterSpacer: {
     width: 80,
-    display: Platform.OS === 'web' ? 'flex' : 'none',
   },
   appFooterText: {
     flex: 1,
-    minWidth: 260,
     fontSize: 11,
     color: '#94a3b8',
     textAlign: 'center',
@@ -6243,12 +6246,27 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontFamily: modernFont,
   },
+  appFooterTextMobile: {
+    flex: 0,
+    width: '100%',
+    textAlign: 'center',
+    alignSelf: 'center',
+    lineHeight: 18,
+  },
   appFooterHighlight: {
     letterSpacing: 0.8,
   },
   appFooterVersionWrapper: {
+    width: 80,
     alignItems: 'flex-end',
     justifyContent: 'center',
+  },
+  appFooterVersionWrapperMobile: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginTop: 4,
   },
   appFooterVersionBadge: {
     flexDirection: 'row',
