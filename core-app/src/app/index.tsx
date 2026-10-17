@@ -2585,7 +2585,7 @@ export default function ReportGenerator() {
                 style={[styles.input, { textTransform: 'uppercase' }, fieldErrors.unidade && styles.inputError]}
                 value={currentData.unidade}
                 onChangeText={(val) => updateCurrentTab({ unidade: val.toUpperCase() })}
-                placeholder="Ex: BASE DE APOIO LOGÍSTICO"
+                placeholder="Ex: LONE STAR SS79"
                 placeholderTextColor={colors.slate400}
                 autoCapitalize="characters"
               />
@@ -4393,11 +4393,9 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   formContainer: {
-    width: '100%',
     gap: 20, // Aumentado o espaçamento entre os grupos de campos
   },
   inputGroup: {
-    width: '100%',
     flexDirection: 'column',
     marginBottom: 4,
   },
@@ -4411,7 +4409,6 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   selectBoxContainer: {
-    width: '100%',
     height: 48,
     minHeight: 48,
     flexDirection: 'row',
@@ -4482,7 +4479,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   input: {
-    width: '100%',
     height: 48,
     minHeight: 48,
     borderWidth: 1,
@@ -4498,9 +4494,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   obsBox: {
-    width: '100%',
     backgroundColor: colors.indigo50,
-    padding: 12,
+    padding: 14,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.indigo100,
@@ -4516,7 +4511,6 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   obsInput: {
-    width: '100%',
     height: 48,
     minHeight: 48,
     borderWidth: 1,
@@ -4539,9 +4533,8 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   horariosBox: {
-    width: '100%',
     backgroundColor: '#ffffff',
-    padding: 12,
+    padding: 16,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -4562,9 +4555,8 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   horarioCard: {
-    width: '100%',
     backgroundColor: '#ffffff',
-    padding: 12,
+    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -4611,11 +4603,10 @@ const styles = StyleSheet.create({
     color: '#854d0e',
   },
   saidaRowContainer: {
-    width: '100%',
     backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    padding: 12,
+    padding: 16,
     borderRadius: 12,
     gap: 14,
     position: 'relative',
@@ -4710,11 +4701,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   timeRow: {
-    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f8fafc',
-    padding: 12,
+    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#f1f5f9',

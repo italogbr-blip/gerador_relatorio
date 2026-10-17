@@ -466,7 +466,7 @@ try {
 
             <div class="min-w-0">
                 <label class="block font-black text-[11px] text-black uppercase tracking-wide mb-1">Unidade:</label>
-                <input type="text" id="in-unidade" name="unidade" oninput="this.value = this.value.toUpperCase()" style="text-transform: uppercase;" class="w-full max-w-full border border-slate-300 rounded-lg p-3 text-sm font-medium text-slate-800 outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-400 transition-all bg-slate-50 focus:bg-white shadow-sm uppercase save-local box-border" placeholder="Ex: BASE DE APOIO LOGÍSTICO">
+                <input type="text" id="in-unidade" name="unidade" oninput="this.value = this.value.toUpperCase()" style="text-transform: uppercase;" class="w-full max-w-full border border-slate-300 rounded-lg p-3 text-sm font-medium text-slate-800 outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-400 transition-all bg-slate-50 focus:bg-white shadow-sm uppercase save-local box-border" placeholder="Ex: LONE STAR SS79">
             </div>
             
 
