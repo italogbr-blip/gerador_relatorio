@@ -4151,6 +4151,7 @@ const styles = StyleSheet.create({
     padding: 20,
     width: '100%',
     maxWidth: 672,
+    alignItems: 'stretch',
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -4393,9 +4394,13 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   formContainer: {
+    width: '100%',
+    alignSelf: 'stretch',
     gap: 20, // Aumentado o espaçamento entre os grupos de campos
   },
   inputGroup: {
+    width: '100%',
+    alignSelf: 'stretch',
     flexDirection: 'column',
     marginBottom: 4,
   },
@@ -4409,6 +4414,7 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   selectBoxContainer: {
+    width: '100%',
     height: 48,
     minHeight: 48,
     flexDirection: 'row',
@@ -4479,6 +4485,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   input: {
+    width: '100%',
     height: 48,
     minHeight: 48,
     borderWidth: 1,
@@ -4494,6 +4501,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   obsBox: {
+    width: '100%',
+    alignSelf: 'stretch',
     backgroundColor: colors.indigo50,
     padding: 14,
     borderRadius: 12,
@@ -4511,6 +4520,7 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   obsInput: {
+    width: '100%',
     height: 48,
     minHeight: 48,
     borderWidth: 1,
@@ -4533,6 +4543,8 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   horariosBox: {
+    width: '100%',
+    alignSelf: 'stretch',
     backgroundColor: '#ffffff',
     padding: 16,
     borderRadius: 14,
@@ -4555,6 +4567,8 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   horarioCard: {
+    width: '100%',
+    alignSelf: 'stretch',
     backgroundColor: '#ffffff',
     padding: 16,
     borderRadius: 12,
@@ -4603,6 +4617,8 @@ const styles = StyleSheet.create({
     color: '#854d0e',
   },
   saidaRowContainer: {
+    width: '100%',
+    alignSelf: 'stretch',
     backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -4701,6 +4717,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   timeRow: {
+    width: '100%',
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f8fafc',
@@ -4801,6 +4819,8 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   sectionHeaderBox: {
+    width: '100%',
+    alignSelf: 'stretch',
     marginTop: 8,
   },
   sectionHeaderTitle: {
