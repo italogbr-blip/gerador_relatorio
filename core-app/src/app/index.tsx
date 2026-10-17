@@ -27,6 +27,11 @@ import {
   isUserCoordinator,
   AppUserSession,
 } from '../lib/auth';
+import {
+  fetchFooterConfig,
+  getLocalFooterConfig,
+  FooterConfig,
+} from '../lib/footerConfig';
 
 // Cores Curadas do Layout Original Tailwind / PHP
 const colors = {
@@ -505,6 +510,13 @@ export default function ReportGenerator() {
   const [editingReportId, setEditingReportId] = useState<number | null>(null);
   const [isLoadingReportEdit, setIsLoadingReportEdit] = useState<boolean>(false);
   const [pdfGenerated, setPdfGenerated] = useState<boolean>(false);
+  const [footerConfig, setFooterConfig] = useState<FooterConfig>(() => getLocalFooterConfig());
+
+  useEffect(() => {
+    fetchFooterConfig().then((cfg) => {
+      if (cfg) setFooterConfig(cfg);
+    });
+  }, []);
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const menuAnim = useRef(new Animated.Value(0)).current;
 
@@ -3025,6 +3037,39 @@ export default function ReportGenerator() {
                 <View style={styles.pingCore} />
               </View>
               <Text style={styles.sincronizadoText}>Sincronizado</Text>
+            </View>
+
+            {/* Footer Personalizável conforme Anexo 2 */}
+            <View style={styles.appFooterContainer}>
+              <View style={styles.appFooterSpacer} />
+              <Text style={styles.appFooterText}>
+                {footerConfig.prefixo}
+                <Text
+                  style={[
+                    styles.appFooterHighlight,
+                    { color: footerConfig.corDestaque1 },
+                    footerConfig.negrito1 && { fontWeight: '900' },
+                  ]}
+                >
+                  {footerConfig.destaque1}
+                </Text>
+                {footerConfig.conector}
+                <Text
+                  style={[
+                    styles.appFooterHighlight,
+                    { color: footerConfig.corDestaque2 },
+                    footerConfig.negrito2 && { fontWeight: '900' },
+                  ]}
+                >
+                  {footerConfig.destaque2}
+                </Text>
+              </Text>
+              <View style={styles.appFooterVersionWrapper}>
+                <View style={styles.appFooterVersionBadge}>
+                  <Text style={styles.appFooterVersionIcon}>⬡</Text>
+                  <Text style={styles.appFooterVersionText}>{footerConfig.versao}</Text>
+                </View>
+              </View>
             </View>
           </View>
         </View>
@@ -5965,6 +6010,69 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 13,
     letterSpacing: 0.4,
+    fontFamily: modernFont,
+  },
+
+  /* Rodapé do Documento / Formulário (Anexo 2) */
+  appFooterContainer: {
+    marginTop: 24,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 12,
+  },
+  appFooterSpacer: {
+    width: 80,
+    display: Platform.OS === 'web' ? 'flex' : 'none',
+  },
+  appFooterText: {
+    flex: 1,
+    minWidth: 260,
+    fontSize: 11,
+    color: '#94a3b8',
+    textAlign: 'center',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  appFooterHighlight: {
+    letterSpacing: 0.8,
+  },
+  appFooterVersionWrapper: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  appFooterVersionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  appFooterVersionIcon: {
+    fontSize: 11,
+    color: '#94a3b8',
+  },
+  appFooterVersionText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#94a3b8',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
 });

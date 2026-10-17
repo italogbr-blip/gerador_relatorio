@@ -17,6 +17,12 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
 import { verifyCoordinatorAccess, logoutUserSession, AppUserSession } from '../lib/auth';
+import {
+  fetchFooterConfig,
+  saveFooterConfig,
+  FooterConfig,
+  defaultFooterConfig,
+} from '../lib/footerConfig';
 
 const modernFont = Platform.OS === 'web'
   ? "'Inter', system-ui, -apple-system, sans-serif"
@@ -99,6 +105,27 @@ export default function PainelCoordScreen() {
   const [novoPopupMensagem, setNovoPopupMensagem] = useState<string>('');
   const [novoPopupTipo, setNovoPopupTipo] = useState<'aviso' | 'urgente' | 'feedback'>('aviso');
   const [salvandoPopup, setSalvandoPopup] = useState<boolean>(false);
+
+  // Personalização do Footer / Rodapé (Anexo 2)
+  const [footerDraft, setFooterDraft] = useState<FooterConfig>(defaultFooterConfig);
+  const [salvandoFooter, setSalvandoFooter] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetchFooterConfig().then((cfg) => {
+      if (cfg) setFooterDraft(cfg);
+    });
+  }, []);
+
+  const handleSalvarFooter = async () => {
+    setSalvandoFooter(true);
+    const success = await saveFooterConfig(footerDraft);
+    setSalvandoFooter(false);
+    if (success) {
+      showCustomAlert('RODAPÉ ATUALIZADO', 'A nova personalização do rodapé foi salva com sucesso e já está ativa no gerador de relatórios.');
+    } else {
+      showCustomAlert('ERRO AO SALVAR', 'Não foi possível gravar a configuração do rodapé.');
+    }
+  };
 
   // Alerta / Confirmação Customizado
   const [customDialog, setCustomDialog] = useState<{
@@ -1219,6 +1246,173 @@ export default function PainelCoordScreen() {
                   <Text style={styles.sysStatusInfo}>Expo SDK 54 / React Native Web</Text>
                 </View>
               </View>
+            </View>
+
+            {/* Card de Personalização do Rodapé (Footer - Anexo 2) */}
+            <View style={[styles.sectionCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }, { marginTop: 20 }]}>
+              <View style={styles.sectionHeader}>
+                <Text style={{ fontSize: 24 }}>🎨</Text>
+                <View>
+                  <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>PERSONALIZAÇÃO DO RODAPÉ (FOOTER)</Text>
+                  <Text style={styles.sectionSubtitle}>Altere os textos, cores, negrito e versão do rodapé oficial do documento e do sistema</Text>
+                </View>
+              </View>
+
+              {/* Live Preview do Rodapé */}
+              <View style={[styles.footerPreviewCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
+                <Text style={styles.footerPreviewLabel}>PRÉVIA EM TEMPO REAL DO RODAPÉ:</Text>
+                <View style={styles.footerPreviewBox}>
+                  <Text style={styles.footerPreviewText}>
+                    {footerDraft.prefixo}
+                    <Text
+                      style={[
+                        { color: footerDraft.corDestaque1 },
+                        footerDraft.negrito1 && { fontWeight: '900' },
+                      ]}
+                    >
+                      {footerDraft.destaque1}
+                    </Text>
+                    {footerDraft.conector}
+                    <Text
+                      style={[
+                        { color: footerDraft.corDestaque2 },
+                        footerDraft.negrito2 && { fontWeight: '900' },
+                      ]}
+                    >
+                      {footerDraft.destaque2}
+                    </Text>
+                  </Text>
+                  <View style={styles.footerPreviewBadge}>
+                    <Text style={styles.footerPreviewBadgeIcon}>⬡</Text>
+                    <Text style={styles.footerPreviewBadgeText}>{footerDraft.versao}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Formulário de Configuração do Rodapé */}
+              <View style={styles.footerFormGrid}>
+                {/* Prefixo */}
+                <View style={styles.footerFormField}>
+                  <Text style={[styles.footerInputLabel, !isDarkMode && { color: '#334155' }]}>TEXTO INICIAL / PREFIXO:</Text>
+                  <TextInput
+                    style={[styles.footerInput, !isDarkMode && styles.footerInputLight]}
+                    value={footerDraft.prefixo}
+                    onChangeText={(val) => setFooterDraft((prev) => ({ ...prev, prefixo: val }))}
+                    placeholder="Ex: DESENVOLVIDO POR "
+                    placeholderTextColor="#64748b"
+                  />
+                </View>
+
+                {/* Destaque 1 (Empresa Desenvolvedora) */}
+                <View style={styles.footerFormField}>
+                  <Text style={[styles.footerInputLabel, !isDarkMode && { color: '#334155' }]}>NOME DESTAQUE 1 (EMPRESA 1):</Text>
+                  <TextInput
+                    style={[styles.footerInput, !isDarkMode && styles.footerInputLight]}
+                    value={footerDraft.destaque1}
+                    onChangeText={(val) => setFooterDraft((prev) => ({ ...prev, destaque1: val }))}
+                    placeholder="Ex: VERO STUDIO"
+                    placeholderTextColor="#64748b"
+                  />
+                  <View style={styles.footerControlRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.footerMiniLabel, !isDarkMode && { color: '#64748b' }]}>Cor (Hex):</Text>
+                      <TextInput
+                        style={[styles.footerMiniInput, !isDarkMode && styles.footerInputLight]}
+                        value={footerDraft.corDestaque1}
+                        onChangeText={(val) => setFooterDraft((prev) => ({ ...prev, corDestaque1: val }))}
+                        placeholder="#475569"
+                        placeholderTextColor="#64748b"
+                      />
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.btnToggleBold,
+                        footerDraft.negrito1 ? styles.btnToggleBoldActive : styles.btnToggleBoldInactive,
+                      ]}
+                      onPress={() => setFooterDraft((prev) => ({ ...prev, negrito1: !prev.negrito1 }))}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.btnToggleBoldText, footerDraft.negrito1 && styles.btnToggleBoldTextActive]}>
+                        {footerDraft.negrito1 ? '✓ Negrito Ativo' : 'Negrito Desativado'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Conector */}
+                <View style={styles.footerFormField}>
+                  <Text style={[styles.footerInputLabel, !isDarkMode && { color: '#334155' }]}>CONECTOR / MEIO:</Text>
+                  <TextInput
+                    style={[styles.footerInput, !isDarkMode && styles.footerInputLight]}
+                    value={footerDraft.conector}
+                    onChangeText={(val) => setFooterDraft((prev) => ({ ...prev, conector: val }))}
+                    placeholder="Ex:  © PARA "
+                    placeholderTextColor="#64748b"
+                  />
+                </View>
+
+                {/* Destaque 2 (Cliente / Parceiro) */}
+                <View style={styles.footerFormField}>
+                  <Text style={[styles.footerInputLabel, !isDarkMode && { color: '#334155' }]}>NOME DESTAQUE 2 (EMPRESA 2):</Text>
+                  <TextInput
+                    style={[styles.footerInput, !isDarkMode && styles.footerInputLight]}
+                    value={footerDraft.destaque2}
+                    onChangeText={(val) => setFooterDraft((prev) => ({ ...prev, destaque2: val }))}
+                    placeholder="Ex: MMS SUPORTE LOGÍSTICO"
+                    placeholderTextColor="#64748b"
+                  />
+                  <View style={styles.footerControlRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.footerMiniLabel, !isDarkMode && { color: '#64748b' }]}>Cor (Hex):</Text>
+                      <TextInput
+                        style={[styles.footerMiniInput, !isDarkMode && styles.footerInputLight]}
+                        value={footerDraft.corDestaque2}
+                        onChangeText={(val) => setFooterDraft((prev) => ({ ...prev, corDestaque2: val }))}
+                        placeholder="#2563eb"
+                        placeholderTextColor="#64748b"
+                      />
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.btnToggleBold,
+                        footerDraft.negrito2 ? styles.btnToggleBoldActive : styles.btnToggleBoldInactive,
+                      ]}
+                      onPress={() => setFooterDraft((prev) => ({ ...prev, negrito2: !prev.negrito2 }))}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.btnToggleBoldText, footerDraft.negrito2 && styles.btnToggleBoldTextActive]}>
+                        {footerDraft.negrito2 ? '✓ Negrito Ativo' : 'Negrito Desativado'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Versão do App */}
+                <View style={styles.footerFormField}>
+                  <Text style={[styles.footerInputLabel, !isDarkMode && { color: '#334155' }]}>VERSÃO NO BADGE (ANEXO 2):</Text>
+                  <TextInput
+                    style={[styles.footerInput, !isDarkMode && styles.footerInputLight]}
+                    value={footerDraft.versao}
+                    onChangeText={(val) => setFooterDraft((prev) => ({ ...prev, versao: val }))}
+                    placeholder="Ex: V1.2.5"
+                    placeholderTextColor="#64748b"
+                  />
+                </View>
+              </View>
+
+              {/* Botão de Salvar Alterações */}
+              <TouchableOpacity
+                style={styles.btnSalvarFooter}
+                onPress={handleSalvarFooter}
+                disabled={salvandoFooter}
+                activeOpacity={0.85}
+              >
+                {salvandoFooter ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.btnSalvarFooterText}>💾 SALVAR CONFIGURAÇÃO DO FOOTER</Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -2532,5 +2726,168 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     marginTop: 4,
+  },
+
+  /* Estilos de Personalização do Rodapé (Footer) */
+  footerPreviewCard: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 14,
+    padding: 16,
+    marginVertical: 14,
+  },
+  footerPreviewLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#94a3b8',
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    fontFamily: modernFont,
+  },
+  footerPreviewBox: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 12,
+  },
+  footerPreviewText: {
+    flex: 1,
+    minWidth: 240,
+    fontSize: 11,
+    color: '#94a3b8',
+    textAlign: 'center',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  footerPreviewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+  },
+  footerPreviewBadgeIcon: {
+    fontSize: 11,
+    color: '#94a3b8',
+  },
+  footerPreviewBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#94a3b8',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  footerFormGrid: {
+    gap: 14,
+    marginVertical: 10,
+  },
+  footerFormField: {
+    gap: 6,
+  },
+  footerInputLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#94a3b8',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  footerInput: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: '#ffffff',
+    fontSize: 13,
+    fontFamily: modernFont,
+  },
+  footerInputLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+    color: '#0f172a',
+  },
+  footerControlRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+    marginTop: 4,
+  },
+  footerMiniLabel: {
+    fontSize: 10,
+    color: '#94a3b8',
+    marginBottom: 4,
+    fontFamily: modernFont,
+  },
+  footerMiniInput: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: '#ffffff',
+    fontSize: 13,
+    fontFamily: modernFont,
+  },
+  btnToggleBold: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnToggleBoldActive: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#2563eb',
+  },
+  btnToggleBoldInactive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: '#475569',
+  },
+  btnToggleBoldText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94a3b8',
+    fontFamily: modernFont,
+  },
+  btnToggleBoldTextActive: {
+    color: '#2563eb',
+    fontWeight: '900',
+  },
+  btnSalvarFooter: {
+    marginTop: 16,
+    backgroundColor: '#2563eb',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  btnSalvarFooterText: {
+    color: '#ffffff',
+    fontWeight: '900',
+    fontSize: 13,
+    letterSpacing: 0.8,
+    fontFamily: modernFont,
   },
 });
