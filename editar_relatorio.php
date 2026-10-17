@@ -901,13 +901,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
             
-            <div class="flex items-center justify-center gap-2 mt-4">
-                <span class="relative flex h-2 w-2">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                <p id="save-status" class="text-xs text-slate-400 font-medium uppercase tracking-widest">Sincronizado</p>
-            </div>
             
             <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center gap-4">
                 <a href="../gerador_qrcode/" class="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 hover:bg-white hover:border-blue-300 hover:text-blue-600 hover:shadow-sm transition-all text-[10px] font-black uppercase tracking-widest text-decoration-none">

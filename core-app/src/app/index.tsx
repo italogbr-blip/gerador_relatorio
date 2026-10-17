@@ -3195,11 +3195,6 @@ export default function ReportGenerator() {
               </View>
             )}
 
-            {/* Indicador de Sincronizado idêntico ao anexo e index.php */}
-            <View style={styles.sincronizadoRow}>
-              <PulsingStatusDot />
-              <Text style={styles.sincronizadoText}>SINCRONIZADO</Text>
-            </View>
 
             {/* Footer Personalizável conforme Anexo 2 */}
             <View style={styles.appFooterContainer}>
