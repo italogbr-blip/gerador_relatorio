@@ -31,6 +31,7 @@ import {
 import {
   fetchFooterConfig,
   getLocalFooterConfig,
+  fetchLatestAppVersion,
   FooterConfig,
 } from '../lib/footerConfig';
 
@@ -667,10 +668,21 @@ export default function ReportGenerator() {
   const [isLoadingReportEdit, setIsLoadingReportEdit] = useState<boolean>(false);
   const [pdfGenerated, setPdfGenerated] = useState<boolean>(false);
   const [footerConfig, setFooterConfig] = useState<FooterConfig>(() => getLocalFooterConfig());
+  const [appVersao, setAppVersao] = useState<string>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        return localStorage.getItem('mms_cached_app_version') || 'V1.2.4';
+      } catch (e) {}
+    }
+    return 'V1.2.4';
+  });
 
   useEffect(() => {
     fetchFooterConfig().then((cfg) => {
       if (cfg) setFooterConfig(cfg);
+    });
+    fetchLatestAppVersion().then((v) => {
+      if (v) setAppVersao(v);
     });
   }, []);
 
@@ -2747,7 +2759,7 @@ export default function ReportGenerator() {
                         <TextInput
                           style={[
                             styles.saidaLabelInput,
-                            { width: Math.max(65, (item.label1 || 'Previsto').length * 9.5) }
+                            { width: Math.max(54, (item.label1 || 'Previsto').length * 8.2) }
                           ]}
                           value={item.label1}
                           onChangeText={(val) => updateSaidaItem(item.id, 'label1', val)}
@@ -2873,6 +2885,8 @@ export default function ReportGenerator() {
                     </View>
                   </View>
 
+                  <View style={styles.naDivider} />
+
                   <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemEmbarquePrev}>
                     <View style={[styles.checkbox, currentData.semEmbarquePrev && styles.checkboxChecked]}>
                       {currentData.semEmbarquePrev && <Text style={styles.checkmark}>✓</Text>}
@@ -2912,6 +2926,8 @@ export default function ReportGenerator() {
                       <Text style={styles.timeSufix}>m</Text>
                     </View>
                   </View>
+
+                  <View style={styles.naDivider} />
 
                   <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemEmbarque}>
                     <View style={[styles.checkbox, currentData.semEmbarque && styles.checkboxChecked]}>
@@ -3224,7 +3240,7 @@ export default function ReportGenerator() {
               <View style={[styles.appFooterVersionWrapper, !isDesktop && styles.appFooterVersionWrapperMobile]}>
                 <View style={styles.appFooterVersionBadge}>
                   <Text style={styles.appFooterVersionIcon}>⬡</Text>
-                  <Text style={styles.appFooterVersionText}>{footerConfig.versao}</Text>
+                  <Text style={styles.appFooterVersionText}>{appVersao || footerConfig.versao || 'V1.2.4'}</Text>
                 </View>
               </View>
             </View>
@@ -4626,6 +4642,18 @@ const styles = StyleSheet.create({
     gap: 14,
     position: 'relative',
     alignItems: 'center',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  naDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginTop: 10,
+    marginBottom: 4,
   },
   saidaFieldHeader: {
     alignItems: 'center',
@@ -4671,8 +4699,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     color: '#1d4ed8',
-    textAlign: 'center',
-    paddingVertical: 2,
+    textAlign: 'left',
+    paddingVertical: 1,
+    paddingHorizontal: 0,
     borderBottomWidth: 1,
     borderBottomColor: '#93c5fd',
     fontFamily: corporateFont,
@@ -4695,7 +4724,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     color: '#1d4ed8',
-    marginLeft: 3,
+    marginLeft: 0,
+    paddingLeft: 0,
   },
   btnRemoveSaida: {
     position: 'absolute',
@@ -4837,6 +4867,11 @@ const styles = StyleSheet.create({
     borderColor: colors.slate300,
     borderRadius: 8,
     overflow: 'hidden',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   textAreaToolbar: {
     backgroundColor: colors.slate100,
@@ -4913,6 +4948,11 @@ const styles = StyleSheet.create({
     borderColor: '#d1fae5',
     borderRadius: 12,
     padding: 12,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   paxHeaderBadgeEmbarque: {
     backgroundColor: '#e6f7f0',
@@ -4938,6 +4978,11 @@ const styles = StyleSheet.create({
     borderColor: '#fecdd3',
     borderRadius: 12,
     padding: 12,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   paxHeaderBadgeDesembarque: {
     backgroundColor: '#fff1f2',
