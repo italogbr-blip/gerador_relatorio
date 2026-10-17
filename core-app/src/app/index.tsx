@@ -448,11 +448,58 @@ const InfoBoxEditor = ({
 
 export default function ReportGenerator() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<number>(1);
-  const [tabs, setTabs] = useState<number[]>([1]);
-  const [tabStore, setTabStore] = useState<{ [key: number]: TabData }>({
-    1: createDefaultTab(),
+  // --- SISTEMA DE ABAS E LOCALSTORAGE (IDÊNTICO AO INDEX.PHP) ---
+  const [activeTab, setActiveTab] = useState<number>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      const saved = parseInt(localStorage.getItem('mms_active_tab') || '1', 10);
+      if (saved >= 1 && saved <= 4) return saved;
+    }
+    return 1;
   });
+
+  const [tabs, setTabs] = useState<number[]>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      const list: number[] = [];
+      for (let i = 1; i <= 4; i++) {
+        if (localStorage.getItem('mms_tab_' + i)) {
+          list.push(i);
+        }
+      }
+      if (list.length > 0) return list;
+    }
+    return [1];
+  });
+
+  const [tabStore, setTabStore] = useState<{ [key: number]: TabData }>(() => {
+    const initial: { [key: number]: TabData } = {};
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      let foundAny = false;
+      for (let i = 1; i <= 4; i++) {
+        const item = localStorage.getItem('mms_tab_' + i);
+        if (item) {
+          try {
+            initial[i] = JSON.parse(item);
+            foundAny = true;
+          } catch (e) {}
+        }
+      }
+      if (foundAny) return initial;
+    }
+    initial[1] = createDefaultTab();
+    return initial;
+  });
+
+  // Toast Flutuante de Rascunho Salvo (idêntico ao index.php)
+  const [isDraftToastVisible, setIsDraftToastVisible] = useState(false);
+  const draftToastTimeoutRef = useRef<any>(null);
+
+  const mostrarToastSalvo = () => {
+    setIsDraftToastVisible(true);
+    if (draftToastTimeoutRef.current) clearTimeout(draftToastTimeoutRef.current);
+    draftToastTimeoutRef.current = setTimeout(() => {
+      setIsDraftToastVisible(false);
+    }, 1500);
+  };
 
   const { editId } = useLocalSearchParams<{ editId?: string }>();
   const [editingReportId, setEditingReportId] = useState<number | null>(null);
@@ -822,6 +869,16 @@ export default function ReportGenerator() {
     setTabStore((prev) => {
       const existing = prev[activeTab] || createDefaultTab();
       const nextData = typeof updater === 'function' ? updater(existing) : { ...existing, ...updater };
+      
+      // Persistência automática idêntica ao index.php
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('mms_tab_' + activeTab, JSON.stringify(nextData));
+          localStorage.setItem('mms_active_tab', String(activeTab));
+        } catch (e) {}
+      }
+
+      mostrarToastSalvo();
       return { ...prev, [activeTab]: nextData };
     });
   };
@@ -1008,9 +1065,18 @@ export default function ReportGenerator() {
     if (tabs.length < 4) {
       const nextId = tabs.length + 1;
       const userName = userSession?.user?.user_metadata?.name || userSession?.user?.email?.split('@')[0] || '';
-      setTabs([...tabs, nextId]);
-      setTabStore((prev) => ({ ...prev, [nextId]: createDefaultTab(userName) }));
+      const newTabState = createDefaultTab(userName);
+      const newTabs = [...tabs, nextId];
+      setTabs(newTabs);
+      setTabStore((prev) => ({ ...prev, [nextId]: newTabState }));
       setActiveTab(nextId);
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('mms_tab_' + nextId, JSON.stringify(newTabState));
+          localStorage.setItem('mms_active_tab', String(nextId));
+        } catch (e) {}
+      }
+      mostrarToastSalvo();
     }
   };
 
@@ -1032,8 +1098,19 @@ export default function ReportGenerator() {
     delete newStore[tabIndex];
     setTabs(newTabs);
     setTabStore(newStore);
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem('mms_tab_' + tabIndex);
+      } catch (e) {}
+    }
     if (activeTab === tabIndex) {
-      setActiveTab(newTabs[0]);
+      const nextActive = newTabs[0];
+      setActiveTab(nextActive);
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('mms_active_tab', String(nextActive));
+        } catch (e) {}
+      }
     }
   };
 
@@ -1041,8 +1118,14 @@ export default function ReportGenerator() {
     const confirmMsg = "Deseja reiniciar este relatório? Todos os campos preenchidos serão limpos.";
     const executeClear = () => {
       const userName = userSession?.user?.user_metadata?.name || userSession?.user?.email?.split('@')[0] || '';
-      updateCurrentTab(createDefaultTab(userName));
+      const defaultState = createDefaultTab(userName);
+      updateCurrentTab(defaultState);
       setPdfGenerated(false);
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('mms_tab_' + activeTab, JSON.stringify(defaultState));
+        } catch (e) {}
+      }
     };
 
     showCustomConfirm(
@@ -2241,7 +2324,14 @@ export default function ReportGenerator() {
                       isActive ? styles.tabActive : styles.tabInactive,
                       tabs.length === 1 && styles.tabSingle,
                     ]}
-                    onPress={() => setActiveTab(tabId)}
+                    onPress={() => {
+                      setActiveTab(tabId);
+                      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+                        try {
+                          localStorage.setItem('mms_active_tab', String(tabId));
+                        } catch (e) {}
+                      }
+                    }}
                     activeOpacity={0.85}
                   >
                     {tabs.length > 1 && (
@@ -2928,10 +3018,13 @@ export default function ReportGenerator() {
               </View>
             )}
 
-            {/* Indicador de Sincronizado conforme Anexo 4 */}
+            {/* Indicador de Sincronizado idêntico ao index.php */}
             <View style={styles.sincronizadoRow}>
-              <View style={styles.sincronizadoDot} />
-              <Text style={styles.sincronizadoText}>SINCRONIZADO</Text>
+              <View style={styles.pingContainer}>
+                <View style={styles.pingPulse} />
+                <View style={styles.pingCore} />
+              </View>
+              <Text style={styles.sincronizadoText}>Sincronizado</Text>
             </View>
           </View>
         </View>
@@ -3473,6 +3566,14 @@ export default function ReportGenerator() {
           </View>
         </View>
       </Modal>
+
+      {/* Toast Flutuante de Rascunho Salvo (idêntico ao index.php) */}
+      {isDraftToastVisible && (
+        <View style={styles.toastSaveContainer} pointerEvents="none">
+          <View style={styles.toastSaveDot} />
+          <Text style={styles.toastSaveText}>Rascunho Salvo</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -4977,17 +5078,69 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 14,
   },
-  sincronizadoDot: {
+  pingContainer: {
+    width: 12,
+    height: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  pingPulse: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#4ade80',
+    opacity: 0.5,
+  },
+  pingCore: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#10b981',
+    backgroundColor: '#22c55e',
   },
   sincronizadoText: {
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '700',
     color: '#94a3b8',
     letterSpacing: 2,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  toastSaveContainer: {
+    position: 'absolute',
+    bottom: 90,
+    right: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.94)',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 12,
+    zIndex: 10000,
+  },
+  toastSaveDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#34d399',
+    shadowColor: '#34d399',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  toastSaveText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
     fontFamily: modernFont,
   },
