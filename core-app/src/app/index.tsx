@@ -104,6 +104,19 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     const style = document.createElement('style');
     style.id = 'pax-focus-styles';
     style.innerHTML = `
+      @keyframes mmsPingPulse {
+        0% {
+          transform: scale(1);
+          opacity: 0.85;
+        }
+        75%, 100% {
+          transform: scale(2.4);
+          opacity: 0;
+        }
+      }
+      .mms-ping-animated {
+        animation: mmsPingPulse 1.4s cubic-bezier(0, 0, 0.2, 1) infinite !important;
+      }
       #field-pax1 {
         outline: none !important;
         border: 1.5px solid #a7f3d0 !important;
@@ -448,6 +461,100 @@ const InfoBoxEditor = ({
           onSelectionChange={(e) => setMobileSelection(e.nativeEvent.selection)}
         />
       )}
+    </View>
+  );
+};
+
+// Indicador pulsante de status sincronizado (fiel ao index.php e anexo)
+const PulsingStatusDot = () => {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(0.85)).current;
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      const loop = Animated.loop(
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(pulseAnim, {
+              toValue: 2.3,
+              duration: 1400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseAnim, {
+              toValue: 1,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(opacityAnim, {
+              toValue: 0,
+              duration: 1400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(opacityAnim, {
+              toValue: 0.85,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ]),
+        ])
+      );
+      loop.start();
+      return () => loop.stop();
+    }
+  }, [pulseAnim, opacityAnim]);
+
+  if (Platform.OS === 'web') {
+    return (
+      <span
+        style={{
+          position: 'relative',
+          display: 'inline-flex',
+          width: '9px',
+          height: '9px',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <span
+          className="mms-ping-animated"
+          style={{
+            position: 'absolute',
+            display: 'inline-flex',
+            width: '100%',
+            height: '100%',
+            borderRadius: '9999px',
+            backgroundColor: '#4ade80',
+          }}
+        />
+        <span
+          style={{
+            position: 'relative',
+            display: 'inline-flex',
+            width: '9px',
+            height: '9px',
+            borderRadius: '9999px',
+            backgroundColor: '#22c55e',
+          }}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <View style={styles.pingContainer}>
+      <Animated.View
+        style={[
+          styles.pingPulse,
+          {
+            transform: [{ scale: pulseAnim }],
+            opacity: opacityAnim,
+          },
+        ]}
+      />
+      <View style={styles.pingCore} />
     </View>
   );
 };
@@ -3040,13 +3147,10 @@ export default function ReportGenerator() {
               </View>
             )}
 
-            {/* Indicador de Sincronizado idêntico ao index.php */}
+            {/* Indicador de Sincronizado idêntico ao anexo e index.php */}
             <View style={styles.sincronizadoRow}>
-              <View style={styles.pingContainer}>
-                <View style={styles.pingPulse} />
-                <View style={styles.pingCore} />
-              </View>
-              <Text style={styles.sincronizadoText}>Sincronizado</Text>
+              <PulsingStatusDot />
+              <Text style={styles.sincronizadoText}>SINCRONIZADO</Text>
             </View>
 
             {/* Footer Personalizável conforme Anexo 2 */}
@@ -5158,33 +5262,32 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   pingContainer: {
-    width: 12,
-    height: 12,
+    width: 10,
+    height: 10,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   pingPulse: {
     position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#4ade80',
-    opacity: 0.5,
   },
   pingCore: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
     backgroundColor: '#22c55e',
   },
   sincronizadoText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#94a3b8',
-    letterSpacing: 2,
+    color: '#93a5c8',
+    letterSpacing: 2.6,
     textTransform: 'uppercase',
-    fontFamily: modernFont,
+    fontFamily: corporateFont,
   },
   toastSaveContainer: {
     position: 'absolute',
