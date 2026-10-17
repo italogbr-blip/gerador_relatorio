@@ -125,6 +125,8 @@ export default function PainelCoordScreen() {
     } else {
       showCustomAlert('ERRO AO SALVAR', 'Não foi possível gravar a configuração do rodapé.');
     }
+  };
+
   // Controle de Senha do Painel de Coordenação (idêntico a coord/index.php)
   const [isPanelUnlocked, setIsPanelUnlocked] = useState<boolean>(() => {
     if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
