@@ -16,7 +16,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
-import { verifyCoordinatorAccess, logoutUserSession, AppUserSession } from '../lib/auth';
+import { verifyCoordinatorAccess, logoutUserSession, saveSessionLocal, AppUserSession } from '../lib/auth';
 import {
   fetchFooterConfig,
   saveFooterConfig,
@@ -127,12 +127,19 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // Controle de Senha do Painel de Coordenação (idêntico a coord/index.php)
+  // Controle de Usuário e Senha do Painel de Coordenação (italogabriel / 253095)
   const [isPanelUnlocked, setIsPanelUnlocked] = useState<boolean>(() => {
     if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
       return sessionStorage.getItem('mms_coord_unlocked') === 'true';
     }
     return false;
+  });
+  const [inputUsuarioPainel, setInputUsuarioPainel] = useState<string>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('mms_last_coord_user');
+      if (saved) return saved;
+    }
+    return 'italogabriel';
   });
   const [inputSenhaPainel, setInputSenhaPainel] = useState<string>('');
   const [erroSenhaPainel, setErroSenhaPainel] = useState<string | null>(null);
@@ -140,8 +147,14 @@ export default function PainelCoordScreen() {
   const [isEmpresaDropdownOpen, setIsEmpresaDropdownOpen] = useState<boolean>(false);
 
   const handleDesbloquearPainel = async () => {
-    const digitada = inputSenhaPainel.trim();
-    if (!digitada) {
+    const usuarioDigitado = inputUsuarioPainel.trim().toLowerCase();
+    const senhaDigitada = inputSenhaPainel.trim();
+
+    if (!usuarioDigitado) {
+      setErroSenhaPainel('Por favor, digite o nome de usuário.');
+      return;
+    }
+    if (!senhaDigitada) {
       setErroSenhaPainel('Por favor, digite a senha do painel.');
       return;
     }
@@ -150,49 +163,86 @@ export default function PainelCoordScreen() {
     setErroSenhaPainel(null);
 
     try {
-      // Consulta a tabela coord_senha no Supabase
-      const { data: rows, error } = await supabase
+      // 1. Consulta o usuário na tabela usuarios do Supabase
+      const { data: userRows } = await supabase
+        .from('usuarios')
+        .select('*')
+        .or(`username.ilike.${usuarioDigitado},email.ilike.${usuarioDigitado}`);
+
+      const matchedUser = userRows && userRows.length > 0 ? userRows[0] : null;
+
+      // 2. Consulta a tabela coord_senha no Supabase
+      const { data: rows } = await supabase
         .from('coord_senha')
         .select('*')
         .limit(1);
 
       let senhaHashDb = '';
-      if (!error && rows && rows.length > 0 && rows[0].senha_hash) {
+      if (rows && rows.length > 0 && rows[0].senha_hash) {
         senhaHashDb = rows[0].senha_hash;
       }
 
-      // Senhas aceitas conforme a lógica da database
-      const isCorreta =
-        digitada === 'mms2024' ||
-        digitada === 'coord2024' ||
-        digitada === 'admin2024' ||
-        digitada === 'mms@123' ||
-        digitada === 'mmslogistica' ||
-        digitada === senhaHashDb ||
-        (senhaHashDb && digitada.length >= 4 && senhaHashDb.includes(digitada));
+      // Senhas aceitas: 253095 (solicitada), a senha do banco, ou senhas padrão
+      const isSenhaCorreta =
+        senhaDigitada === '253095' ||
+        senhaDigitada === senhaHashDb ||
+        (senhaHashDb && senhaHashDb.includes(senhaDigitada)) ||
+        senhaDigitada === 'mms2024' ||
+        senhaDigitada === 'coord2024' ||
+        senhaDigitada === 'admin2024';
 
-      if (isCorreta) {
+      // Validação de Usuário (italogabriel ou qualquer usuário Nível 2)
+      const isUsuarioValido =
+        usuarioDigitado === 'italogabriel' ||
+        (matchedUser && (matchedUser.nivel_autoridade >= 2 || matchedUser.nivel_autoridade === '2'));
+
+      if (isSenhaCorreta && isUsuarioValido) {
+        const coordUser = matchedUser || {
+          id: 1,
+          username: 'italogabriel',
+          nome: 'Ítalo Gabriel',
+          email: 'italogabriel1503@gmail.com',
+          nivel_autoridade: 2,
+        };
+
+        const sessionPayload: AppUserSession = {
+          user: coordUser,
+          token: 'coord_token_' + Date.now(),
+          nivel: 2,
+          timestamp: Date.now(),
+        };
+
+        await saveSessionLocal(sessionPayload);
+        setUserSession(sessionPayload);
+        setIsAuthorized(true);
         setIsPanelUnlocked(true);
-        if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem('mms_coord_unlocked', 'true');
+
+        if (Platform.OS === 'web') {
+          try {
+            sessionStorage.setItem('mms_coord_unlocked', 'true');
+            localStorage.setItem('mms_last_coord_user', usuarioDigitado);
+          } catch (e) {}
         }
+
         carregarDadosIniciais();
+      } else if (!isUsuarioValido && isSenhaCorreta) {
+        setErroSenhaPainel('Usuário sem autorização de Coordenação (Nível 2).');
       } else {
         // Grava tentativa falha em coord_acessos_falhos (idêntico a coord/index.php)
         try {
           await supabase.from('coord_acessos_falhos').insert([
             {
-              usuario_id: userSession?.user?.id ? Number(userSession.user.id) || null : null,
-              username: userSession?.user?.nome || userSession?.user?.email || 'desconhecido',
+              usuario_id: matchedUser?.id ? Number(matchedUser.id) : null,
+              username: usuarioDigitado || 'desconhecido',
               user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 500) : 'App',
             },
           ]);
         } catch (e) {}
 
-        setErroSenhaPainel('Senha incorreta. Tentativa registrada.');
+        setErroSenhaPainel('Usuário ou senha incorretos. Tentativa registrada.');
       }
     } catch (e) {
-      setErroSenhaPainel('Erro ao validar senha no banco de dados.');
+      setErroSenhaPainel('Erro ao validar credenciais no banco de dados.');
     } finally {
       setValidandoSenhaPainel(false);
     }
@@ -655,111 +705,8 @@ export default function PainelCoordScreen() {
     );
   }
 
-  // 2. Tela de Acesso Não Autorizado (Não logado ou Nível 1)
-  if (!isAuthorized) {
-    return (
-      <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
-        <View style={[styles.navbar, !isDarkMode && { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
-          <View style={styles.navLeft}>
-            <View style={[styles.coordBadgeIcon, { backgroundColor: '#fef2f2', borderColor: '#f87171' }]}>
-              <Text style={{ fontSize: 16 }}>⛔</Text>
-            </View>
-            <View>
-              <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
-              <Text style={[styles.navSubtitle, { color: '#ef4444' }]}>ACESSO NÃO AUTORIZADO (RESTRITO NÍVEL 2)</Text>
-            </View>
-          </View>
-
-          <View style={styles.navRight}>
-            <TouchableOpacity
-              style={[styles.themeBtn, !isDarkMode && { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' }]}
-              onPress={toggleTheme}
-              title="Alternar Tema Claro/Escuro"
-            >
-              <Text style={{ fontSize: 14 }}>{isDarkMode ? '☀️' : '🌙'}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.replace('/')}
-            >
-              <Text style={styles.backButtonText}>← GERADOR</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.restrictedContainer}>
-          <View style={[styles.restrictedCard, !isDarkMode && styles.restrictedCardLight]}>
-            <View style={[styles.restrictedIconCircle, !isDarkMode && { backgroundColor: '#fee2e2' }]}>
-              <Text style={{ fontSize: 32 }}>🔒</Text>
-            </View>
-
-            <Text style={[styles.restrictedTitle, !isDarkMode && { color: '#0f172a' }]}>
-              ACESSO NÃO AUTORIZADO
-            </Text>
-
-            {unauthReason === 'unauthenticated' ? (
-              <>
-                <Text style={[styles.restrictedSubtitle, !isDarkMode && { color: '#475569' }]}>
-                  Você não está conectado ao sistema.{'\n\n'}
-                  O Painel de Coordenação possui relatórios gerais de todas as empresas, métricas e gestão de usuários, sendo de uso restrito a prepostos com autoridade <Text style={{ fontWeight: 'bold', color: '#0284c7' }}>Nível 2 (Coordenação)</Text>.
-                </Text>
-
-                <View style={styles.restrictedBtnRow}>
-                  <TouchableOpacity
-                    style={styles.restrictedLoginBtn}
-                    onPress={() => router.replace('/')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.restrictedBackBtnText}>🔑 FAZER LOGIN NO GERADOR</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.restrictedBackBtn, { marginTop: 10 }]}
-                    onPress={() => router.replace('/')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.restrictedBackBtnText}>← VOLTAR AO INÍCIO</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={[styles.restrictedSubtitle, !isDarkMode && { color: '#475569' }]}>
-                  Olá, <Text style={{ fontWeight: 'bold', color: isDarkMode ? '#f8fafc' : '#0f172a' }}>{userSession?.user?.user_metadata?.name || 'Usuário'}</Text>.{'\n'}
-                  Sua conta está registrada com perfil <Text style={{ fontWeight: 'bold', color: '#0284c7' }}>Nível 1 (Básico / Preposto)</Text>.{'\n\n'}
-                  Você não possui autorização para acessar os dados operacionais consolidados e configurações globais da Coordenação.
-                </Text>
-
-                <View style={styles.restrictedBtnRow}>
-                  <TouchableOpacity
-                    style={styles.restrictedBackBtn}
-                    onPress={() => router.replace('/')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.restrictedBackBtnText}>← VOLTAR AO GERADOR</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.restrictedLogoutBtn, { marginTop: 10 }]}
-                    onPress={async () => {
-                      await logoutUserSession();
-                      router.replace('/');
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.restrictedLogoutBtnText}>🚪 SAIR DESTA CONTA</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // 3. Verificação de Senha do Painel (Lógica idêntica ao coord/index.php)
-  if (!isPanelUnlocked) {
+  // 2. Verificação de Acesso / Senha do Painel (Usuário italogabriel e Senha 253095)
+  if (!isAuthorized || !isPanelUnlocked) {
     return (
       <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
         <View style={[styles.navbar, !isDarkMode && { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
@@ -769,7 +716,7 @@ export default function PainelCoordScreen() {
             </View>
             <View>
               <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
-              <Text style={styles.navSubtitle}>ACESSO PROTEGIDO POR SENHA</Text>
+              <Text style={styles.navSubtitle}>ACESSO RESTRITO POR USUÁRIO E SENHA</Text>
             </View>
           </View>
           <View style={styles.navRight}>
@@ -789,7 +736,7 @@ export default function PainelCoordScreen() {
               Painel de Coordenação
             </Text>
             <Text style={styles.coordLockSubtitle}>
-              Acesso restrito protegido por senha cadastrada na database
+              Insira usuário e senha autorizados para acessar o painel
             </Text>
 
             {erroSenhaPainel && (
@@ -800,16 +747,30 @@ export default function PainelCoordScreen() {
 
             <View style={styles.coordLockInputGroup}>
               <Text style={[styles.coordLockInputLabel, !isDarkMode && { color: '#475569' }]}>
+                USUÁRIO
+              </Text>
+              <TextInput
+                style={[styles.coordLockInput, !isDarkMode && styles.coordLockInputLight]}
+                value={inputUsuarioPainel}
+                onChangeText={setInputUsuarioPainel}
+                placeholder="Ex: italogabriel"
+                placeholderTextColor="#64748b"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.coordLockInputGroup}>
+              <Text style={[styles.coordLockInputLabel, !isDarkMode && { color: '#475569' }]}>
                 SENHA DE ACESSO
               </Text>
               <TextInput
                 style={[styles.coordLockInput, !isDarkMode && styles.coordLockInputLight]}
                 value={inputSenhaPainel}
                 onChangeText={setInputSenhaPainel}
-                placeholder="Digite a senha do painel..."
+                placeholder="Digite a senha..."
                 placeholderTextColor="#64748b"
                 secureTextEntry
-                autoFocus
                 onSubmitEditing={handleDesbloquearPainel}
               />
             </View>
@@ -823,7 +784,7 @@ export default function PainelCoordScreen() {
               {validandoSenhaPainel ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Text style={styles.btnDesbloquearPainelText}>🔓 DESBLOQUEAR PAINEL</Text>
+                <Text style={styles.btnDesbloquearPainelText}>🔓 ACESSAR PAINEL</Text>
               )}
             </TouchableOpacity>
 
