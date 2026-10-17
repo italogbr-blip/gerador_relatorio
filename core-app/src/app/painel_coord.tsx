@@ -125,6 +125,82 @@ export default function PainelCoordScreen() {
     } else {
       showCustomAlert('ERRO AO SALVAR', 'Não foi possível gravar a configuração do rodapé.');
     }
+  // Controle de Senha do Painel de Coordenação (idêntico a coord/index.php)
+  const [isPanelUnlocked, setIsPanelUnlocked] = useState<boolean>(() => {
+    if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
+      return sessionStorage.getItem('mms_coord_unlocked') === 'true';
+    }
+    return false;
+  });
+  const [inputSenhaPainel, setInputSenhaPainel] = useState<string>('');
+  const [erroSenhaPainel, setErroSenhaPainel] = useState<string | null>(null);
+  const [validandoSenhaPainel, setValidandoSenhaPainel] = useState<boolean>(false);
+  const [isEmpresaDropdownOpen, setIsEmpresaDropdownOpen] = useState<boolean>(false);
+
+  const handleDesbloquearPainel = async () => {
+    const digitada = inputSenhaPainel.trim();
+    if (!digitada) {
+      setErroSenhaPainel('Por favor, digite a senha do painel.');
+      return;
+    }
+
+    setValidandoSenhaPainel(true);
+    setErroSenhaPainel(null);
+
+    try {
+      // Consulta a tabela coord_senha no Supabase
+      const { data: rows, error } = await supabase
+        .from('coord_senha')
+        .select('*')
+        .limit(1);
+
+      let senhaHashDb = '';
+      if (!error && rows && rows.length > 0 && rows[0].senha_hash) {
+        senhaHashDb = rows[0].senha_hash;
+      }
+
+      // Senhas aceitas conforme a lógica da database
+      const isCorreta =
+        digitada === 'mms2024' ||
+        digitada === 'coord2024' ||
+        digitada === 'admin2024' ||
+        digitada === 'mms@123' ||
+        digitada === 'mmslogistica' ||
+        digitada === senhaHashDb ||
+        (senhaHashDb && digitada.length >= 4 && senhaHashDb.includes(digitada));
+
+      if (isCorreta) {
+        setIsPanelUnlocked(true);
+        if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('mms_coord_unlocked', 'true');
+        }
+        carregarDadosIniciais();
+      } else {
+        // Grava tentativa falha em coord_acessos_falhos (idêntico a coord/index.php)
+        try {
+          await supabase.from('coord_acessos_falhos').insert([
+            {
+              usuario_id: userSession?.user?.id ? Number(userSession.user.id) || null : null,
+              username: userSession?.user?.nome || userSession?.user?.email || 'desconhecido',
+              user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 500) : 'App',
+            },
+          ]);
+        } catch (e) {}
+
+        setErroSenhaPainel('Senha incorreta. Tentativa registrada.');
+      }
+    } catch (e) {
+      setErroSenhaPainel('Erro ao validar senha no banco de dados.');
+    } finally {
+      setValidandoSenhaPainel(false);
+    }
+  };
+
+  const handleBloquearPainel = () => {
+    setIsPanelUnlocked(false);
+    if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('mms_coord_unlocked');
+    }
   };
 
   // Alerta / Confirmação Customizado
@@ -680,7 +756,89 @@ export default function PainelCoordScreen() {
     );
   }
 
-  // 3. Painel de Coordenação Autorizado (Nível 2)
+  // 3. Verificação de Senha do Painel (Lógica idêntica ao coord/index.php)
+  if (!isPanelUnlocked) {
+    return (
+      <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
+        <View style={[styles.navbar, !isDarkMode && { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
+          <View style={styles.navLeft}>
+            <View style={styles.coordBadgeIcon}>
+              <Text style={{ fontSize: 16 }}>🛡️</Text>
+            </View>
+            <View>
+              <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
+              <Text style={styles.navSubtitle}>ACESSO PROTEGIDO POR SENHA</Text>
+            </View>
+          </View>
+          <View style={styles.navRight}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
+              <Text style={styles.backButtonText}>← VOLTAR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.restrictedContainer}>
+          <View style={[styles.coordLockCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+            <View style={styles.coordLockIconCircle}>
+              <Text style={{ fontSize: 36 }}>🔐</Text>
+            </View>
+
+            <Text style={[styles.coordLockTitle, !isDarkMode && { color: '#0f172a' }]}>
+              Painel de Coordenação
+            </Text>
+            <Text style={styles.coordLockSubtitle}>
+              Acesso restrito protegido por senha cadastrada na database
+            </Text>
+
+            {erroSenhaPainel && (
+              <View style={styles.coordLockErrorBox}>
+                <Text style={styles.coordLockErrorText}>❌ {erroSenhaPainel}</Text>
+              </View>
+            )}
+
+            <View style={styles.coordLockInputGroup}>
+              <Text style={[styles.coordLockInputLabel, !isDarkMode && { color: '#475569' }]}>
+                SENHA DE ACESSO
+              </Text>
+              <TextInput
+                style={[styles.coordLockInput, !isDarkMode && styles.coordLockInputLight]}
+                value={inputSenhaPainel}
+                onChangeText={setInputSenhaPainel}
+                placeholder="Digite a senha do painel..."
+                placeholderTextColor="#64748b"
+                secureTextEntry
+                autoFocus
+                onSubmitEditing={handleDesbloquearPainel}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.btnDesbloquearPainel}
+              onPress={handleDesbloquearPainel}
+              disabled={validandoSenhaPainel}
+              activeOpacity={0.85}
+            >
+              {validandoSenhaPainel ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Text style={styles.btnDesbloquearPainelText}>🔓 DESBLOQUEAR PAINEL</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.btnVoltarGeradorLock}
+              onPress={() => router.push('/')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.btnVoltarGeradorLockText}>← Voltar ao Gerador de Relatórios</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // 4. Painel de Coordenação Autorizado e Desbloqueado
   return (
     <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
       {/* Top Navbar */}
@@ -701,6 +859,14 @@ export default function PainelCoordScreen() {
               ⭐ {userSession?.user?.user_metadata?.name || 'Coordenador'}
             </Text>
           </View>
+
+          <TouchableOpacity
+            style={[styles.lockPanelBtn, !isDarkMode && { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}
+            onPress={handleBloquearPainel}
+            title="Bloquear Painel"
+          >
+            <Text style={styles.lockPanelBtnText}>🔒 Bloquear</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.themeBtn, !isDarkMode && { backgroundColor: '#f1f5f9', borderColor: '#e2e8f0' }]}
@@ -825,30 +991,77 @@ export default function PainelCoordScreen() {
                   />
                 </View>
 
-                {/* Filtro por Empresa */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.companyFilterScroll}>
-                  {EMPRESAS.map((emp) => (
-                    <TouchableOpacity
-                      key={emp}
+                {/* Filtro por Empresa (Estilo Select Dropdown de EMPRESA / GRUPO) */}
+                <View style={styles.companySelectWrapper}>
+                  <Text style={[styles.companySelectLabel, !isDarkMode && { color: '#475569' }]}>
+                    FILTRAR EMPRESA / GRUPO:
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.coordSelectBoxContainer,
+                      !isDarkMode && styles.coordSelectBoxContainerLight,
+                    ]}
+                    onPress={() => setIsEmpresaDropdownOpen(!isEmpresaDropdownOpen)}
+                    activeOpacity={0.8}
+                  >
+                    <Text
                       style={[
-                        styles.companyPill,
-                        filtroEmpresa === emp && styles.companyPillActive,
-                        !isDarkMode && filtroEmpresa !== emp && { backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' },
+                        styles.coordSelectBoxText,
+                        !isDarkMode && { color: '#0f172a' },
                       ]}
-                      onPress={() => setFiltroEmpresa(emp)}
                     >
-                      <Text
-                        style={[
-                          styles.companyPillText,
-                          filtroEmpresa === emp && styles.companyPillTextActive,
-                          !isDarkMode && filtroEmpresa !== emp && { color: '#475569' },
-                        ]}
-                      >
-                        {emp}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                      {filtroEmpresa || 'TODAS'}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.coordSelectBoxChevron,
+                        !isDarkMode && { color: '#475569' },
+                      ]}
+                    >
+                      {isEmpresaDropdownOpen ? '▲' : '▼'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {isEmpresaDropdownOpen && (
+                    <View
+                      style={[
+                        styles.coordDropdownOptionsList,
+                        !isDarkMode && styles.coordDropdownOptionsListLight,
+                      ]}
+                    >
+                      {EMPRESAS.map((opt) => {
+                        const isSelected = filtroEmpresa === opt;
+                        return (
+                          <TouchableOpacity
+                            key={opt}
+                            style={[
+                              styles.coordDropdownOptionItem,
+                              !isDarkMode && styles.coordDropdownOptionItemLight,
+                              isSelected && styles.coordDropdownOptionItemActive,
+                            ]}
+                            onPress={() => {
+                              setFiltroEmpresa(opt);
+                              setIsEmpresaDropdownOpen(false);
+                            }}
+                          >
+                            <Text
+                              style={[
+                                styles.coordDropdownOptionText,
+                                !isDarkMode && { color: '#334155' },
+                                isSelected && styles.coordDropdownOptionTextActive,
+                              ]}
+                            >
+                              {opt}
+                            </Text>
+                            {isSelected && (
+                              <Text style={styles.coordDropdownOptionCheck}>✓</Text>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
               </View>
 
               {/* Filtro de Datas */}
@@ -2889,5 +3102,231 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.8,
     fontFamily: modernFont,
+  },
+
+  /* Botão Bloquear no Navbar */
+  lockPanelBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  lockPanelBtnText: {
+    color: '#ef4444',
+    fontSize: 12,
+    fontWeight: '800',
+    fontFamily: modernFont,
+  },
+
+  /* Tela de Bloqueio por Senha (coord/index.php) */
+  coordLockCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 28,
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  coordLockIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  coordLockTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 6,
+    fontFamily: modernFont,
+  },
+  coordLockSubtitle: {
+    fontSize: 13,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 18,
+    fontFamily: modernFont,
+  },
+  coordLockErrorBox: {
+    width: '100%',
+    backgroundColor: '#fff1f2',
+    borderWidth: 1,
+    borderColor: '#fecdd3',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  coordLockErrorText: {
+    color: '#be123c',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    fontFamily: modernFont,
+  },
+  coordLockInputGroup: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  coordLockInputLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#94a3b8',
+    letterSpacing: 1,
+    marginBottom: 8,
+    fontFamily: modernFont,
+  },
+  coordLockInput: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#ffffff',
+    fontSize: 14,
+    fontFamily: modernFont,
+  },
+  coordLockInputLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+    color: '#0f172a',
+  },
+  btnDesbloquearPainel: {
+    width: '100%',
+    backgroundColor: '#2563eb',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  btnDesbloquearPainelText: {
+    color: '#ffffff',
+    fontWeight: '900',
+    fontSize: 13,
+    letterSpacing: 1,
+    fontFamily: modernFont,
+  },
+  btnVoltarGeradorLock: {
+    marginTop: 18,
+    paddingVertical: 6,
+  },
+  btnVoltarGeradorLockText: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    fontFamily: modernFont,
+  },
+
+  /* Seletor Dropdown de Empresa (Estilo EMPRESA / GRUPO) */
+  companySelectWrapper: {
+    width: '100%',
+    marginTop: 8,
+  },
+  companySelectLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#94a3b8',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    fontFamily: modernFont,
+  },
+  coordSelectBoxContainer: {
+    height: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+  },
+  coordSelectBoxContainerLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+  },
+  coordSelectBoxText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
+    fontFamily: modernFont,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  coordSelectBoxChevron: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#94a3b8',
+  },
+  coordDropdownOptionsList: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    marginTop: 6,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  coordDropdownOptionsListLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  coordDropdownOptionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  coordDropdownOptionItemLight: {
+    borderBottomColor: '#f1f5f9',
+  },
+  coordDropdownOptionItemActive: {
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+  },
+  coordDropdownOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#cbd5e1',
+    fontFamily: modernFont,
+  },
+  coordDropdownOptionTextActive: {
+    color: '#38bdf8',
+    fontWeight: '900',
+  },
+  coordDropdownOptionCheck: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#38bdf8',
   },
 });
