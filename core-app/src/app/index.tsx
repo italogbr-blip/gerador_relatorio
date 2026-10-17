@@ -655,11 +655,42 @@ export default function ReportGenerator() {
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [authMsg, setAuthMsg] = useState<{ type: 'erro' | 'sucesso'; text: string } | null>(null);
 
-  // Focus Refs
-  const m3Ref = useRef<TextInput>(null);
-  const m4Ref = useRef<TextInput>(null);
-  const m5Ref = useRef<TextInput>(null);
-  const m6Ref = useRef<TextInput>(null);
+  // Focus Refs & Auto-Advance
+  const inputRefs = useRef<{ [key: string]: TextInput | null }>({});
+
+  // Detecção se está em WebApp (PWA / Mobile) ou Aplicativo Nativo
+  const [isAppOrMobile, setIsAppOrMobile] = useState<boolean>(() => {
+    if (Platform.OS !== 'web') return true;
+    if (typeof window !== 'undefined') {
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true;
+      const isMobileScreen = window.innerWidth <= 768;
+      const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent
+      );
+      return Boolean(isStandalone || isMobileScreen || isMobileUA);
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const checkMode = () => {
+        const isStandalone =
+          window.matchMedia('(display-mode: standalone)').matches ||
+          (window.navigator as any).standalone === true;
+        const isMobileScreen = window.innerWidth <= 768;
+        const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        );
+        setIsAppOrMobile(Boolean(isStandalone || isMobileScreen || isMobileUA));
+      };
+      checkMode();
+      window.addEventListener('resize', checkMode);
+      return () => window.removeEventListener('resize', checkMode);
+    }
+  }, []);
 
   // Listen to Supabase Session & Local Session
   useEffect(() => {
@@ -1133,12 +1164,47 @@ export default function ReportGenerator() {
     setShowMenu(false);
   };
 
-  // Helper auto-advance hora -> minuto
+  // Sequência e Auto-Advance encadeado de todos os campos de horas e minutos
+  const focusNextTimeField = (currentFieldId: string) => {
+    const sequence: string[] = [];
+    currentData.listaSaidas.forEach((item) => {
+      sequence.push(`field-saida_h1_${item.id}`);
+      sequence.push(`field-saida_m1_${item.id}`);
+      sequence.push(`field-saida_h2_${item.id}`);
+      sequence.push(`field-saida_m2_${item.id}`);
+    });
+    sequence.push('field-h3');
+    sequence.push('field-m3');
+    sequence.push('field-h4');
+    sequence.push('field-m4');
+    sequence.push('field-h5');
+    sequence.push('field-m5');
+    sequence.push('field-h6');
+    sequence.push('field-m6');
+
+    const currIdx = sequence.indexOf(currentFieldId);
+    if (currIdx >= 0 && currIdx < sequence.length - 1) {
+      const nextId = sequence[currIdx + 1];
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        setTimeout(() => {
+          const el = document.getElementById(nextId) as HTMLInputElement | null;
+          if (el) {
+            el.focus();
+          }
+        }, 30);
+      } else {
+        const r = inputRefs.current[nextId];
+        if (r) {
+          r.focus();
+        }
+      }
+    }
+  };
+
   const handleTimeChange = (
     val: string,
     fieldH: keyof TabData,
-    fieldM: keyof TabData,
-    nextRef?: React.RefObject<TextInput | null>
+    fieldId: string
   ) => {
     const clean = val.replace(/\D/g, '');
     let validH = clean;
@@ -1147,12 +1213,12 @@ export default function ReportGenerator() {
       if (num > 23) validH = '23';
     }
     updateCurrentTab({ [fieldH]: validH });
-    if (validH.length === 2 && nextRef?.current) {
-      nextRef.current.focus();
+    if (validH.length === 2) {
+      focusNextTimeField(fieldId);
     }
   };
 
-  const handleMinChange = (val: string, fieldM: keyof TabData) => {
+  const handleMinChange = (val: string, fieldM: keyof TabData, fieldId: string) => {
     const clean = val.replace(/\D/g, '');
     let validM = clean;
     if (clean !== '') {
@@ -1160,6 +1226,9 @@ export default function ReportGenerator() {
       if (num > 59) validM = '59';
     }
     updateCurrentTab({ [fieldM]: validM });
+    if (validM.length === 2) {
+      focusNextTimeField(fieldId);
+    }
   };
 
   // Saída hotel handlers
@@ -1185,22 +1254,32 @@ export default function ReportGenerator() {
   };
 
   const updateSaidaItem = (id: string, field: keyof SaidaItem, val: string) => {
+    let finalVal = val;
+    let shouldAdvance = false;
+
+    if (field === 'h1' || field === 'h2') {
+      const clean = val.replace(/\D/g, '');
+      if (clean !== '' && parseInt(clean, 10) > 23) finalVal = '23';
+      else finalVal = clean;
+      if (finalVal.length === 2) shouldAdvance = true;
+    } else if (field === 'm1' || field === 'm2') {
+      const clean = val.replace(/\D/g, '');
+      if (clean !== '' && parseInt(clean, 10) > 59) finalVal = '59';
+      else finalVal = clean;
+      if (finalVal.length === 2) shouldAdvance = true;
+    }
+
     updateCurrentTab({
       listaSaidas: currentData.listaSaidas.map((item) => {
         if (item.id !== id) return item;
-        let finalVal = val;
-        if (field === 'h1' || field === 'h2') {
-          const clean = val.replace(/\D/g, '');
-          if (clean !== '' && parseInt(clean, 10) > 23) finalVal = '23';
-          else finalVal = clean;
-        } else if (field === 'm1' || field === 'm2') {
-          const clean = val.replace(/\D/g, '');
-          if (clean !== '' && parseInt(clean, 10) > 59) finalVal = '59';
-          else finalVal = clean;
-        }
         return { ...item, [field]: finalVal };
       }),
     });
+
+    if (shouldAdvance) {
+      const currentFieldId = `field-saida_${field}_${id}`;
+      focusNextTimeField(currentFieldId);
+    }
   };
 
   const toggleSemSaida = () => {
@@ -2138,97 +2217,99 @@ export default function ReportGenerator() {
               )}
             </View>
 
-            {/* Unidade & Data */}
-            <View style={styles.rowSplit}>
-              <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.label}>UNIDADE:</Text>
-                <TextInput
-                  nativeID="field-unidade"
-                  style={[styles.input, { textTransform: 'uppercase' }, fieldErrors.unidade && styles.inputError]}
-                  value={currentData.unidade}
-                  onChangeText={(val) => updateCurrentTab({ unidade: val.toUpperCase() })}
-                  placeholder="Ex: LONE STAR SS79"
-                  placeholderTextColor={colors.slate400}
-                  autoCapitalize="characters"
-                />
-              </View>
-              <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                <Text style={styles.label}>DATA:</Text>
-                {Platform.OS === 'web' ? (
-                  <input
-                    id="field-data"
-                    type={currentData.data ? 'date' : 'text'}
-                    value={currentData.data}
-                    onChange={(e: any) => updateCurrentTab({ data: e.target.value })}
-                    onClick={(e: any) => {
-                      e.target.type = 'date';
-                      try {
-                        e.target.showPicker();
-                      } catch (err) {}
-                    }}
-                    onFocus={(e: any) => {
-                      e.target.type = 'date';
-                      try {
-                        e.target.showPicker();
-                      } catch (err) {}
-                    }}
-                    onBlur={(e: any) => {
-                      if (!e.target.value) e.target.type = 'text';
-                    }}
-                    placeholder="Selecionar a data aqui 📅"
-                    style={{
-                      border: fieldErrors.data ? '2px solid #f87171' : '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      fontSize: '13px',
-                      fontFamily: corporateFont,
-                      backgroundColor: fieldErrors.data ? '#ffe4e6' : '#f8fafc',
-                      color: '#1e293b',
-                      width: '100%',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                ) : (
-                  <TextInput
-                    nativeID="field-data"
-                    style={[styles.input, fieldErrors.data && styles.inputError]}
-                    value={currentData.data}
-                    onChangeText={(val) => updateCurrentTab({ data: val })}
-                    placeholder="Selecionar a data aqui 📅"
-                    placeholderTextColor={colors.slate400}
-                  />
-                )}
-              </View>
+            {/* Unidade */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>UNIDADE:</Text>
+              <TextInput
+                nativeID="field-unidade"
+                id="field-unidade"
+                style={[styles.input, { textTransform: 'uppercase' }, fieldErrors.unidade && styles.inputError]}
+                value={currentData.unidade}
+                onChangeText={(val) => updateCurrentTab({ unidade: val.toUpperCase() })}
+                placeholder="Ex: LONE STAR SS79"
+                placeholderTextColor={colors.slate400}
+                autoCapitalize="characters"
+              />
             </View>
 
-            {/* Local & Modal */}
-            <View style={styles.rowSplit}>
-              <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.label}>LOCAL:</Text>
+            {/* Data */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>DATA:</Text>
+              {Platform.OS === 'web' ? (
+                <input
+                  id="field-data"
+                  type={currentData.data ? 'date' : 'text'}
+                  value={currentData.data}
+                  onChange={(e: any) => updateCurrentTab({ data: e.target.value })}
+                  onClick={(e: any) => {
+                    e.target.type = 'date';
+                    try {
+                      e.target.showPicker();
+                    } catch (err) {}
+                  }}
+                  onFocus={(e: any) => {
+                    e.target.type = 'date';
+                    try {
+                      e.target.showPicker();
+                    } catch (err) {}
+                  }}
+                  onBlur={(e: any) => {
+                    if (!e.target.value) e.target.type = 'text';
+                  }}
+                  placeholder="Selecionar a data aqui 📅"
+                  style={{
+                    border: fieldErrors.data ? '2px solid #f87171' : '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    fontSize: '13px',
+                    fontFamily: corporateFont,
+                    backgroundColor: fieldErrors.data ? '#ffe4e6' : '#f8fafc',
+                    color: '#1e293b',
+                    width: '100%',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              ) : (
                 <TextInput
-                  nativeID="field-local"
-                  id="field-local"
-                  style={[styles.input, fieldErrors.local && styles.inputError]}
-                  value={currentData.local}
-                  onChangeText={(val) => updateCurrentTab({ local:val })}
-                  placeholder="Local de atendimento"
+                  nativeID="field-data"
+                  id="field-data"
+                  style={[styles.input, fieldErrors.data && styles.inputError]}
+                  value={currentData.data}
+                  onChangeText={(val) => updateCurrentTab({ data: val })}
+                  placeholder="Selecionar a data aqui 📅"
                   placeholderTextColor={colors.slate400}
                 />
-              </View>
-              <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                <Text style={styles.label}>MODAL:</Text>
-                <TextInput
-                  nativeID="field-modal"
-                  id="field-modal"
-                  style={[styles.input, fieldErrors.modal && styles.inputError]}
-                  value={currentData.modal}
-                  onChangeText={(val) => updateCurrentTab({ modal: val })}
-                  placeholder="Helicóptero"
-                  placeholderTextColor={colors.slate400}
-                />
-              </View>
+              )}
+            </View>
+
+            {/* Local */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>LOCAL:</Text>
+              <TextInput
+                nativeID="field-local"
+                id="field-local"
+                style={[styles.input, fieldErrors.local && styles.inputError]}
+                value={currentData.local}
+                onChangeText={(val) => updateCurrentTab({ local: val })}
+                placeholder="Local de atendimento"
+                placeholderTextColor={colors.slate400}
+              />
+            </View>
+
+            {/* Modal */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>MODAL:</Text>
+              <TextInput
+                nativeID="field-modal"
+                id="field-modal"
+                style={[styles.input, fieldErrors.modal && styles.inputError]}
+                value={currentData.modal}
+                onChangeText={(val) => updateCurrentTab({ modal: val })}
+                placeholder="Helicóptero"
+                placeholderTextColor={colors.slate400}
+              />
             </View>
 
             {/* Observação Troca */}
@@ -2295,7 +2376,7 @@ export default function ReportGenerator() {
 
                 {currentData.listaSaidas.map((item, idx) => (
                   <View key={item.id} style={styles.saidaRowContainer}>
-                    <View style={styles.saidaFieldHeader}>
+                    <View style={styles.timeSectionBlock}>
                       <View style={styles.saidaLabelGroup}>
                         <TextInput
                           style={[
@@ -2313,43 +2394,55 @@ export default function ReportGenerator() {
                       <View style={styles.timeInputsWrapper}>
                         <TextInput
                           nativeID={`field-saida_h1_${item.id}`}
+                          id={`field-saida_h1_${item.id}`}
+                          ref={(r) => { if (r) inputRefs.current[`field-saida_h1_${item.id}`] = r; }}
                           style={[styles.timeInput, currentData.semSaida && styles.disabledInput, fieldErrors[`saida_h1_${item.id}`] && styles.inputError]}
                           value={item.h1}
                           onChangeText={(val) => updateSaidaItem(item.id, 'h1', val)}
-                          maxLength={3}
+                          maxLength={2}
+                          keyboardType="numeric"
                           editable={!currentData.semSaida}
                         />
                         <Text style={styles.timeSufix}>h</Text>
                         <TextInput
                           nativeID={`field-saida_m1_${item.id}`}
+                          id={`field-saida_m1_${item.id}`}
+                          ref={(r) => { if (r) inputRefs.current[`field-saida_m1_${item.id}`] = r; }}
                           style={[styles.timeInput, currentData.semSaida && styles.disabledInput, fieldErrors[`saida_m1_${item.id}`] && styles.inputError]}
                           value={item.m1}
                           onChangeText={(val) => updateSaidaItem(item.id, 'm1', val)}
                           maxLength={2}
+                          keyboardType="numeric"
                           editable={!currentData.semSaida}
                         />
                         <Text style={styles.timeSufix}>m</Text>
                       </View>
                     </View>
 
-                    <View style={styles.saidaFieldHeader}>
-                      <Text style={styles.saidaRealLabel}>Real:</Text>
+                    <View style={[styles.timeSectionBlock, { marginTop: 16 }]}>
+                      <Text style={styles.saidaRealLabel}>REAL:</Text>
                       <View style={styles.timeInputsWrapper}>
                         <TextInput
                           nativeID={`field-saida_h2_${item.id}`}
+                          id={`field-saida_h2_${item.id}`}
+                          ref={(r) => { if (r) inputRefs.current[`field-saida_h2_${item.id}`] = r; }}
                           style={[styles.timeInput, currentData.semSaida && styles.disabledInput, fieldErrors[`saida_h2_${item.id}`] && styles.inputError]}
                           value={item.h2}
                           onChangeText={(val) => updateSaidaItem(item.id, 'h2', val)}
-                          maxLength={3}
+                          maxLength={2}
+                          keyboardType="numeric"
                           editable={!currentData.semSaida}
                         />
                         <Text style={styles.timeSufix}>h</Text>
                         <TextInput
                           nativeID={`field-saida_m2_${item.id}`}
+                          id={`field-saida_m2_${item.id}`}
+                          ref={(r) => { if (r) inputRefs.current[`field-saida_m2_${item.id}`] = r; }}
                           style={[styles.timeInput, currentData.semSaida && styles.disabledInput, fieldErrors[`saida_m2_${item.id}`] && styles.inputError]}
                           value={item.m2}
                           onChangeText={(val) => updateSaidaItem(item.id, 'm2', val)}
                           maxLength={2}
+                          keyboardType="numeric"
                           editable={!currentData.semSaida}
                         />
                         <Text style={styles.timeSufix}>m</Text>
@@ -2372,7 +2465,7 @@ export default function ReportGenerator() {
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.btnNovaSaida} onPress={addSaidaLine}>
-                  <Text style={styles.btnNovaSaidaText}>+ Adicionar Nova Saída</Text>
+                  <Text style={styles.btnNovaSaidaText}>+ ADICIONAR NOVA SAÍDA</Text>
                 </TouchableOpacity>
               </View>
 
@@ -2382,28 +2475,36 @@ export default function ReportGenerator() {
                   <Text style={styles.horarioBadge}>EMBARQUE</Text>
                 </View>
 
-                <View style={styles.timeRow}>
-                  <Text style={styles.timeRowLabel}>PREVISÃO:</Text>
-                  <View style={styles.timeInputsWrapper}>
-                    <TextInput
-                      nativeID="field-h3"
-                      style={[styles.timeInput, currentData.semEmbarquePrev && styles.disabledInput, fieldErrors.h3 && styles.inputError]}
-                      value={currentData.h3}
-                      onChangeText={(val) => handleTimeChange(val, 'h3', 'm3', m3Ref)}
-                      maxLength={3}
-                      editable={!currentData.semEmbarquePrev}
-                    />
-                    <Text style={styles.timeSufix}>h</Text>
-                    <TextInput
-                      nativeID="field-m3"
-                      ref={m3Ref}
-                      style={[styles.timeInput, currentData.semEmbarquePrev && styles.disabledInput, fieldErrors.m3 && styles.inputError]}
-                      value={currentData.m3}
-                      onChangeText={(val) => handleMinChange(val, 'm3')}
-                      maxLength={2}
-                      editable={!currentData.semEmbarquePrev}
-                    />
-                    <Text style={styles.timeSufix}>m</Text>
+                {/* Previsão Embarque */}
+                <View style={styles.saidaRowContainer}>
+                  <View style={styles.timeSectionBlock}>
+                    <Text style={styles.timeSectionLabel}>PREVISÃO:</Text>
+                    <View style={styles.timeInputsWrapper}>
+                      <TextInput
+                        nativeID="field-h3"
+                        id="field-h3"
+                        ref={(r) => { if (r) inputRefs.current['field-h3'] = r; }}
+                        style={[styles.timeInput, currentData.semEmbarquePrev && styles.disabledInput, fieldErrors.h3 && styles.inputError]}
+                        value={currentData.h3}
+                        onChangeText={(val) => handleTimeChange(val, 'h3', 'field-h3')}
+                        maxLength={2}
+                        keyboardType="numeric"
+                        editable={!currentData.semEmbarquePrev}
+                      />
+                      <Text style={styles.timeSufix}>h</Text>
+                      <TextInput
+                        nativeID="field-m3"
+                        id="field-m3"
+                        ref={(r) => { if (r) inputRefs.current['field-m3'] = r; }}
+                        style={[styles.timeInput, currentData.semEmbarquePrev && styles.disabledInput, fieldErrors.m3 && styles.inputError]}
+                        value={currentData.m3}
+                        onChangeText={(val) => handleMinChange(val, 'm3', 'field-m3')}
+                        maxLength={2}
+                        keyboardType="numeric"
+                        editable={!currentData.semEmbarquePrev}
+                      />
+                      <Text style={styles.timeSufix}>m</Text>
+                    </View>
                   </View>
                 </View>
 
@@ -2414,28 +2515,36 @@ export default function ReportGenerator() {
                   <Text style={styles.checkboxLabel}>N/A EMBARQUE</Text>
                 </TouchableOpacity>
 
-                <View style={styles.timeRow}>
-                  <Text style={styles.timeRowLabel}>REAL:</Text>
-                  <View style={styles.timeInputsWrapper}>
-                    <TextInput
-                      nativeID="field-h4"
-                      style={[styles.timeInput, currentData.semEmbarque && styles.disabledInput, fieldErrors.h4 && styles.inputError]}
-                      value={currentData.h4}
-                      onChangeText={(val) => handleTimeChange(val, 'h4', 'm4', m4Ref)}
-                      maxLength={3}
-                      editable={!currentData.semEmbarque}
-                    />
-                    <Text style={styles.timeSufix}>h</Text>
-                    <TextInput
-                      nativeID="field-m4"
-                      ref={m4Ref}
-                      style={[styles.timeInput, currentData.semEmbarque && styles.disabledInput, fieldErrors.m4 && styles.inputError]}
-                      value={currentData.m4}
-                      onChangeText={(val) => handleMinChange(val, 'm4')}
-                      maxLength={2}
-                      editable={!currentData.semEmbarque}
-                    />
-                    <Text style={styles.timeSufix}>m</Text>
+                {/* Real Embarque */}
+                <View style={styles.saidaRowContainer}>
+                  <View style={styles.timeSectionBlock}>
+                    <Text style={styles.timeSectionLabel}>REAL:</Text>
+                    <View style={styles.timeInputsWrapper}>
+                      <TextInput
+                        nativeID="field-h4"
+                        id="field-h4"
+                        ref={(r) => { if (r) inputRefs.current['field-h4'] = r; }}
+                        style={[styles.timeInput, currentData.semEmbarque && styles.disabledInput, fieldErrors.h4 && styles.inputError]}
+                        value={currentData.h4}
+                        onChangeText={(val) => handleTimeChange(val, 'h4', 'field-h4')}
+                        maxLength={2}
+                        keyboardType="numeric"
+                        editable={!currentData.semEmbarque}
+                      />
+                      <Text style={styles.timeSufix}>h</Text>
+                      <TextInput
+                        nativeID="field-m4"
+                        id="field-m4"
+                        ref={(r) => { if (r) inputRefs.current['field-m4'] = r; }}
+                        style={[styles.timeInput, currentData.semEmbarque && styles.disabledInput, fieldErrors.m4 && styles.inputError]}
+                        value={currentData.m4}
+                        onChangeText={(val) => handleMinChange(val, 'm4', 'field-m4')}
+                        maxLength={2}
+                        keyboardType="numeric"
+                        editable={!currentData.semEmbarque}
+                      />
+                      <Text style={styles.timeSufix}>m</Text>
+                    </View>
                   </View>
                 </View>
 
@@ -2453,49 +2562,65 @@ export default function ReportGenerator() {
                   <Text style={styles.horarioBadge}>ATENDIMENTO</Text>
                 </View>
 
-                <View style={styles.timeRow}>
-                  <Text style={styles.timeRowLabel}>INÍCIO:</Text>
-                  <View style={styles.timeInputsWrapper}>
-                    <TextInput
-                      nativeID="field-h5"
-                      style={[styles.timeInput, fieldErrors.h5 && styles.inputError]}
-                      value={currentData.h5}
-                      onChangeText={(val) => handleTimeChange(val, 'h5', 'm5', m5Ref)}
-                      maxLength={2}
-                    />
-                    <Text style={styles.timeSufix}>h</Text>
-                    <TextInput
-                      nativeID="field-m5"
-                      ref={m5Ref}
-                      style={[styles.timeInput, fieldErrors.m5 && styles.inputError]}
-                      value={currentData.m5}
-                      onChangeText={(val) => handleMinChange(val, 'm5')}
-                      maxLength={2}
-                    />
-                    <Text style={styles.timeSufix}>m</Text>
+                {/* Início Atendimento */}
+                <View style={styles.saidaRowContainer}>
+                  <View style={styles.timeSectionBlock}>
+                    <Text style={styles.timeSectionLabel}>INÍCIO:</Text>
+                    <View style={styles.timeInputsWrapper}>
+                      <TextInput
+                        nativeID="field-h5"
+                        id="field-h5"
+                        ref={(r) => { if (r) inputRefs.current['field-h5'] = r; }}
+                        style={[styles.timeInput, fieldErrors.h5 && styles.inputError]}
+                        value={currentData.h5}
+                        onChangeText={(val) => handleTimeChange(val, 'h5', 'field-h5')}
+                        maxLength={2}
+                        keyboardType="numeric"
+                      />
+                      <Text style={styles.timeSufix}>h</Text>
+                      <TextInput
+                        nativeID="field-m5"
+                        id="field-m5"
+                        ref={(r) => { if (r) inputRefs.current['field-m5'] = r; }}
+                        style={[styles.timeInput, fieldErrors.m5 && styles.inputError]}
+                        value={currentData.m5}
+                        onChangeText={(val) => handleMinChange(val, 'm5', 'field-m5')}
+                        maxLength={2}
+                        keyboardType="numeric"
+                      />
+                      <Text style={styles.timeSufix}>m</Text>
+                    </View>
                   </View>
                 </View>
 
-                <View style={[styles.timeRow, { marginTop: 8 }]}>
-                  <Text style={styles.timeRowLabel}>FIM:</Text>
-                  <View style={styles.timeInputsWrapper}>
-                    <TextInput
-                      nativeID="field-h6"
-                      style={[styles.timeInput, fieldErrors.h6 && styles.inputError]}
-                      value={currentData.h6}
-                      onChangeText={(val) => handleTimeChange(val, 'h6', 'm6', m6Ref)}
-                      maxLength={2}
-                    />
-                    <Text style={styles.timeSufix}>h</Text>
-                    <TextInput
-                      nativeID="field-m6"
-                      ref={m6Ref}
-                      style={[styles.timeInput, fieldErrors.m6 && styles.inputError]}
-                      value={currentData.m6}
-                      onChangeText={(val) => handleMinChange(val, 'm6')}
-                      maxLength={2}
-                    />
-                    <Text style={styles.timeSufix}>m</Text>
+                {/* Fim Atendimento */}
+                <View style={styles.saidaRowContainer}>
+                  <View style={styles.timeSectionBlock}>
+                    <Text style={styles.timeSectionLabel}>FIM:</Text>
+                    <View style={styles.timeInputsWrapper}>
+                      <TextInput
+                        nativeID="field-h6"
+                        id="field-h6"
+                        ref={(r) => { if (r) inputRefs.current['field-h6'] = r; }}
+                        style={[styles.timeInput, fieldErrors.h6 && styles.inputError]}
+                        value={currentData.h6}
+                        onChangeText={(val) => handleTimeChange(val, 'h6', 'field-h6')}
+                        maxLength={2}
+                        keyboardType="numeric"
+                      />
+                      <Text style={styles.timeSufix}>h</Text>
+                      <TextInput
+                        nativeID="field-m6"
+                        id="field-m6"
+                        ref={(r) => { if (r) inputRefs.current['field-m6'] = r; }}
+                        style={[styles.timeInput, fieldErrors.m6 && styles.inputError]}
+                        value={currentData.m6}
+                        onChangeText={(val) => handleMinChange(val, 'm6', 'field-m6')}
+                        maxLength={2}
+                        keyboardType="numeric"
+                      />
+                      <Text style={styles.timeSufix}>m</Text>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -2854,43 +2979,45 @@ export default function ReportGenerator() {
         </View>
       </ScrollView>
 
-      {/* Barra Flutuante de Navegação Inferior (Fiel aos Anexos 2, 3 e 4) */}
-      <View style={styles.floatingNavWrapper} pointerEvents="box-none">
-        <View style={styles.floatingNavPill}>
-          <TouchableOpacity
-            style={styles.floatingNavItem}
-            onPress={limparTudo}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.floatingNavIcon}>🔄</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.floatingNavItem}
-            onPress={() => router.push('/meus_relatorios')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.floatingNavIcon}>⚙️</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.floatingNavItem}
-            onPress={() => {
-              if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                window.open('https://relatorios.atmai.com.br', '_blank');
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.floatingNavIcon}>🌐</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.floatingNavItem}
-            onPress={() => router.push('/meus_relatorios')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.floatingNavIcon}>↪️</Text>
-          </TouchableOpacity>
+      {/* Barra Flutuante de Navegação Inferior (Exclusiva para WebApp Mobile e Aplicativo) */}
+      {isAppOrMobile && (
+        <View style={styles.floatingNavWrapper} pointerEvents="box-none">
+          <View style={styles.floatingNavPill}>
+            <TouchableOpacity
+              style={styles.floatingNavItem}
+              onPress={limparTudo}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.floatingNavIcon}>🔄</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.floatingNavItem}
+              onPress={() => router.push('/meus_relatorios')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.floatingNavIcon}>⚙️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.floatingNavItem}
+              onPress={() => {
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                  window.open('https://relatorios.atmai.com.br', '_blank');
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.floatingNavIcon}>🌐</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.floatingNavItem}
+              onPress={() => router.push('/meus_relatorios')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.floatingNavIcon}>↪️</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Modal Autenticação Supabase */}
       <Modal visible={isAuthModalVisible} transparent animationType="fade">
@@ -3948,6 +4075,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+  },
+  timeSectionBlock: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  timeSectionLabel: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#0f172a',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+    textAlign: 'center',
+    fontFamily: corporateFont,
   },
   saidaLabelGroup: {
     flexDirection: 'row',
