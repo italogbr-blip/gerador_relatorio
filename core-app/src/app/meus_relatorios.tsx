@@ -17,7 +17,8 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
-import { getSavedSessionSync, getValidatedUserSession, AppUserSession } from '../lib/auth';
+import { getSavedSessionSync, getValidatedUserSession, authenticateUser, AppUserSession } from '../lib/auth';
+import { gerarHtmlPdfFidelidade } from '../lib/pdfHtmlGenerator';
 
 const modernFont = Platform.OS === 'web'
   ? "'Inter', system-ui, -apple-system, sans-serif"
@@ -90,6 +91,35 @@ export default function MeusRelatoriosScreen() {
     title: '',
     message: '',
   });
+
+  // Estados do formulário de login integrado na página
+  const [loginInput, setLoginInput] = useState<string>('');
+  const [loginPass, setLoginPass] = useState<string>('');
+  const [loginLoading, setLoginLoading] = useState<boolean>(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const handleInlineLogin = async () => {
+    setLoginError(null);
+    if (!loginInput.trim() || !loginPass.trim()) {
+      setLoginError('Por favor, informe seu usuário ou e-mail e sua senha.');
+      return;
+    }
+    setLoginLoading(true);
+    const res = await authenticateUser(loginInput, loginPass);
+    setLoginLoading(false);
+    if (!res.success || !res.session) {
+      setLoginError(res.error || 'Credenciais inválidas.');
+      return;
+    }
+    setUserSession(res.session);
+    fetchRelatorios(res.session);
+  };
+
+  const handleEditarRelatorio = (report: any) => {
+    if (!report) return;
+    setSelectedReport(null);
+    router.push({ pathname: '/', params: { editId: String(report.id) } });
+  };
 
   // Carregar Relatórios do Supabase
   const fetchRelatorios = async (sessionParam = userSession) => {
@@ -213,8 +243,34 @@ export default function MeusRelatoriosScreen() {
       return;
     }
 
-    // Fallback para download no servidor PHP caso não haja URL salva no banco
-    if (Platform.OS === 'web') {
+    // Renderização de Alta Fidelidade no Navegador (Idêntica ao layout PHP)
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const dataObj = parseReportData(report) || {};
+      const html = gerarHtmlPdfFidelidade({
+        grupo: dataObj.grupo || report.empresa,
+        unidade: dataObj.unidade || report.unidade,
+        data: dataObj.data || (report.data_criacao ? report.data_criacao.split('T')[0] : ''),
+        local: dataObj.local || report.local_atendimento,
+        modal: dataObj.modal || 'Helicóptero',
+        preposto: dataObj.preposto || report.preposto,
+        horarios: dataObj.horarios,
+        info_troca: dataObj.info_troca || dataObj.info,
+        pax_embarcando: dataObj.pax_embarcando || dataObj.pax1,
+        pax_desembarcando: dataObj.pax_desembarcando || dataObj.pax2,
+        fotos: dataObj.fotos || [],
+        alinhamentoInfo: dataObj.alinhamentoInfo || 'left',
+      });
+
+      const printWin = window.open('', '_blank');
+      if (printWin) {
+        printWin.document.write(html);
+        printWin.document.close();
+        setTimeout(() => {
+          printWin.focus();
+          printWin.print();
+        }, 350);
+        return;
+      }
       window.open(`${PHP_SERVER_URL}/download_pdf.php?id=${report.id}`, '_blank');
     }
   };
@@ -333,44 +389,194 @@ export default function MeusRelatoriosScreen() {
             <TouchableOpacity style={styles.btnThemeToggle} onPress={toggleTheme}>
               <Text style={styles.btnThemeToggleText}>{isDarkMode ? '🌙' : '☀️'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.btnVoltar} onPress={() => router.replace('/')}>
-              <Text style={styles.btnVoltarText}>← VOLTAR AO GERADOR</Text>
+            <TouchableOpacity style={styles.btnVoltar} onPress={() => router.push('/')}>
+              <Text style={styles.btnVoltarText}>← GERADOR</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <View style={{
-            backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
-            borderRadius: 16,
-            padding: 32,
-            alignItems: 'center',
-            maxWidth: 440,
-            width: '90%',
-            borderWidth: 1,
-            borderColor: isDarkMode ? '#334155' : '#e2e8f0',
-            shadowColor: '#000',
-            shadowOpacity: 0.1,
-            shadowRadius: 10,
-          }}>
-            <Text style={{ fontSize: 36, marginBottom: 12 }}>🔒</Text>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: isDarkMode ? '#ffffff' : '#0f172a', marginBottom: 8, textAlign: 'center', fontFamily: modernFont }}>
-              ACESSO RESTRITO
-            </Text>
-            <Text style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', lineHeight: 20, marginBottom: 20, fontFamily: modernFont }}>
-              O Histórico de Relatórios é exclusivo para usuários autenticados. Faça login para visualizar e consultar os relatórios da sua conta.
-            </Text>
-            <TouchableOpacity
-              style={[styles.btnVoltar, { width: '100%', alignItems: 'center', paddingVertical: 12 }]}
-              onPress={() => router.replace('/')}
-            >
-              <Text style={styles.btnVoltarText}>🔑 IR PARA LOGIN NO GERADOR</Text>
-            </TouchableOpacity>
+          <View
+            style={{
+              backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+              borderRadius: 20,
+              padding: 32,
+              maxWidth: 440,
+              width: '100%',
+              borderWidth: 1,
+              borderColor: isDarkMode ? '#334155' : '#e2e8f0',
+              shadowColor: '#000',
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+              elevation: 4,
+            }}
+          >
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View
+                style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: 29,
+                  backgroundColor: isDarkMode ? '#0f172a' : '#eff6ff',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <Text style={{ fontSize: 26 }}>🔒</Text>
+              </View>
+              <Text
+                style={{
+                  fontSize: 19,
+                  fontWeight: '900',
+                  color: isDarkMode ? '#f8fafc' : '#0f172a',
+                  marginBottom: 6,
+                  textAlign: 'center',
+                  fontFamily: modernFont,
+                  letterSpacing: 0.5,
+                }}
+              >
+                ACESSO AO HISTÓRICO
+              </Text>
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: isDarkMode ? '#94a3b8' : '#64748b',
+                  textAlign: 'center',
+                  lineHeight: 20,
+                  fontFamily: modernFont,
+                }}
+              >
+                Para acessar o conteúdo e histórico dos relatórios, é necessário estar conectado com sua conta.
+              </Text>
+            </View>
+
+            {loginError && (
+              <View
+                style={{
+                  backgroundColor: '#fee2e2',
+                  borderWidth: 1,
+                  borderColor: '#fca5a5',
+                  borderRadius: 10,
+                  padding: 12,
+                  marginBottom: 16,
+                }}
+              >
+                <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700', textAlign: 'center' }}>
+                  ⚠️ {loginError}
+                </Text>
+              </View>
+            )}
+
+            <View style={{ gap: 14 }}>
+              <View>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '800',
+                    color: isDarkMode ? '#cbd5e1' : '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.8,
+                    marginBottom: 6,
+                  }}
+                >
+                  Usuário ou E-mail
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
+                    borderWidth: 1.5,
+                    borderColor: isDarkMode ? '#334155' : '#cbd5e1',
+                    borderRadius: 10,
+                    padding: 12,
+                    fontSize: 14,
+                    color: isDarkMode ? '#ffffff' : '#0f172a',
+                    outlineStyle: 'none',
+                  }}
+                  placeholder="Seu usuário ou e-mail"
+                  placeholderTextColor="#94a3b8"
+                  value={loginInput}
+                  onChangeText={setLoginInput}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '800',
+                    color: isDarkMode ? '#cbd5e1' : '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.8,
+                    marginBottom: 6,
+                  }}
+                >
+                  Senha
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
+                    borderWidth: 1.5,
+                    borderColor: isDarkMode ? '#334155' : '#cbd5e1',
+                    borderRadius: 10,
+                    padding: 12,
+                    fontSize: 14,
+                    color: isDarkMode ? '#ffffff' : '#0f172a',
+                    outlineStyle: 'none',
+                  }}
+                  placeholder="Sua senha"
+                  placeholderTextColor="#94a3b8"
+                  value={loginPass}
+                  onChangeText={setLoginPass}
+                  secureTextEntry
+                  onSubmitEditing={handleInlineLogin}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#2563eb',
+                  borderRadius: 10,
+                  paddingVertical: 14,
+                  alignItems: 'center',
+                  marginTop: 6,
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                onPress={handleInlineLogin}
+                disabled={loginLoading}
+                activeOpacity={0.85}
+              >
+                {loginLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                    Entrar e Acessar Relatórios
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: 'transparent',
+                  paddingVertical: 10,
+                  alignItems: 'center',
+                }}
+                onPress={() => router.push('/')}
+              >
+                <Text style={{ color: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12, fontWeight: '700' }}>
+                  ← Voltar para o Gerador
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </SafeAreaView>
     );
   }
+
 
   return (
     <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
@@ -558,6 +764,13 @@ export default function MeusRelatoriosScreen() {
 
                   <View style={styles.cardMobileFooter}>
                     <TouchableOpacity
+                      style={styles.btnActionEditar}
+                      onPress={() => handleEditarRelatorio(r)}
+                    >
+                      <Text style={styles.btnActionEditarText}>✏️ EDITAR</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                       style={styles.btnActionVer}
                       onPress={() => setSelectedReport(r)}
                     >
@@ -597,7 +810,7 @@ export default function MeusRelatoriosScreen() {
                 <Text style={[styles.thCell, { flex: 2 }]}>LOCAL DE ATENDIMENTO</Text>
                 <Text style={[styles.thCell, { flex: 1.5, textAlign: 'center' }]}>EMPRESA</Text>
                 <Text style={[styles.thCell, { flex: 0.8, textAlign: 'center' }]}>FOTOS</Text>
-                <Text style={[styles.thCell, { flex: 2.6, textAlign: 'center' }]}>AÇÃO</Text>
+                <Text style={[styles.thCell, { flex: 3.2, textAlign: 'center' }]}>AÇÃO</Text>
               </View>
 
               {relatorios.map((r, idx) => (
@@ -632,7 +845,14 @@ export default function MeusRelatoriosScreen() {
                     )}
                   </View>
 
-                  <View style={[{ flex: 2.6, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' }]}>
+                  <View style={[{ flex: 3.2, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' }]}>
+                    <TouchableOpacity
+                      style={styles.btnActionEditar}
+                      onPress={() => handleEditarRelatorio(r)}
+                    >
+                      <Text style={styles.btnActionEditarText}>✏️ EDITAR</Text>
+                    </TouchableOpacity>
+
                     <TouchableOpacity
                       style={styles.btnActionVer}
                       onPress={() => setSelectedReport(r)}
@@ -665,6 +885,7 @@ export default function MeusRelatoriosScreen() {
               ))}
             </View>
           )}
+
 
           {/* Paginação */}
           {totalPaginas > 1 && (
@@ -719,8 +940,16 @@ export default function MeusRelatoriosScreen() {
                   contentContainerStyle={styles.detailScrollContent}
                   showsVerticalScrollIndicator={true}
                 >
-                  {/* Botões Ações no Modal (PDF e WhatsApp) */}
+                  {/* Botões Ações no Modal (Editar, PDF e WhatsApp) */}
                   <View style={styles.modalActionButtonsRow}>
+                    <TouchableOpacity
+                      style={styles.btnEditarModal}
+                      onPress={() => handleEditarRelatorio(selectedReport)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.btnEditarModalText}>✏️ EDITAR</Text>
+                    </TouchableOpacity>
+
                     <TouchableOpacity
                       style={styles.btnPdfDownloadModal}
                       onPress={() => openReportPdf(selectedReport)}
@@ -1218,6 +1447,37 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '900',
     letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  btnActionEditar: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  btnActionEditarText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#b45309',
+    fontFamily: modernFont,
+  },
+  btnEditarModal: {
+    flex: 1,
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnEditarModalText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#b45309',
     fontFamily: modernFont,
   },
   btnActionVer: {

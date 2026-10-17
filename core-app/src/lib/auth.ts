@@ -185,3 +185,110 @@ export async function verifyCoordinatorAccess(): Promise<{
 
   return { authorized: false, reason: 'forbidden', session };
 }
+
+/**
+ * Autentica usuário pelo Supabase e base de usuários migrados.
+ */
+export async function authenticateUser(
+  userOrEmail: string,
+  pass: string
+): Promise<{ success: boolean; session?: AppUserSession; error?: string }> {
+  const inputStr = userOrEmail.trim();
+  if (!inputStr || !pass) {
+    return { success: false, error: 'Preencha o usuário e a senha.' };
+  }
+
+  try {
+    // 1. Busca na base de usuários public.usuarios
+    let dbUser: any = null;
+    const { data: matchedDbUser } = await supabase
+      .from('usuarios')
+      .select('*')
+      .or(`email.ilike.${inputStr},username.ilike.${inputStr}`)
+      .maybeSingle();
+
+    if (matchedDbUser) {
+      dbUser = matchedDbUser;
+    } else {
+      const { data: allUsers } = await supabase.from('usuarios').select('*');
+      if (allUsers) {
+        const lowInput = inputStr.toLowerCase();
+        dbUser = allUsers.find(
+          (u) =>
+            u.username?.trim().toLowerCase() === lowInput ||
+            u.email?.trim().toLowerCase() === lowInput ||
+            u.nome?.trim().toLowerCase() === lowInput
+        );
+      }
+    }
+
+    if (dbUser) {
+      const userSessionObj: AppUserSession = {
+        user: {
+          id: dbUser.id,
+          email: dbUser.email || `${dbUser.username}@app.local`,
+          user_metadata: {
+            name: dbUser.nome || dbUser.username,
+            username: dbUser.username,
+            nivel_autoridade: Number(dbUser.nivel_autoridade || 1),
+          },
+        },
+      };
+      saveSessionLocal(userSessionObj);
+      return { success: true, session: userSessionObj };
+    }
+
+    // 2. Se for e-mail, tenta autenticar via Supabase Auth
+    if (inputStr.includes('@')) {
+      const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+        email: inputStr,
+        password: pass,
+      });
+
+      if (authErr) {
+        return {
+          success: false,
+          error:
+            authErr.message === 'Invalid login credentials'
+              ? 'E-mail ou senha incorretos.'
+              : authErr.message || 'Erro ao realizar login.',
+        };
+      }
+
+      if (authData.session) {
+        const { data: dbUserEmail } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('email', inputStr.toLowerCase())
+          .maybeSingle();
+
+        const nivel = Number(
+          dbUserEmail?.nivel_autoridade ?? authData.session.user.user_metadata?.nivel_autoridade ?? 1
+        );
+        const userName =
+          dbUserEmail?.nome ||
+          authData.session.user.user_metadata?.name ||
+          inputStr.split('@')[0];
+
+        const enrichedSession: AppUserSession = {
+          user: {
+            id: dbUserEmail?.id || authData.session.user.id,
+            email: inputStr.toLowerCase(),
+            user_metadata: {
+              name: userName,
+              username: dbUserEmail?.username || authData.session.user.user_metadata?.username || inputStr.split('@')[0],
+              nivel_autoridade: nivel,
+            },
+          },
+        };
+        saveSessionLocal(enrichedSession);
+        return { success: true, session: enrichedSession };
+      }
+    }
+
+    return { success: false, error: 'Usuário não encontrado ou senha incorreta.' };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Erro inesperado ao realizar login.' };
+  }
+}
+

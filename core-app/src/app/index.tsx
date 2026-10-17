@@ -17,8 +17,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
-import { PHP_SAVE_ENDPOINT, formatReportPdfUrl } from '../lib/config';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { gerarHtmlPdfFidelidade } from '../lib/pdfHtmlGenerator';
 import {
   getSavedSessionSync,
   getValidatedUserSession,
@@ -123,7 +123,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   }
 }
 
-const GRUPO_OPTIONS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
+const GRUPO_OPTIONS = ['TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
 
 interface SaidaItem {
   id: string;
@@ -169,7 +169,7 @@ interface TabData {
 }
 
 const createDefaultTab = (prepostoDefault = ''): TabData => ({
-  grupo: 'ALPHA OFFSHORE',
+  grupo: 'TECHNIP',
   unidade: '',
   data: '',
   local: '',
@@ -439,6 +439,9 @@ export default function ReportGenerator() {
     1: createDefaultTab(),
   });
 
+  const { editId } = useLocalSearchParams<{ editId?: string }>();
+  const [editingReportId, setEditingReportId] = useState<number | null>(null);
+  const [isLoadingReportEdit, setIsLoadingReportEdit] = useState<boolean>(false);
   const [pdfGenerated, setPdfGenerated] = useState<boolean>(false);
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const menuAnim = useRef(new Animated.Value(0)).current;
@@ -702,6 +705,184 @@ export default function ReportGenerator() {
       return { ...prev, [activeTab]: nextData };
     });
   };
+
+  const carregarRelatorioParaEdicao = async (reportId: number) => {
+    setIsLoadingReportEdit(true);
+    try {
+      const { data: report, error } = await supabase
+        .from('relatorios')
+        .select('*')
+        .eq('id', reportId)
+        .single();
+
+      if (error || !report) {
+        showCustomAlert('RELATÓRIO NÃO ENCONTRADO', 'Não foi possível carregar o relatório solicitado para edição.');
+        return;
+      }
+
+      let parsed: any = {};
+      if (typeof report.dados_json === 'string') {
+        try {
+          parsed = JSON.parse(report.dados_json);
+        } catch (e) {
+          parsed = {};
+        }
+      } else if (typeof report.dados_json === 'object' && report.dados_json !== null) {
+        parsed = report.dados_json;
+      }
+
+      const horarios = parsed.horarios || {};
+
+      // Lista Saídas
+      let listaSaidas: SaidaItem[] = [];
+      if (Array.isArray(horarios.saida_hotel) && horarios.saida_hotel.length > 0) {
+        listaSaidas = horarios.saida_hotel.map((s: any, idx: number) => ({
+          id: String(s.id || idx + 1),
+          label1: s.label1 || 'Previsto',
+          h1: s.h1 || '',
+          m1: s.m1 || '',
+          label2: s.label2 || 'Real',
+          h2: s.h2 || '',
+          m2: s.m2 || '',
+        }));
+      } else {
+        listaSaidas = [{ id: '1', label1: 'Previsto', h1: '', m1: '', label2: 'Real', h2: '', m2: '' }];
+      }
+
+      // Embarque Previsto
+      let h3 = '';
+      let m3 = '';
+      let semEmbarquePrev = false;
+      const embPrevStr = String(horarios.embarque_previsto || '').trim();
+      if (embPrevStr === 'N/A' || embPrevStr === '') {
+        semEmbarquePrev = embPrevStr === 'N/A';
+      } else if (embPrevStr.includes(':')) {
+        const parts = embPrevStr.split(':');
+        h3 = parts[0] || '';
+        m3 = parts[1] || '';
+      }
+
+      // Embarque Real
+      let h4 = '';
+      let m4 = '';
+      let semEmbarque = false;
+      const embRealStr = String(horarios.embarque_real || '').trim();
+      if (embRealStr === 'N/A' || embRealStr === '') {
+        semEmbarque = embRealStr === 'N/A';
+      } else if (embRealStr.includes(':')) {
+        const parts = embRealStr.split(':');
+        h4 = parts[0] || '';
+        m4 = parts[1] || '';
+      }
+
+      // Atendimento Início
+      let h5 = '';
+      let m5 = '';
+      const atIniStr = String(horarios.atendimento_inicio || '').trim();
+      if (atIniStr.includes(':')) {
+        const parts = atIniStr.split(':');
+        h5 = parts[0] || '';
+        m5 = parts[1] || '';
+      }
+
+      // Atendimento Fim
+      let h6 = '';
+      let m6 = '';
+      const atFimStr = String(horarios.atendimento_fim || '').trim();
+      if (atFimStr.includes(':')) {
+        const parts = atFimStr.split(':');
+        h6 = parts[0] || '';
+        m6 = parts[1] || '';
+      }
+
+      // Fotos
+      const fotosAnexadas: FotoItem[] = Array.isArray(parsed.fotos)
+        ? parsed.fotos.map((f: any, idx: number) => ({
+            id: f.id || Date.now() + idx,
+            uri: f.uri || f.url || f.base64 || '',
+            titulo: f.titulo || `ANEXO ${idx + 1}`,
+          }))
+        : [];
+
+      // Data
+      let dataVal = parsed.data || '';
+      if (!dataVal && report.data_criacao) {
+        dataVal = report.data_criacao.split('T')[0];
+      }
+
+      const loadedTab: TabData = {
+        grupo: parsed.grupo || report.empresa || 'TECHNIP',
+        unidade: parsed.unidade || report.unidade || '',
+        data: dataVal,
+        local: parsed.local || report.local_atendimento || '',
+        modal: parsed.modal || 'Helicóptero',
+        observacao: parsed.observacao_nome_arquivo || parsed.observacao || '',
+        preposto: parsed.preposto || report.preposto || '',
+        info: parsed.info_troca || parsed.info || '',
+        pax1: parsed.pax_embarcando || parsed.pax1 || '',
+        pax2: parsed.pax_desembarcando || parsed.pax2 || '',
+        h3,
+        m3,
+        h4,
+        m4,
+        h5,
+        m5,
+        h6,
+        m6,
+        listaSaidas,
+        fotosAnexadas,
+        semSaida: false,
+        semEmbarquePrev,
+        semEmbarque,
+        alinhamentoInfo: parsed.alinhamentoInfo || 'left',
+      };
+
+      setTabStore((prev) => ({
+        ...prev,
+        [activeTab]: loadedTab,
+      }));
+      setEditingReportId(reportId);
+      setPdfGenerated(false);
+
+      showCustomAlert(
+        'MODO EDIÇÃO ATIVADO',
+        `O relatório #${reportId} (${loadedTab.unidade || 'Sem Unidade'}) foi carregado no formulário. Faça as alterações desejadas e clique em "ATUALIZAR RELATÓRIO" ao final.`
+      );
+    } catch (err: any) {
+      showCustomAlert('ERRO AO CARREGAR', `Falha ao carregar relatório: ${err?.message || err}`);
+    } finally {
+      setIsLoadingReportEdit(false);
+    }
+  };
+
+  const cancelarEdicao = () => {
+    showCustomConfirm(
+      'CANCELAR EDIÇÃO',
+      'Deseja sair do modo de edição? Qualquer alteração não salva neste relatório será descartada.',
+      () => {
+        setEditingReportId(null);
+        setPdfGenerated(false);
+        const userName = userSession?.user?.user_metadata?.name || userSession?.user?.email?.split('@')[0] || '';
+        setTabStore((prev) => ({
+          ...prev,
+          [activeTab]: createDefaultTab(userName),
+        }));
+        router.setParams({ editId: undefined });
+      },
+      'Sair da Edição',
+      'Continuar Editando'
+    );
+  };
+
+  useEffect(() => {
+    if (editId) {
+      const idNum = Number(editId);
+      if (!isNaN(idNum) && idNum > 0 && idNum !== editingReportId) {
+        carregarRelatorioParaEdicao(idNum);
+      }
+    }
+  }, [editId]);
+
 
   const addTab = () => {
     if (tabs.length < 4) {
@@ -1313,102 +1494,37 @@ export default function ReportGenerator() {
     }
   };
 
-  // Geração Nativa de Documento e PDF Offline (Passo 2)
+  // Geração Nativa de Documento e PDF de Alta Fidelidade (Fiel ao modelo PHP)
   const handleExportarPdfOffline = (modo: 'imprimir' | 'download_html' = 'imprimir') => {
-    const saidasHtml = currentData.listaSaidas.map((item) => `
-      <div style="margin-bottom: 4px;">
-        ${item.label1 ? `<b>${item.label1}:</b> ` : ''}
-        <span>${item.h1 === 'N/A' ? 'N/A' : `${item.h1 || '00'}h${item.m1 || '00'}min`}</span>
-        <span style="margin-left: 14px;"><b>Real:</b> ${item.h2 === 'N/A' ? 'N/A' : `${item.h2 || '00'}h${item.m2 || '00'}min`}</span>
-      </div>
-    `).join('');
-
-    const pax1Html = currentData.pax1 ? currentData.pax1.replace(/\n/g, '<br/>') : '<i>Nenhum passageiro</i>';
-    const pax2Html = currentData.pax2 ? currentData.pax2.replace(/\n/g, '<br/>') : '<i>Nenhum passageiro</i>';
-    const infoHtml = currentData.info ? currentData.info.replace(/\n/g, '<br/>') : '<i>Sem observações registradas.</i>';
-
-    const docHtml = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Relatório Operacional - ${currentData.unidade || 'Atendimento'} - ${currentData.data || ''}</title>
-  <style>
-    @page { size: A4 portrait; margin: 12mm; }
-    * { box-sizing: border-box; font-family: "Times New Roman", Times, serif; }
-    body { margin: 0; padding: 0; background: #fff; color: #000; font-size: 13px; line-height: 1.4; }
-    .container { width: 100%; max-width: 800px; margin: 0 auto; border: 1px solid #ccc; padding: 24px; position: relative; }
-    .header-title { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 8px; }
-    .field-row { margin-bottom: 6px; font-size: 14px; }
-    .field-label { font-weight: bold; }
-    .box-section { background: #f9f9f9; border: 1px solid #ddd; padding: 10px; margin: 8px 0 14px 0; border-radius: 4px; }
-    .pax-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
-    .pax-table th { background: #eee; border: 1px solid #999; padding: 8px; font-size: 13px; text-align: left; }
-    .pax-table td { border: 1px solid #ccc; padding: 8px; vertical-align: top; width: 50%; }
-    .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #555; border-top: 1px solid #ccc; padding-top: 8px; }
-    @media print {
-      body { background: #fff !important; }
-      .container { border: none !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
-      .no-print { display: none !important; }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header-title">RELATÓRIO DE TROCA DE TURMA</div>
-    <div class="field-row"><span class="field-label">Empresa:</span> ${currentData.grupo || 'OUTROS'}</div>
-    <div class="field-row"><span class="field-label">Unidade:</span> ${currentData.unidade || 'N/A'}</div>
-    <div class="field-row"><span class="field-label">Data:</span> ${formatarData(currentData.data) || 'N/A'}</div>
-    <div class="field-row"><span class="field-label">Local:</span> ${currentData.local || 'N/A'}</div>
-    <div class="field-row"><span class="field-label">Modal:</span> ${currentData.modal || 'N/A'}</div>
-    
-    <div style="margin-top: 10px; font-weight: bold;">Horário de Saída do Hotel (Previsto e Real):</div>
-    <div class="box-section">${saidasHtml}</div>
-
-    <div style="font-weight: bold;">Horários de Embarque (Previsto e Real):</div>
-    <div class="box-section">
-      <b>Previsto:</b> ${currentData.semEmbarquePrev ? 'N/A' : `${currentData.h3 || '00'}h${currentData.m3 || '00'}min`}
-      <span style="margin-left: 20px;"><b>Real:</b> ${currentData.semEmbarque ? 'N/A' : `${currentData.h4 || '00'}h${currentData.m4 || '00'}min`}</span>
-    </div>
-
-    <div style="font-weight: bold;">Horário Inicial e de Finalização do Atendimento:</div>
-    <div class="box-section">
-      <b>Início:</b> ${currentData.h5 || '00'}h${currentData.m5 || '00'}min às <b>Fim:</b> ${currentData.h6 || '00'}h${currentData.m6 || '00'}min
-    </div>
-
-    <div class="field-row"><span class="field-label">Nome do Preposto:</span> ${currentData.preposto || 'N/A'}</div>
-
-    <div style="margin-top: 10px; font-weight: bold;">Informações sobre a troca de turma:</div>
-    <div class="box-section">${infoHtml}</div>
-
-    <table class="pax-table">
-      <thead>
-        <tr>
-          <th style="color: #047857;">Nomes Passageiros Embarcando</th>
-          <th style="color: #be123c;">Nomes Passageiros Desembarcando</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>${pax1Html}</td>
-          <td>${pax2Html}</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="footer">
-      Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
-      E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-    </div>
-  </div>
-</body>
-</html>`;
+    const docHtml = gerarHtmlPdfFidelidade({
+      grupo: currentData.grupo,
+      unidade: currentData.unidade,
+      data: currentData.data,
+      local: currentData.local,
+      modal: currentData.modal,
+      preposto: currentData.preposto,
+      horarios: {
+        saida_hotel: currentData.listaSaidas,
+        embarque_previsto: currentData.semEmbarquePrev ? 'N/A' : `${currentData.h3}:${currentData.m3}`,
+        embarque_real: currentData.semEmbarque ? 'N/A' : `${currentData.h4}:${currentData.m4}`,
+        atendimento_inicio: `${currentData.h5}:${currentData.m5}`,
+        atendimento_fim: `${currentData.h6}:${currentData.m6}`,
+      },
+      info_troca: currentData.info,
+      pax_embarcando: currentData.pax1,
+      pax_desembarcando: currentData.pax2,
+      fotos: currentData.fotosAnexadas,
+      alinhamentoInfo: currentData.alinhamentoInfo,
+    });
 
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       if (modo === 'download_html') {
         const blob = new Blob([docHtml], { type: 'text/html;charset=utf-8' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `Relatorio_Operacional_${(currentData.unidade || 'Atendimento').replace(/\s+/g, '_')}_${currentData.data || 'data'}.html`;
+        const unidadeClean = (currentData.unidade || 'MMS').toUpperCase().replace(/\s+/g, '_');
+        const dataClean = (currentData.data || 'data').replace(/-/g, '_');
+        link.download = `${unidadeClean}_${dataClean}.html`;
         link.click();
         return;
       }
@@ -1421,7 +1537,7 @@ export default function ReportGenerator() {
         setTimeout(() => {
           printWin.focus();
           printWin.print();
-        }, 300);
+        }, 350);
       } else {
         window.print();
       }
@@ -1485,7 +1601,33 @@ export default function ReportGenerator() {
         console.log('Servidor PHP offline ou sem rota. Prosseguindo com Supabase.');
       }
 
-      // 2. Registra o relatório no banco Supabase
+      // Se estiver em modo de edição, atualiza o registro existente
+      if (editingReportId) {
+        const { error: updErr } = await supabase
+          .from('relatorios')
+          .update({
+            empresa: currentData.grupo,
+            unidade: currentData.unidade,
+            local_atendimento: currentData.local,
+            dados_json: JSON.stringify(jsonPayload),
+            teve_anexo: currentData.fotosAnexadas.length > 0,
+            ...(pdfUrlResult ? { pdf_url: pdfUrlResult, caminho_pdf: pdfUrlResult } : {}),
+          })
+          .eq('id', editingReportId);
+
+        if (updErr) {
+          console.warn('Falha ao atualizar relatório no Supabase:', updErr.message);
+          showCustomAlert('ERRO AO ATUALIZAR', 'Não foi possível atualizar o relatório na nuvem: ' + updErr.message);
+        } else {
+          showCustomAlert(
+            'RELATÓRIO ATUALIZADO',
+            `O relatório #${editingReportId} (${currentData.unidade}) foi atualizado com sucesso no Supabase!`
+          );
+        }
+        return;
+      }
+
+      // 2. Registra novo relatório no banco Supabase
       const { data, error } = await supabase.from('relatorios').insert([{
         usuario_id: userSession?.user?.id || null,
         empresa: currentData.grupo,
@@ -1887,7 +2029,29 @@ export default function ReportGenerator() {
           </View>
 
           <Text style={styles.mainTitle}>PREENCHIMENTO DE RELATÓRIO</Text>
-          <View style={styles.headerDivider} />
+          {/* Banner de Modo Edição Ativo */}
+          {editingReportId && (
+            <View style={styles.editingBannerCard}>
+              <View style={styles.editingBannerLeft}>
+                <View style={styles.editingBannerBadge}>
+                  <Text style={styles.editingBannerBadgeText}>✏️ MODO EDIÇÃO ATIVO</Text>
+                </View>
+                <Text style={styles.editingBannerTitle}>
+                  Editando Relatório #{editingReportId} ({currentData.unidade || 'Sem Unidade'})
+                </Text>
+                <Text style={styles.editingBannerSub}>
+                  Ao salvar, as alterações atualizarão o registro existente no Supabase sem duplicar.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.btnCancelarEdicao}
+                onPress={cancelarEdicao}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.btnCancelarEdicaoText}>✕ Cancelar Edição</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Controle de Abas Simultâneas (Até 4) */}
           <View style={styles.tabsSection}>
@@ -2478,46 +2642,73 @@ export default function ReportGenerator() {
               )}
             </View>
 
-            {/* Botão Gerar Relatório */}
-            <TouchableOpacity style={styles.btnGerarPdf} onPress={handleGerarPDF}>
-              <Text style={styles.btnGerarPdfText}>GERAR RELATÓRIO (PDF)</Text>
-            </TouchableOpacity>
+            {/* Botão Gerar ou Atualizar Relatório */}
+            {!pdfGenerated && (
+              <TouchableOpacity
+                style={[
+                  styles.btnGerarPdf,
+                  editingReportId ? styles.btnGerarPdfEditing : null,
+                ]}
+                onPress={handleGerarPDF}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.btnGerarPdfText}>
+                  {editingReportId
+                    ? `💾 ATUALIZAR RELATÓRIO #${editingReportId}`
+                    : 'GERAR RELATÓRIO (PDF)'}
+                </Text>
+              </TouchableOpacity>
+            )}
 
+            {/* Sucesso do Relatório Gerado (Design Fiel ao Anexo 1) */}
             {pdfGenerated && (
-              <View style={styles.areaSucessoPdf}>
-                <Text style={styles.sucessoPdfTitle}>✅ Relatório gerado com sucesso!</Text>
-                <View style={styles.sucessoPdfActions}>
-                  <TouchableOpacity
-                    style={styles.btnDownloadManual}
-                    onPress={() => handleExportarPdfOffline('imprimir')}
-                  >
-                    <Text style={styles.btnDownloadManualText}>📥 Imprimir / Salvar PDF</Text>
-                  </TouchableOpacity>
+              <View style={styles.areaSucessoPdfAnexo1}>
+                <View style={styles.sucessoPillHeader}>
+                  <Text style={styles.sucessoPillCheck}>✅</Text>
+                  <Text style={styles.sucessoPillTitle}>Relatório gerado com sucesso!</Text>
+                </View>
 
+                <View style={styles.sucessoActionsRow}>
                   <TouchableOpacity
-                    style={[styles.btnDownloadManual, { backgroundColor: '#059669', borderColor: '#059669' }]}
-                    onPress={() => handleExportarPdfOffline('download_html')}
-                  >
-                    <Text style={styles.btnDownloadManualText}>💾 Cópia Offline (HTML/PDF)</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.btnDownloadManual, { backgroundColor: '#10b981', borderColor: '#059669' }]}
+                    style={styles.btnCompartilharAnexo1}
                     onPress={handleCompartilharWhatsApp}
+                    activeOpacity={0.85}
                   >
-                    <Text style={styles.btnDownloadManualText}>💬 Enviar via WhatsApp</Text>
+                    <Text style={styles.btnCompartilharAnexo1Icon}>🔗</Text>
+                    <Text style={styles.btnCompartilharAnexo1Text}>Compartilhar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.btnBaixarAnexo1}
+                    onPress={() => handleExportarPdfOffline('imprimir')}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.btnBaixarAnexo1Icon}>📥</Text>
+                    <Text style={styles.btnBaixarAnexo1Text}>Baixar</Text>
                   </TouchableOpacity>
                 </View>
+
+                <TouchableOpacity
+                  style={styles.btnEditarAnexo1}
+                  onPress={() => {
+                    setPdfGenerated(false);
+                    if (Platform.OS === 'web') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.btnEditarAnexo1Icon}>✏️</Text>
+                  <Text style={styles.btnEditarAnexo1Text}>Editar Relatório</Text>
+                </TouchableOpacity>
               </View>
             )}
 
-            {/* Banner Oficial de Alerta com Animação Pulsante: Versão de Demonstração Pública */}
-            <Animated.View style={[styles.demoBannerBox, { opacity: pulseAnim }]}>
-              <View style={styles.demoBadgeDot} />
-              <Text style={styles.demoBannerText}>
-                ⚠️ SISTEMA DE DEMONSTRAÇÃO PÚBLICA — DADOS FICTÍCIOS
-              </Text>
-            </Animated.View>
+            {/* Indicador de Sincronizado conforme Anexo 4 */}
+            <View style={styles.sincronizadoRow}>
+              <View style={styles.sincronizadoDot} />
+              <Text style={styles.sincronizadoText}>SINCRONIZADO</Text>
+            </View>
           </View>
         </View>
 
@@ -2662,6 +2853,44 @@ export default function ReportGenerator() {
           ))}
         </View>
       </ScrollView>
+
+      {/* Barra Flutuante de Navegação Inferior (Fiel aos Anexos 2, 3 e 4) */}
+      <View style={styles.floatingNavWrapper} pointerEvents="box-none">
+        <View style={styles.floatingNavPill}>
+          <TouchableOpacity
+            style={styles.floatingNavItem}
+            onPress={limparTudo}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.floatingNavIcon}>🔄</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.floatingNavItem}
+            onPress={() => router.push('/meus_relatorios')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.floatingNavIcon}>⚙️</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.floatingNavItem}
+            onPress={() => {
+              if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.open('https://relatorios.atmai.com.br', '_blank');
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.floatingNavIcon}>🌐</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.floatingNavItem}
+            onPress={() => router.push('/meus_relatorios')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.floatingNavIcon}>↪️</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Modal Autenticação Supabase */}
       <Modal visible={isAuthModalVisible} transparent animationType="fade">
@@ -3357,6 +3586,62 @@ const styles = StyleSheet.create({
     backgroundColor: colors.slate200,
     marginBottom: 24,
   },
+  editingBannerCard: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1.5,
+    borderColor: '#f59e0b',
+    borderRadius: 12,
+    padding: 14,
+    marginVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  editingBannerLeft: {
+    flex: 1,
+    minWidth: 240,
+  },
+  editingBannerBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 4,
+  },
+  editingBannerBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#b45309',
+    letterSpacing: 0.5,
+  },
+  editingBannerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#78350f',
+  },
+  editingBannerSub: {
+    fontSize: 11,
+    color: '#92400e',
+    marginTop: 2,
+  },
+  btnCancelarEdicao: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d97706',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  btnCancelarEdicaoText: {
+    color: '#b45309',
+    fontWeight: '800',
+    fontSize: 11,
+  },
   tabsSection: {
     marginBottom: 24,
   },
@@ -3580,222 +3865,238 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   horariosBox: {
-    backgroundColor: colors.slate50,
+    backgroundColor: '#ffffff',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.slate200,
-    gap: 14,
-    marginVertical: 4,
+    borderColor: '#e2e8f0',
+    gap: 16,
+    marginVertical: 8,
   },
   horariosTitle: {
     fontWeight: '900',
-    fontSize: 14,
-    color: colors.slate800,
+    fontSize: 16,
+    color: '#0f172a',
     textAlign: 'center',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.slate200,
-    paddingBottom: 6,
-    marginBottom: 8,
+    letterSpacing: 1.5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 10,
+    marginBottom: 4,
     fontFamily: corporateFont,
   },
   horarioCard: {
-    backgroundColor: colors.white,
-    padding: 14,
-    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.slate100,
-    gap: 12,
+    borderColor: '#e2e8f0',
+    gap: 14,
   },
   horarioBadgeWrapper: {
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   horarioBadge: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
-    color: colors.blue700,
-    backgroundColor: colors.blue50,
-    paddingVertical: 4,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    color: '#1d4ed8',
+    backgroundColor: '#eff6ff',
+    paddingVertical: 6,
+    paddingHorizontal: 20,
+    borderRadius: 8,
     textTransform: 'uppercase',
     letterSpacing: 1,
     fontFamily: corporateFont,
   },
   dicaBox: {
-    backgroundColor: colors.amber50,
-    borderColor: colors.amber200,
+    backgroundColor: '#fffbeb',
+    borderColor: '#fef08a',
     borderWidth: 1,
-    padding: 8,
-    borderRadius: 6,
-  },
-  dicaText: {
-    fontSize: 11,
-    color: colors.amber800,
-    fontFamily: corporateFont,
-  },
-  dicaTag: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.amber200,
-    paddingHorizontal: 4,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  saidaRowContainer: {
-    backgroundColor: colors.slate50,
-    borderWidth: 1,
-    borderColor: colors.slate200,
     padding: 10,
     borderRadius: 8,
-    gap: 8,
+  },
+  dicaText: {
+    fontSize: 12,
+    color: '#b45309',
+    fontFamily: corporateFont,
+    lineHeight: 18,
+  },
+  dicaTag: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#fde047',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#854d0e',
+  },
+  saidaRowContainer: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 16,
+    borderRadius: 12,
+    gap: 16,
     position: 'relative',
+    alignItems: 'center',
   },
   saidaFieldHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    width: '100%',
   },
   saidaLabelGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   saidaLabelInput: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '900',
-    color: colors.blue700,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.slate300,
+    color: '#1d4ed8',
+    textAlign: 'center',
     paddingVertical: 2,
-    paddingHorizontal: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#93c5fd',
     fontFamily: corporateFont,
   },
   saidaRealLabel: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '900',
-    color: colors.black,
+    color: '#0f172a',
     textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+    textAlign: 'center',
     fontFamily: corporateFont,
   },
   colon: {
     fontWeight: 'bold',
-    fontSize: 13,
-    color: colors.slate600,
-    marginLeft: 2,
+    fontSize: 16,
+    color: '#1d4ed8',
+    marginLeft: 3,
   },
   btnRemoveSaida: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: colors.rose100,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    top: -8,
+    right: -8,
+    backgroundColor: '#ffe4e6',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.rose200,
+    borderColor: '#f43f5e',
   },
   btnRemoveSaidaText: {
-    color: colors.rose600,
+    color: '#e11d48',
     fontWeight: 'bold',
-    fontSize: 10,
+    fontSize: 11,
   },
   timeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.slate50,
-    padding: 8,
-    borderRadius: 8,
+    justifyContent: 'center',
+    backgroundColor: '#f8fafc',
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.slate100,
+    borderColor: '#f1f5f9',
   },
   timeRowLabel: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '900',
-    color: colors.black,
+    color: '#0f172a',
     textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+    textAlign: 'center',
     fontFamily: corporateFont,
   },
   timeInputsWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
+    gap: 6,
   },
   timeInput: {
-    borderWidth: 2,
-    borderColor: colors.slate300,
-    borderRadius: 8,
-    width: 52,
-    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    width: 68,
+    height: 48,
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '900',
-    backgroundColor: colors.white,
+    backgroundColor: '#ffffff',
+    color: '#0f172a',
     fontFamily: corporateFont,
   },
   disabledInput: {
-    backgroundColor: colors.slate200,
-    color: colors.slate500,
+    backgroundColor: '#f1f5f9',
+    color: '#94a3b8',
+    borderColor: '#e2e8f0',
   },
   timeSufix: {
-    color: colors.slate400,
+    color: '#64748b',
     fontWeight: '700',
-    fontSize: 12,
-    marginHorizontal: 2,
+    fontSize: 14,
+    marginHorizontal: 4,
   },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    marginVertical: 4,
+    gap: 8,
+    marginVertical: 6,
   },
   checkbox: {
-    width: 16,
-    height: 16,
-    borderWidth: 1,
-    borderColor: colors.slate300,
-    borderRadius: 3,
+    width: 18,
+    height: 18,
+    borderWidth: 1.5,
+    borderColor: '#94a3b8',
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: '#ffffff',
   },
   checkboxChecked: {
-    backgroundColor: colors.slate900,
-    borderColor: colors.slate900,
+    backgroundColor: '#0f172a',
+    borderColor: '#0f172a',
   },
   checkmark: {
-    color: colors.white,
-    fontSize: 10,
+    color: '#ffffff',
+    fontSize: 11,
     fontWeight: '900',
   },
   checkboxLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.slate600,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
     textTransform: 'uppercase',
+    letterSpacing: 0.8,
     fontFamily: corporateFont,
   },
   btnNovaSaida: {
-    backgroundColor: colors.slate50,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    paddingVertical: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.slate200,
+    borderColor: '#e2e8f0',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 6,
   },
   btnNovaSaidaText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.slate700,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0f172a',
     textTransform: 'uppercase',
+    letterSpacing: 0.8,
     fontFamily: corporateFont,
   },
   sectionHeaderBox: {
@@ -4178,38 +4479,166 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     fontFamily: corporateFont,
   },
-  areaSucessoPdf: {
-    backgroundColor: colors.emerald50,
-    borderWidth: 1,
-    borderColor: colors.emerald200,
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 12,
-    alignItems: 'center',
-    gap: 8,
+  areaSucessoPdfAnexo1: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1.5,
+    borderColor: '#86efac',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 16,
+    gap: 14,
   },
-  sucessoPdfTitle: {
-    color: colors.emerald700,
-    fontWeight: '700',
-    fontSize: 13,
+  sucessoPillHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  sucessoPillCheck: {
+    fontSize: 18,
+  },
+  sucessoPillTitle: {
+    color: '#15803d',
+    fontWeight: '900',
+    fontSize: 17,
     fontFamily: corporateFont,
   },
-  sucessoPdfActions: {
+  sucessoActionsRow: {
     flexDirection: 'row',
+    gap: 12,
     width: '100%',
   },
-  btnDownloadManual: {
+  btnCompartilharAnexo1: {
     flex: 1,
-    backgroundColor: colors.slate800,
-    paddingVertical: 10,
-    borderRadius: 6,
+    backgroundColor: '#2563eb',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  btnDownloadManualText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontSize: 12,
+  btnCompartilharAnexo1Icon: {
+    fontSize: 18,
+    color: '#ffffff',
+  },
+  btnCompartilharAnexo1Text: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 16,
     fontFamily: corporateFont,
+  },
+  btnBaixarAnexo1: {
+    flex: 1,
+    backgroundColor: '#1e293b',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#1e293b',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  btnBaixarAnexo1Icon: {
+    fontSize: 18,
+    color: '#ffffff',
+  },
+  btnBaixarAnexo1Text: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 16,
+    fontFamily: corporateFont,
+  },
+  btnEditarAnexo1: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  btnEditarAnexo1Icon: {
+    fontSize: 18,
+    color: '#1e293b',
+  },
+  btnEditarAnexo1Text: {
+    color: '#1e293b',
+    fontWeight: '800',
+    fontSize: 16,
+    fontFamily: corporateFont,
+  },
+  btnGerarPdfEditing: {
+    backgroundColor: '#d97706',
+  },
+  sincronizadoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 14,
+  },
+  sincronizadoDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+  },
+  sincronizadoText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#94a3b8',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  floatingNavWrapper: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 99,
+  },
+  floatingNavPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+    gap: 24,
+  },
+  floatingNavItem: {
+    padding: 6,
+  },
+  floatingNavIcon: {
+    fontSize: 20,
   },
   demoBannerBox: {
     marginTop: 24,
