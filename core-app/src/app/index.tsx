@@ -123,6 +123,21 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   }
 }
 
+// Ícones Flat Vetoriais (SVG Data URIs para compatibilidade total Web e Mobile)
+const iconRefreshSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><path d='M21 2v6h-6'/><path d='M3 12a9 9 0 0 1 15-6.7L21 8'/><path d='M3 22v-6h6'/><path d='M21 12a9 9 0 0 1-15 6.7L3 16'/></svg>`;
+
+const iconGearSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c4b5fd' stroke='%238b5cf6' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='3.2' fill='%23ffffff'/><path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/></svg>`;
+
+const iconGlobeSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='2' y1='12' x2='22' y2='12'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/></svg>`;
+
+const iconLogoutSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><path d='M13 8H8a4 4 0 0 0 0 8h8'/><polyline points='13 12 17 16 13 20'/></svg>`;
+
+const iconInfoSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='16' x2='12' y2='12'/><line x1='12' y1='8' x2='12.01' y2='8'/></svg>`;
+
+const iconQuestionSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d97706' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>`;
+
+const iconLinkSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230284c7' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/><path d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/></svg>`;
+
 const GRUPO_OPTIONS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
 
 interface SaidaItem {
@@ -590,6 +605,72 @@ export default function ReportGenerator() {
     });
   };
 
+  // Estado e Ações para o Menu Flutuante e Navegação de URL
+  const [isUrlModalVisible, setIsUrlModalVisible] = useState(false);
+  const [navUrl, setNavUrl] = useState('');
+
+  const handleRefresh = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.reload();
+    } else {
+      limparTudo();
+    }
+  };
+
+  const handleGoCoord = () => {
+    router.push('/painel_coord');
+  };
+
+  const handleOpenUrlModal = () => {
+    const currentUrl =
+      Platform.OS === 'web' && typeof window !== 'undefined'
+        ? window.location.href
+        : 'https://relatorios.atmai.com.br';
+    setNavUrl(currentUrl);
+    setIsUrlModalVisible(true);
+  };
+
+  const handleNavigateUrl = () => {
+    let target = navUrl.trim();
+    if (!target) return;
+    if (!/^https?:\/\//i.test(target)) {
+      target = 'https://' + target;
+    }
+    setIsUrlModalVisible(false);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = target;
+    } else {
+      Linking.openURL(target).catch(() => {
+        showCustomAlert('ERRO DE NAVEGAÇÃO', 'Não foi possível abrir o link informado.');
+      });
+    }
+  };
+
+  const handleMenuLogout = () => {
+    if (userSession?.user) {
+      showCustomConfirm(
+        'ENCERRAR SESSÃO',
+        `Deseja realmente sair da conta (${userSession.user.nome || userSession.user.email})?`,
+        async () => {
+          await logoutUserSession();
+          setUserSession(null);
+          showCustomAlert('SESSÃO ENCERRADA', 'Você foi desconectado com sucesso.');
+        },
+        'Sair',
+        'Cancelar'
+      );
+    } else {
+      showCustomAlert(
+        'NENHUMA CONTA CONECTADA',
+        'Você está navegando como visitante. Deseja fazer login?',
+        () => {
+          setAuthMode('login');
+          setIsAuthModalVisible(true);
+        }
+      );
+    }
+  };
+
   // State para Pop-up de Edição e Rotação de Imagem ("CONFIRMAR E ANEXAR")
   const [imageEditorModal, setImageEditorModal] = useState<{
     visible: boolean;
@@ -936,17 +1017,13 @@ export default function ReportGenerator() {
   const removeTab = (tabIndex: number) => {
     if (tabs.length <= 1) return;
     const confirmMessage = "Deseja realmente remover este relatório? Todos os dados dele serão perdidos.";
-    
-    if (Platform.OS === 'web') {
-      if (window.confirm(confirmMessage)) {
-        performRemoveTab(tabIndex);
-      }
-    } else {
-      Alert.alert('Remover Relatório', confirmMessage, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Remover', style: 'destructive', onPress: () => performRemoveTab(tabIndex) },
-      ]);
-    }
+    showCustomConfirm(
+      'REMOVER RELATÓRIO',
+      confirmMessage,
+      () => performRemoveTab(tabIndex),
+      'Remover',
+      'Cancelar'
+    );
   };
 
   const performRemoveTab = (tabIndex: number) => {
@@ -961,21 +1038,20 @@ export default function ReportGenerator() {
   };
 
   const limparTudo = () => {
-    const confirmMsg = "Deseja reiniciar este relatório? Todos os campos serão limpos.";
+    const confirmMsg = "Deseja reiniciar este relatório? Todos os campos preenchidos serão limpos.";
     const executeClear = () => {
       const userName = userSession?.user?.user_metadata?.name || userSession?.user?.email?.split('@')[0] || '';
       updateCurrentTab(createDefaultTab(userName));
       setPdfGenerated(false);
     };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm(confirmMsg)) executeClear();
-    } else {
-      Alert.alert('Novo Relatório', confirmMsg, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Limpar', style: 'destructive', onPress: executeClear },
-      ]);
-    }
+    showCustomConfirm(
+      'NOVO RELATÓRIO',
+      confirmMsg,
+      executeClear,
+      'Limpar',
+      'Cancelar'
+    );
   };
 
   // Auth Functions
@@ -1629,7 +1705,7 @@ export default function ReportGenerator() {
         window.print();
       }
     } else {
-      Alert.alert('Exportação Offline', 'Documento gerado e pronto para exportação.');
+      showCustomAlert('EXPORTAÇÃO OFFLINE', 'Documento gerado e pronto para exportação.');
     }
   };
 
@@ -3003,37 +3079,48 @@ export default function ReportGenerator() {
       {isAppOrMobile && (
         <View style={styles.floatingNavWrapper} pointerEvents="box-none">
           <View style={styles.floatingNavPill}>
+            {/* 1ª Opção: Refresh na página */}
             <TouchableOpacity
               style={styles.floatingNavItem}
-              onPress={limparTudo}
+              onPress={handleRefresh}
               activeOpacity={0.7}
+              accessibilityLabel="Atualizar Página"
             >
-              <Text style={styles.floatingNavIcon}>🔄</Text>
+              <View style={styles.navSquareBtn}>
+                <Image source={{ uri: iconRefreshSvg }} style={styles.navSquareIcon} resizeMode="contain" />
+              </View>
             </TouchableOpacity>
+
+            {/* 2ª Opção: Painel Coordenação */}
             <TouchableOpacity
               style={styles.floatingNavItem}
-              onPress={() => router.push('/meus_relatorios')}
+              onPress={handleGoCoord}
               activeOpacity={0.7}
+              accessibilityLabel="Painel Coordenação"
             >
-              <Text style={styles.floatingNavIcon}>⚙️</Text>
+              <Image source={{ uri: iconGearSvg }} style={styles.navStandaloneIcon} resizeMode="contain" />
             </TouchableOpacity>
+
+            {/* 3ª Opção: Navegador de URL (com URL atual pré-preenchida) */}
             <TouchableOpacity
               style={styles.floatingNavItem}
-              onPress={() => {
-                if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                  window.open('https://relatorios.atmai.com.br', '_blank');
-                }
-              }}
+              onPress={handleOpenUrlModal}
               activeOpacity={0.7}
+              accessibilityLabel="Navegador de URL"
             >
-              <Text style={styles.floatingNavIcon}>🌐</Text>
+              <Image source={{ uri: iconGlobeSvg }} style={styles.navStandaloneIcon} resizeMode="contain" />
             </TouchableOpacity>
+
+            {/* 4ª Opção: Logout */}
             <TouchableOpacity
               style={styles.floatingNavItem}
-              onPress={() => router.push('/meus_relatorios')}
+              onPress={handleMenuLogout}
               activeOpacity={0.7}
+              accessibilityLabel="Encerrar Sessão"
             >
-              <Text style={styles.floatingNavIcon}>↪️</Text>
+              <View style={styles.navSquareBtn}>
+                <Image source={{ uri: iconLogoutSvg }} style={styles.navSquareIcon} resizeMode="contain" />
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -3270,41 +3357,112 @@ export default function ReportGenerator() {
         </View>
       </Modal>
 
-      {/* Pop-up Personalizado Reutilizável (Substitui Alerts Nativos) */}
-      <Modal visible={customDialog.visible} transparent animationType="fade">
+      {/* Pop-up Flat & Elegante para Navegador de URL */}
+      <Modal visible={isUrlModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.warningCard}>
-            <View style={styles.warningIconCircle}>
-              <Text style={styles.warningIconText}>
-                {customDialog.type === 'confirm' ? '❓' : 'ⓘ'}
-              </Text>
+          <View style={styles.flatUrlCard}>
+            <View style={styles.flatUrlIconWrapper}>
+              <Image source={{ uri: iconLinkSvg }} style={{ width: 28, height: 28 }} resizeMode="contain" />
             </View>
 
-            <Text style={styles.warningTitle}>{customDialog.title || 'AVISO'}</Text>
+            <Text style={styles.flatUrlTitle}>NAVEGADOR DE URL</Text>
+            <Text style={styles.flatUrlSubtitle}>
+              Digite ou altere o endereço que deseja acessar:
+            </Text>
 
-            <Text style={styles.warningMessage}>{customDialog.message}</Text>
+            <View style={styles.flatUrlInputContainer}>
+              <TextInput
+                style={styles.flatUrlInput}
+                value={navUrl}
+                onChangeText={setNavUrl}
+                placeholder="https://exemplo.com"
+                placeholderTextColor="#94a3b8"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                selectTextOnFocus
+              />
+              {navUrl.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setNavUrl('')}
+                  style={styles.flatUrlClearBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.flatUrlClearText}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
-            <View style={styles.customDialogButtonsRow}>
+            <View style={styles.flatUrlButtonsRow}>
+              <TouchableOpacity
+                style={styles.btnFlatUrlCancel}
+                onPress={() => setIsUrlModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.btnFlatUrlCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.btnFlatUrlGo}
+                onPress={handleNavigateUrl}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.btnFlatUrlGoText}>Acessar URL</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Pop-up Flat e Elegante (Substitui Alerts Nativos com Design Moderno) */}
+      <Modal visible={customDialog.visible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.flatAlertCard}>
+            <View
+              style={[
+                styles.flatAlertIconWrapper,
+                customDialog.type === 'confirm'
+                  ? styles.flatAlertIconWrapperWarning
+                  : styles.flatAlertIconWrapperInfo,
+              ]}
+            >
+              <Image
+                source={{
+                  uri:
+                    customDialog.type === 'confirm'
+                      ? iconQuestionSvg
+                      : iconInfoSvg,
+                }}
+                style={{ width: 32, height: 32 }}
+                resizeMode="contain"
+              />
+            </View>
+
+            <Text style={styles.flatAlertTitle}>{customDialog.title || 'AVISO'}</Text>
+            <Text style={styles.flatAlertMessage}>{customDialog.message}</Text>
+
+            <View style={styles.flatAlertButtonsRow}>
               {customDialog.type === 'confirm' && (
                 <TouchableOpacity
-                  style={styles.btnCustomCancel}
+                  style={styles.btnFlatCancel}
                   onPress={customDialog.onCancel}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.btnCustomCancelText}>
+                  <Text style={styles.btnFlatCancelText}>
                     {customDialog.cancelText || 'Cancelar'}
                   </Text>
                 </TouchableOpacity>
               )}
+
               <TouchableOpacity
                 style={[
-                  styles.btnWarningOk,
+                  styles.btnFlatConfirm,
                   customDialog.type === 'confirm' && { flex: 1 },
                 ]}
                 onPress={customDialog.onConfirm}
                 activeOpacity={0.8}
               >
-                <Text style={styles.btnWarningOkText}>
+                <Text style={styles.btnFlatConfirmText}>
                   {customDialog.confirmText || 'OK'}
                 </Text>
               </TouchableOpacity>
@@ -4830,27 +4988,47 @@ const styles = StyleSheet.create({
     zIndex: 99,
   },
   floatingNavPill: {
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    backgroundColor: '#ffffff',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 30,
+    paddingVertical: 8,
+    paddingHorizontal: 22,
+    borderRadius: 9999,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
     elevation: 8,
-    gap: 24,
+    gap: 20,
   },
   floatingNavItem: {
-    padding: 6,
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  floatingNavIcon: {
-    fontSize: 20,
+  navSquareBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 9,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1d4ed8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  navSquareIcon: {
+    width: 20,
+    height: 20,
+  },
+  navStandaloneIcon: {
+    width: 30,
+    height: 30,
   },
   demoBannerBox: {
     marginTop: 24,
@@ -5417,5 +5595,211 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     textDecorationLine: 'underline',
+  },
+
+  /* Modais e Pop-ups Flat & Elegantes */
+  flatAlertCard: {
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    paddingVertical: 24,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  flatAlertIconWrapper: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  flatAlertIconWrapperInfo: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+  },
+  flatAlertIconWrapperWarning: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fef3c7',
+  },
+  flatAlertTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+    marginBottom: 8,
+    fontFamily: modernFont,
+    textTransform: 'uppercase',
+  },
+  flatAlertMessage: {
+    fontSize: 13.5,
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 22,
+    fontFamily: modernFont,
+  },
+  flatAlertButtonsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 10,
+  },
+  btnFlatCancel: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 12,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnFlatCancelText: {
+    color: '#475569',
+    fontWeight: '700',
+    fontSize: 13,
+    fontFamily: modernFont,
+  },
+  btnFlatConfirm: {
+    flex: 1,
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  btnFlatConfirmText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 0.4,
+    fontFamily: modernFont,
+  },
+
+  /* Pop-up Flat Navegador de URL */
+  flatUrlCard: {
+    width: '92%',
+    maxWidth: 440,
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    paddingVertical: 24,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  flatUrlIconWrapper: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  flatUrlTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+    marginBottom: 4,
+    fontFamily: modernFont,
+    textTransform: 'uppercase',
+  },
+  flatUrlSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+    fontFamily: modernFont,
+  },
+  flatUrlInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    width: '100%',
+    marginBottom: 20,
+  },
+  flatUrlInput: {
+    flex: 1,
+    height: 44,
+    fontSize: 13.5,
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  flatUrlClearBtn: {
+    padding: 6,
+    marginLeft: 4,
+  },
+  flatUrlClearText: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: 'bold',
+  },
+  flatUrlButtonsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 10,
+  },
+  btnFlatUrlCancel: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 12,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnFlatUrlCancelText: {
+    color: '#475569',
+    fontWeight: '700',
+    fontSize: 13,
+    fontFamily: modernFont,
+  },
+  btnFlatUrlGo: {
+    flex: 1.3,
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  btnFlatUrlGoText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 0.4,
+    fontFamily: modernFont,
   },
 });
