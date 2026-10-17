@@ -142,6 +142,14 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
         border: 2px solid #f43f5e !important;
         box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
       }
+      /* Efeito Blur de Todo o Conteúdo de Fundo para Pop-ups (Anexo 5) */
+      .modal-blur-overlay,
+      div[data-modal-blur="true"],
+      div[role="dialog"] {
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        background-color: rgba(15, 23, 42, 0.45) !important;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -1270,30 +1278,45 @@ export default function ReportGenerator() {
   };
 
   const removeTab = (tabIndex: number) => {
-    if (tabs.length <= 1) return;
-    const confirmMessage = "Deseja realmente remover este relatório? Todos os dados dele serão perdidos.";
+    const confirmMessage = `Deseja realmente limpar ou fechar o Relatório ${tabIndex}? Todos os dados deste formulário serão reiniciados.`;
     showCustomConfirm(
-      'REMOVER RELATÓRIO',
+      'REINICIAR / FECHAR RELATÓRIO',
       confirmMessage,
       () => performRemoveTab(tabIndex),
-      'Remover',
+      'Limpar',
       'Cancelar'
     );
   };
 
   const performRemoveTab = (tabIndex: number) => {
+    const userName = userSession?.user?.user_metadata?.name || userSession?.user?.email?.split('@')[0] || '';
+    const defaultState = createDefaultTab(userName);
+
+    if (tabs.length <= 1) {
+      setTabStore((prev) => ({ ...prev, [tabIndex]: defaultState }));
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('mms_tab_' + tabIndex, JSON.stringify(defaultState));
+        } catch (e) {}
+      }
+      mostrarToastSalvo();
+      return;
+    }
+
     const newTabs = tabs.filter((t) => t !== tabIndex);
     const newStore = { ...tabStore };
     delete newStore[tabIndex];
     setTabs(newTabs);
     setTabStore(newStore);
+
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
       try {
         localStorage.removeItem('mms_tab_' + tabIndex);
       } catch (e) {}
     }
+
     if (activeTab === tabIndex) {
-      const nextActive = newTabs[0];
+      const nextActive = newTabs[0] || 1;
       setActiveTab(nextActive);
       if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         try {
@@ -1301,6 +1324,7 @@ export default function ReportGenerator() {
         } catch (e) {}
       }
     }
+    mostrarToastSalvo();
   };
 
   const limparTudo = () => {
@@ -2228,6 +2252,63 @@ export default function ReportGenerator() {
     );
   };
 
+  // Renderizador dos Slots do Agrupamento de Relatórios em Andamento (Fiel ao Anexo 4)
+  const renderAnexo4Slot = (slotId: number) => {
+    const isActive = activeTab === slotId;
+    const tabData = tabStore[slotId];
+    const isSlotOccupied = tabs.includes(slotId) || Boolean(tabData && (tabData.unidade || tabData.info));
+    const tabName = tabData?.unidade ? tabData.unidade.toUpperCase() : 'Vazio';
+
+    return (
+      <TouchableOpacity
+        key={slotId}
+        style={[
+          styles.anexo4Slot,
+          isActive ? styles.anexo4SlotActive : styles.anexo4SlotInactive,
+        ]}
+        onPress={() => {
+          if (!tabs.includes(slotId)) {
+            const userName = userSession?.user?.user_metadata?.name || userSession?.user?.email?.split('@')[0] || '';
+            const newTabState = tabStore[slotId] || createDefaultTab(userName);
+            setTabs((prev) => [...prev, slotId].sort());
+            setTabStore((prev) => ({ ...prev, [slotId]: newTabState }));
+          }
+          setActiveTab(slotId);
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem('mms_active_tab', String(slotId));
+            } catch (e) {}
+          }
+        }}
+        activeOpacity={0.85}
+      >
+        {/* Botão de Fechar / Limpar (✕) conforme Anexo 4 */}
+        {isSlotOccupied && (
+          <TouchableOpacity
+            style={styles.anexo4RemoveBtn}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              removeTab(slotId);
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.anexo4RemoveText}>✕</Text>
+          </TouchableOpacity>
+        )}
+
+        <Text style={[styles.anexo4SlotTitle, isActive && styles.anexo4SlotTitleActive]}>
+          RELATÓRIO {slotId}
+        </Text>
+        <Text
+          style={[styles.anexo4SlotName, isActive ? styles.anexo4SlotNameActive : styles.anexo4SlotNameInactive]}
+          numberOfLines={1}
+        >
+          {tabName}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.body, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
@@ -2488,68 +2569,22 @@ export default function ReportGenerator() {
             </View>
           )}
 
-          {/* Controle de Abas Simultâneas (Até 4 - Estilo Anexos 4 e 5) */}
-          <View style={styles.tabsSection}>
-            <View style={styles.tabsTopRow}>
-              <Text style={styles.tabsSectionTitle}>RELATÓRIOS EM ANDAMENTO</Text>
-              {tabs.length < 4 && (
-                <TouchableOpacity onPress={addTab} style={styles.btnAddTab} activeOpacity={0.8}>
-                  <Text style={styles.btnAddTabText}>+ ADICIONAR RELATÓRIO</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+          {/* Controle de Abas Simultâneas - Agrupamento Fiel ao Anexo 4 */}
+          <View style={styles.anexo4Section}>
+            <Text style={styles.anexo4SectionTitle}>RELATÓRIOS EM ANDAMENTO</Text>
 
-            <View style={styles.tabsContainer}>
-              {tabs.map((tabId) => {
-                const isActive = activeTab === tabId;
-                const tabData = tabStore[tabId];
-                const tabName = tabData?.unidade ? tabData.unidade.toUpperCase() : 'Vazio';
+            <View style={styles.anexo4GroupCard}>
+              {/* Linha Superior: Relatório 1 e Relatório 2 */}
+              <View style={styles.anexo4Row}>
+                {renderAnexo4Slot(1)}
+                {renderAnexo4Slot(2)}
+              </View>
 
-                return (
-                  <TouchableOpacity
-                    key={tabId}
-                    style={[
-                      styles.tab,
-                      isActive ? styles.tabActive : styles.tabInactive,
-                      tabs.length === 1 && styles.tabSingle,
-                    ]}
-                    onPress={() => {
-                      setActiveTab(tabId);
-                      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-                        try {
-                          localStorage.setItem('mms_active_tab', String(tabId));
-                        } catch (e) {}
-                      }
-                    }}
-                    activeOpacity={0.85}
-                  >
-                    {tabs.length > 1 && (
-                      <TouchableOpacity
-                        style={styles.tabRemoveBtn}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          removeTab(tabId);
-                        }}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Text style={styles.tabRemoveText}>✕</Text>
-                      </TouchableOpacity>
-                    )}
-                    <Text
-                      style={[styles.tabLabel, isActive && styles.tabLabelActive]}
-                      numberOfLines={1}
-                    >
-                      RELATÓRIO {tabId}
-                    </Text>
-                    <Text
-                      style={[styles.tabName, isActive ? styles.tabNameActive : styles.tabNameInactive]}
-                      numberOfLines={1}
-                    >
-                      {tabName}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {/* Linha Inferior: Relatório 3 e Relatório 4 */}
+              <View style={styles.anexo4Row}>
+                {renderAnexo4Slot(3)}
+                {renderAnexo4Slot(4)}
+              </View>
             </View>
           </View>
 
@@ -3807,6 +3842,52 @@ export default function ReportGenerator() {
           <Text style={styles.toastSaveText}>Rascunho Salvo</Text>
         </View>
       )}
+
+      {/* Menu Flutuante em Pílula (Fiel ao Anexo 3) */}
+      <View style={styles.floatingNavWrapper} pointerEvents="box-none">
+        <View style={styles.floatingNavPill}>
+          {/* 1. Sincronizar / Refresh com indicador ativo azul */}
+          <TouchableOpacity
+            style={styles.floatingNavTabItem}
+            onPress={handleRefresh}
+            activeOpacity={0.7}
+            accessibilityLabel="Sincronizar"
+          >
+            <MaterialFlatIcon name="refresh" size={26} color="#2563eb" />
+            <View style={styles.floatingNavActiveIndicator} />
+          </TouchableOpacity>
+
+          {/* 2. Coordenação / Configurações (Engrenagem) */}
+          <TouchableOpacity
+            style={styles.floatingNavTabItem}
+            onPress={handleGoCoord}
+            activeOpacity={0.7}
+            accessibilityLabel="Painel de Coordenação"
+          >
+            <MaterialFlatIcon name="settings" size={26} color="#64748b" />
+          </TouchableOpacity>
+
+          {/* 3. Meus Relatórios / Histórico (Globo) */}
+          <TouchableOpacity
+            style={styles.floatingNavTabItem}
+            onPress={() => router.push('/meus_relatorios')}
+            activeOpacity={0.7}
+            accessibilityLabel="Meus Relatórios"
+          >
+            <MaterialFlatIcon name="public" size={26} color="#64748b" />
+          </TouchableOpacity>
+
+          {/* 4. Sair / Logout */}
+          <TouchableOpacity
+            style={styles.floatingNavTabItem}
+            onPress={handleMenuLogout}
+            activeOpacity={0.7}
+            accessibilityLabel="Encerrar Sessão"
+          >
+            <MaterialFlatIcon name="logout" size={26} color="#64748b" />
+          </TouchableOpacity>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -3895,11 +3976,13 @@ const styles = StyleSheet.create({
   },
   dropdownModalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
     paddingTop: 64,
     paddingRight: 16,
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
   },
   dropdownMenuCard: {
     width: 280,
@@ -4290,123 +4373,99 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 11,
   },
-  tabsSection: {
+  // ─── ESTILOS ANEXO 4: RELATÓRIOS EM ANDAMENTO (AGRUPAMENTO 2x2) ───
+  anexo4Section: {
+    width: '100%',
     marginBottom: 20,
   },
-  tabsTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  tabsSectionTitle: {
-    fontWeight: '800',
-    fontSize: 11,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    fontFamily: modernFont,
-  },
-  btnAddTab: {
-    backgroundColor: '#eff6ff',
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#bfdbfe',
-  },
-  btnAddTabText: {
-    color: '#2563eb',
+  anexo4SectionTitle: {
+    fontSize: 12,
     fontWeight: '900',
-    fontSize: 11,
+    color: '#64748b',
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    marginBottom: 10,
     fontFamily: modernFont,
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#f1f5f9',
-    padding: 6,
-    borderRadius: 14,
+  anexo4GroupCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    minHeight: 66,
-    alignItems: 'center',
-    gap: 6,
+    padding: 10,
+    gap: 8,
   },
-  tab: {
+  anexo4Row: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+  },
+  anexo4Slot: {
     flex: 1,
+    minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     position: 'relative',
     minWidth: 0,
   },
-  tabSingle: {
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: 160,
-    width: 160,
-  },
-  tabActive: {
+  anexo4SlotActive: {
     backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 2,
   },
-  tabInactive: {
+  anexo4SlotInactive: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
-  tabRemoveBtn: {
+  anexo4RemoveBtn: {
     position: 'absolute',
-    top: 4,
-    right: 6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#fee2e2',
+    top: 6,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#ffe4e6',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 5,
   },
-  tabRemoveText: {
-    color: '#ef4444',
-    fontSize: 10,
+  anexo4RemoveText: {
+    color: '#e11d48',
+    fontSize: 11,
     fontWeight: '900',
+    lineHeight: 13,
   },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: '800',
+  anexo4SlotTitle: {
+    fontSize: 11,
+    fontWeight: '700',
     textTransform: 'uppercase',
     color: '#64748b',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     fontFamily: modernFont,
     textAlign: 'center',
   },
-  tabLabelActive: {
+  anexo4SlotTitleActive: {
     color: '#2563eb',
     fontWeight: '900',
   },
-  tabName: {
-    fontSize: 13,
-    fontWeight: '800',
+  anexo4SlotName: {
+    fontSize: 14,
+    fontWeight: '600',
     marginTop: 2,
     fontFamily: modernFont,
     textAlign: 'center',
   },
-  tabNameActive: {
+  anexo4SlotNameActive: {
     color: '#0f172a',
     fontWeight: '900',
   },
-  tabNameInactive: {
-    color: '#475569',
+  anexo4SlotNameInactive: {
+    color: '#334155',
   },
   formContainer: {
     width: '100%',
@@ -5430,9 +5489,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontFamily: modernFont,
   },
+  // ─── ESTILOS ANEXO 3: MENU FLUTUANTE EM PÍLULA ───
   floatingNavWrapper: {
-    position: 'absolute',
-    bottom: 22,
+    position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as any,
+    bottom: 24,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -5443,46 +5503,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
     borderRadius: 9999,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowRadius: 18,
     elevation: 8,
-    gap: 14,
+    gap: 30,
   },
-  floatingNavBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+  floatingNavTabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
   },
-  navBtnRefresh: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#bfdbfe',
-  },
-  navBtnCoord: {
-    backgroundColor: '#f5f3ff',
-    borderColor: '#ddd6fe',
-  },
-  navBtnUrl: {
-    backgroundColor: '#f0f9ff',
-    borderColor: '#bae6fd',
-  },
-  navBtnLogout: {
-    backgroundColor: '#fff1f2',
-    borderColor: '#fecdd3',
+  floatingNavActiveIndicator: {
+    width: 20,
+    height: 3,
+    backgroundColor: '#2563eb',
+    borderRadius: 2,
+    marginTop: 4,
   },
   demoBannerBox: {
     marginTop: 24,
@@ -5651,10 +5695,12 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
   },
   authCard: {
     backgroundColor: colors.white,
