@@ -101,3 +101,76 @@ export async function saveFooterConfig(config: FooterConfig): Promise<boolean> {
     return true; // LocalStorage já garantiu a persistência local
   }
 }
+
+export interface AppVersionRecord {
+  id?: number;
+  versao: string;
+  descricao: string;
+  data_criacao?: string;
+}
+
+export async function fetchLatestAppVersion(): Promise<string> {
+  let cached: string | null = null;
+  if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+    try {
+      cached = localStorage.getItem('mms_cached_app_version');
+    } catch (e) {}
+  }
+  try {
+    const { data, error } = await supabase
+      .from('mms_versao_app')
+      .select('versao')
+      .order('id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!error && data?.versao) {
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('mms_cached_app_version', data.versao);
+        } catch (e) {}
+      }
+      return data.versao;
+    }
+  } catch (e) {}
+  return cached || 'V1.2.4';
+}
+
+export async function fetchAllAppVersions(): Promise<AppVersionRecord[]> {
+  try {
+    const { data, error } = await supabase
+      .from('mms_versao_app')
+      .select('*')
+      .order('id', { ascending: false })
+      .limit(50);
+
+    if (!error && data) {
+      return data as AppVersionRecord[];
+    }
+  } catch (e) {}
+  return [];
+}
+
+export async function insertAppVersion(versao: string, descricao: string): Promise<boolean> {
+  try {
+    const v = versao.trim();
+    const d = descricao.trim();
+    const { error } = await supabase
+      .from('mms_versao_app')
+      .insert([{
+        versao: v,
+        descricao: d,
+        data_criacao: new Date().toISOString(),
+      }]);
+    if (!error) {
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('mms_cached_app_version', v);
+        } catch (e) {}
+      }
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
