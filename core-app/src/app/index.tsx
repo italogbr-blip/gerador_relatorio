@@ -2436,9 +2436,9 @@ export default function ReportGenerator() {
         </Modal>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.scroll, !isDesktop && styles.scrollMobile]}>
+      <ScrollView contentContainerStyle={styles.scroll}>
         {/* Cartão Principal de Preenchimento (Independente e Separado do Preview) */}
-        <View style={[styles.card, !isDesktop && styles.cardMobile]}>
+        <View style={styles.card}>
           {/* Header do Card com Botão Iniciar Novo Relatório */}
           <View style={styles.cardHeader}>
             <TouchableOpacity onPress={limparTudo} style={styles.btnNovoRelatorio} activeOpacity={0.75}>
@@ -4144,19 +4144,13 @@ const styles = StyleSheet.create({
     padding: 12,
     paddingBottom: 48,
     alignItems: 'center',
-    width: '100%',
-  },
-  scrollMobile: {
-    paddingHorizontal: 4,
-    paddingTop: 8,
-    paddingBottom: 56,
   },
   card: {
     backgroundColor: colors.white,
     borderRadius: 12,
     padding: 20,
     width: '100%',
-    maxWidth: 720,
+    maxWidth: 672,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -4165,12 +4159,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.white,
     marginBottom: 24,
-  },
-  cardMobile: {
-    paddingHorizontal: 10,
-    paddingVertical: 14,
-    borderRadius: 10,
-    maxWidth: '100%',
   },
   cardHeader: {
     flexDirection: 'row',
