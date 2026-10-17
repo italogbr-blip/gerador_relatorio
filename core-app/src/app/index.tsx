@@ -123,7 +123,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   }
 }
 
-const GRUPO_OPTIONS = ['TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
+const GRUPO_OPTIONS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
 
 interface SaidaItem {
   id: string;
@@ -169,7 +169,7 @@ interface TabData {
 }
 
 const createDefaultTab = (prepostoDefault = ''): TabData => ({
-  grupo: 'TECHNIP',
+  grupo: 'ALPHA OFFSHORE',
   unidade: '',
   data: '',
   local: '',
@@ -850,7 +850,7 @@ export default function ReportGenerator() {
       }
 
       const loadedTab: TabData = {
-        grupo: parsed.grupo || report.empresa || 'TECHNIP',
+        grupo: parsed.grupo || report.empresa || 'ALPHA OFFSHORE',
         unidade: parsed.unidade || report.unidade || '',
         data: dataVal,
         local: parsed.local || report.local_atendimento || '',
@@ -2163,7 +2163,7 @@ export default function ReportGenerator() {
                     style={[
                       styles.tab,
                       isActive ? styles.tabActive : styles.tabInactive,
-                      tabs.length === 1 && { maxWidth: 170, flex: 0, width: 170 },
+                      tabs.length === 1 && styles.tabSingle,
                     ]}
                     onPress={() => setActiveTab(tabId)}
                     activeOpacity={0.85}
@@ -2180,7 +2180,10 @@ export default function ReportGenerator() {
                         <Text style={styles.tabRemoveText}>✕</Text>
                       </TouchableOpacity>
                     )}
-                    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                    <Text
+                      style={[styles.tabLabel, isActive && styles.tabLabelActive]}
+                      numberOfLines={1}
+                    >
                       RELATÓRIO {tabId}
                     </Text>
                     <Text
@@ -2206,7 +2209,7 @@ export default function ReportGenerator() {
                 onPress={() => setIsGrupoDropdownOpen(!isGrupoDropdownOpen)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.selectBoxText}>{currentData.grupo || 'TECHNIP'}</Text>
+                <Text style={styles.selectBoxText}>{currentData.grupo || 'ALPHA OFFSHORE'}</Text>
                 <Text style={styles.selectBoxChevron}>{isGrupoDropdownOpen ? '▲' : '▼'}</Text>
               </TouchableOpacity>
 
@@ -2387,7 +2390,7 @@ export default function ReportGenerator() {
 
                 <View style={styles.dicaBox}>
                   <Text style={styles.dicaText}>
-                    ✏️ <Text style={{ fontWeight: 'bold' }}>Dica:</Text> O rótulo inicial <Text style={styles.dicaTag}>Previsto</Text> pode ser clicado e editado (Ex: Previsto DOF, Previsto TFMC).
+                    ✏️ <Text style={{ fontWeight: 'bold' }}>Dica:</Text> O rótulo inicial <Text style={styles.dicaTag}>Previsto</Text> pode ser clicado e editado (Ex: Previsto Alpha, Previsto Nexus).
                   </Text>
                 </View>
 
@@ -3840,9 +3843,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
     borderRadius: 10,
     position: 'relative',
+    minWidth: 0,
+  },
+  tabSingle: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 160,
+    width: 160,
   },
   tabActive: {
     backgroundColor: '#ffffff',
@@ -3882,6 +3892,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
     letterSpacing: 0.5,
     fontFamily: modernFont,
+    textAlign: 'center',
   },
   tabLabelActive: {
     color: '#2563eb',
@@ -3892,6 +3903,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 2,
     fontFamily: modernFont,
+    textAlign: 'center',
   },
   tabNameActive: {
     color: '#0f172a',
