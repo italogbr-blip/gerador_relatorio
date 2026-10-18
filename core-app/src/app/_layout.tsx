@@ -7,6 +7,8 @@ import '../css/estilo.css';
 export default function Layout() {
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.title = 'MMS Relatórios | Gerador de Relatórios';
+
       // 1. Desativar Zoom via Viewport Meta Tag
       let meta = document.querySelector('meta[name="viewport"]');
       if (!meta) {
