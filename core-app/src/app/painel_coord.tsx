@@ -248,7 +248,14 @@ export default function PainelCoordScreen() {
         };
 
         const sessionPayload: AppUserSession = {
-          user: coordUser,
+          user: {
+            ...coordUser,
+            user_metadata: {
+              name: coordUser.nome || coordUser.username || 'Ítalo Gabriel',
+              username: coordUser.username || 'italogabriel',
+              nivel_autoridade: 2,
+            },
+          },
           token: 'coord_token_' + Date.now(),
           nivel: 2,
           timestamp: Date.now(),
@@ -260,6 +267,9 @@ export default function PainelCoordScreen() {
         setIsPanelUnlocked(true);
 
         if (Platform.OS === 'web') {
+          if (typeof window !== 'undefined') {
+            window.scrollTo(0, 0);
+          }
           try {
             sessionStorage.setItem('mms_coord_unlocked', 'true');
             localStorage.setItem('mms_last_coord_user', usuarioDigitado);
@@ -1151,54 +1161,59 @@ export default function PainelCoordScreen() {
   // 4. Painel de Coordenação Autorizado e Desbloqueado
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
-      {/* Navbar Principal com Cabeçalho Customizado (Tema Claro / Offshore) */}
+      {/* Navbar Principal com Cabeçalho Customizado (Tema Claro / Offshore - Não Fixo) */}
       <View style={styles.coordNavbar}>
-        <View style={[styles.coordNavbarInner, isMobile && { flexDirection: 'column', alignItems: 'stretch', gap: 8 }]}>
-          {/* Linha Principal: Ícone + Título COORDENAÇÃO e Botões no Mobile */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <View style={[styles.coordNavbarInner, isMobile && { flexDirection: 'column', alignItems: 'stretch', gap: 6, paddingVertical: 8, paddingHorizontal: 12 }]}>
+          {/* Linha 1 Mobile: Logo + Botões de Ação */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'nowrap', gap: 6 }}>
             <View style={styles.coordNavLeft}>
-              <View style={styles.coordNavLogoIcon}>
-                <Text style={styles.coordNavLogoRay}>⚡</Text>
+              <View style={[styles.coordNavLogoIcon, isMobile && { width: 32, height: 32, borderRadius: 8 }]}>
+                <Text style={[styles.coordNavLogoRay, isMobile && { fontSize: 15 }]}>⚡</Text>
               </View>
-              <View>
-                <Text style={styles.coordNavLogoText}>COORDENAÇÃO</Text>
-                {isMobile && (
-                  <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '700' }} numberOfLines={1}>
-                    Olá, {userSession?.user?.user_metadata?.name || inputUsuarioPainel || 'italogabriel'}
-                  </Text>
-                )}
-              </View>
+              <Text style={[styles.coordNavLogoText, isMobile && { fontSize: 13, letterSpacing: 0.8 }]}>COORDENAÇÃO</Text>
             </View>
 
             {isMobile && (
-              <View style={styles.coordNavButtonsGroup}>
+              <View style={[styles.coordNavButtonsGroup, { gap: 6 }]}>
                 <TouchableOpacity
-                  style={styles.coordNavNotificationBtn}
+                  style={[styles.coordNavNotificationBtn, { width: 32, height: 32 }]}
                   onPress={() => setActiveTab('popups')}
                   activeOpacity={0.8}
                   title="Notificações"
                 >
-                  <Text style={{ fontSize: 16 }}>🔔</Text>
+                  <Text style={{ fontSize: 14 }}>🔔</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.coordNavVoltarBtn}
+                  style={[styles.coordNavVoltarBtn, { paddingHorizontal: 10, paddingVertical: 5 }]}
                   onPress={() => router.push('/')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.coordNavVoltarBtnText}>VOLTAR</Text>
+                  <Text style={[styles.coordNavVoltarBtnText, { fontSize: 10 }]}>VOLTAR</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.coordNavSairBtn}
+                  style={[styles.coordNavSairBtn, { paddingHorizontal: 10, paddingVertical: 5 }]}
                   onPress={handleBloquearPainel}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.coordNavSairBtnText}>SAIR</Text>
+                  <Text style={[styles.coordNavSairBtnText, { fontSize: 10 }]}>SAIR</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
+
+          {/* Linha 2 Mobile: Nome do Usuário + Data/Hora */}
+          {isMobile && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingTop: 4, borderTopWidth: 1, borderTopColor: '#f1f5f9' }}>
+              <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '700' }} numberOfLines={1}>
+                Olá, <Text style={{ color: '#0f172a' }}>{userSession?.user?.user_metadata?.name || inputUsuarioPainel || 'Ítalo Gabriel'}</Text>
+              </Text>
+              <Text style={{ fontSize: 10, color: '#94a3b8', fontWeight: '600' }}>
+                {dataHoraAtual}
+              </Text>
+            </View>
+          )}
 
           {/* Lado Direito Desktop: Data/Hora, IP, Usuário, Notificação, Voltar e Sair */}
           {!isMobile && (
@@ -4898,15 +4913,15 @@ const styles = StyleSheet.create({
     paddingBottom: 64,
   },
 
-  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO (TEMA CLARO PHP / STICKY) ─── */
+  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO (TEMA CLARO PHP - NÃO FIXO / FLUXO NATURAL) ─── */
   coordNavbar: {
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
     width: '100%',
-    position: Platform.OS === 'web' ? ('sticky' as any) : 'relative',
-    top: 0,
-    zIndex: 1000,
+    position: 'relative',
+    top: 'auto' as any,
+    zIndex: 50,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,

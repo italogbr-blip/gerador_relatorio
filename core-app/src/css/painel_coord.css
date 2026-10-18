@@ -3,16 +3,16 @@
    Portado e otimizado com fidelidade 100% ao ecossistema original
    ========================================================================== */
 
-/* ─── NAVBAR SUPERIOR STICKY ─── */
-.coord-navbar-sticky {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 1000 !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  background-color: rgba(255, 255, 255, 0.95) !important;
+/* ─── NAVBAR SUPERIOR (NÃO FIXO / FLUXO NATURAL) ─── */
+.coord-navbar-sticky,
+.coord-navbar {
+  position: relative !important;
+  top: auto !important;
+  z-index: 50 !important;
+  width: 100% !important;
+  background-color: #ffffff !important;
   border-bottom: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
 /* ─── SCROLL HORIZONTAL PARA TABELAS RESPONSIVAS ─── */
