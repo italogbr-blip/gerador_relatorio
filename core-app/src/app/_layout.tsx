@@ -58,6 +58,23 @@ export default function Layout() {
       };
       window.addEventListener('keydown', handleKeyDown);
 
+      // Sincronização Imediata Anti-FOUC (Previne qualquer Flash de Modo Escuro)
+      try {
+        const savedTheme = localStorage.getItem('app_theme_dark');
+        const isDark = savedTheme === 'true';
+        if (isDark) {
+          document.documentElement.classList.add('dark-theme');
+          document.documentElement.classList.remove('light-theme');
+          document.body.classList.add('dark-theme');
+          document.body.classList.remove('light-theme');
+        } else {
+          document.documentElement.classList.add('light-theme');
+          document.documentElement.classList.remove('dark-theme');
+          document.body.classList.add('light-theme');
+          document.body.classList.remove('dark-theme');
+        }
+      } catch (e) {}
+
       if (!document.getElementById('inter-font-link')) {
         const link = document.createElement('link');
         link.id = 'inter-font-link';
@@ -70,58 +87,64 @@ export default function Layout() {
         const style = document.createElement('style');
         style.id = 'custom-scrollbar-style';
         style.innerHTML = `
-          /* Desativa zoom e salto de escala por toque */
+          /* Prevenção Imediata de Flash de Tema (FOUC) - Fundo Padrão Suave e Claro */
           html, body {
             touch-action: pan-x pan-y;
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
+            background-color: #f1f5f9;
+          }
+          html.dark-theme, body.dark-theme {
+            background-color: #0b1329;
           }
 
-          /* Scrollbar Estilizado Customizado */
+          /* Scrollbar Estilizado Customizado - Padrão Modo Claro */
           ::-webkit-scrollbar {
             width: 14px;
             height: 14px;
           }
-          ::-webkit-scrollbar-track {
-            background-color: #0f172a;
+          ::-webkit-scrollbar-track,
+          ::-webkit-scrollbar-button {
+            background-color: #f1f5f9;
           }
           ::-webkit-scrollbar-thumb {
-            background-color: #64748b;
+            background-color: #94a3b8;
             border-radius: 7px;
-            border: 3px solid #0f172a;
+            border: 3px solid #f1f5f9;
           }
           ::-webkit-scrollbar-thumb:hover {
-            background-color: #94a3b8;
+            background-color: #475569;
           }
           ::-webkit-scrollbar-button:single-button:vertical:decrement {
             height: 14px;
-            background: #0f172a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2394a3b8'><polygon points='50,20 20,80 80,80'/></svg>") no-repeat center center;
+            background: #f1f5f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2364748b'><polygon points='50,20 20,80 80,80'/></svg>") no-repeat center center;
             background-size: 8px 8px;
           }
           ::-webkit-scrollbar-button:single-button:vertical:increment {
             height: 14px;
-            background: #0f172a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2394a3b8'><polygon points='50,80 20,20 80,20'/></svg>") no-repeat center center;
+            background: #f1f5f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2364748b'><polygon points='50,80 20,20 80,20'/></svg>") no-repeat center center;
             background-size: 8px 8px;
           }
 
-          /* Modo Claro */
-          body.light-theme ::-webkit-scrollbar-track,
-          body.light-theme ::-webkit-scrollbar-button {
-            background-color: #f1f5f9;
+          /* Modo Escuro (Ativado se dark-theme estiver presente) */
+          body.dark-theme ::-webkit-scrollbar-track,
+          body.dark-theme ::-webkit-scrollbar-button {
+            background-color: #0f172a;
           }
-          body.light-theme ::-webkit-scrollbar-thumb {
+          body.dark-theme ::-webkit-scrollbar-thumb {
+            background-color: #64748b;
+            border: 3px solid #0f172a;
+          }
+          body.dark-theme ::-webkit-scrollbar-thumb:hover {
             background-color: #94a3b8;
-            border: 3px solid #f1f5f9;
           }
-          body.light-theme ::-webkit-scrollbar-thumb:hover {
-            background-color: #475569;
-          }
-          body.light-theme ::-webkit-scrollbar-button:single-button:vertical:decrement {
-            background: #f1f5f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2364748b'><polygon points='50,20 20,80 80,80'/></svg>") no-repeat center center;
+          body.dark-theme ::-webkit-scrollbar-button:single-button:vertical:decrement {
+            background: #0f172a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2394a3b8'><polygon points='50,20 20,80 80,80'/></svg>") no-repeat center center;
             background-size: 8px 8px;
           }
-          body.light-theme ::-webkit-scrollbar-button:single-button:vertical:increment {
-            background: #f1f5f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2364748b'><polygon points='50,80 20,20 80,20'/></svg>") no-repeat center center;
+          body.dark-theme ::-webkit-scrollbar-button:single-button:vertical:increment {
+            height: 14px;
+            background: #0f172a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2394a3b8'><polygon points='50,80 20,20 80,20'/></svg>") no-repeat center center;
             background-size: 8px 8px;
           }
 

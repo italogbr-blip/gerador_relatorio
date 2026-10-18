@@ -1008,7 +1008,7 @@ export default function PainelCoordScreen() {
 
   // 4. Painel de Coordenação Autorizado e Desbloqueado (100% Idêntico ao coord/index.php)
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
       {/* Navbar Principal com Cabeçalho Customizado (Tema Claro / Offshore) */}
       <View style={styles.coordNavbar}>
         <View style={styles.coordNavbarInner}>
@@ -2623,7 +2623,7 @@ export default function PainelCoordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#f1f5f9',
   },
   scrollContent: {
     padding: 16,

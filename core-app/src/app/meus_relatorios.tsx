@@ -49,7 +49,7 @@ export default function MeusRelatoriosScreen() {
         return saved === 'true';
       }
     }
-    return true;
+    return false;
   });
 
   const toggleTheme = () => {
@@ -1149,7 +1149,7 @@ export default function MeusRelatoriosScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#f1f5f9',
   },
   navbar: {
     height: 60,

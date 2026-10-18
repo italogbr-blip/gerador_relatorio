@@ -930,7 +930,7 @@ export default function ReportGenerator() {
         return saved === 'true';
       }
     }
-    return true;
+    return false;
   });
 
   useEffect(() => {
@@ -2587,7 +2587,7 @@ export default function ReportGenerator() {
 
 
   return (
-    <SafeAreaView style={[styles.body, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
+    <SafeAreaView style={[styles.body, isDarkMode && { backgroundColor: colors.body }]}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
 
       {/* Navbar Superior Limpa */}
@@ -4136,7 +4136,7 @@ const fmtHoraA4 = (h?: string, m?: string) => {
 const styles = StyleSheet.create({
   body: {
     flex: 1,
-    backgroundColor: colors.body,
+    backgroundColor: '#f1f5f9',
   },
   navbar: {
     height: 56,
@@ -4480,7 +4480,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
     borderRadius: 12,
-    padding: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 4,
     width: '100%',
     maxWidth: 672,
     alignItems: 'stretch',
@@ -4497,7 +4498,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    marginBottom: 36,
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   headerLogoImage: {
     height: 60,
@@ -4536,8 +4538,9 @@ const styles = StyleSheet.create({
     textAlign: 'center', // text-center
     marginBottom: 16, // mb-4
     borderBottomWidth: 2, // border-b-2
-    borderBottomColor: '#f1f5f9', // border-slate-100
-    paddingBottom: 16, // pb-4
+    borderBottomColor: '#e2e8f0', // border-slate-200
+    paddingBottom: 4, // pb-1 (rente à linha divisória)
+    paddingHorizontal: 4,
     color: '#1e293b', // text-slate-800
     textTransform: 'uppercase', // uppercase
     letterSpacing: -0.5, // tracking-tight
