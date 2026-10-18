@@ -2339,10 +2339,14 @@ export default function PainelCoordScreen() {
       <Modal
         visible={!!selectedReport}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => setSelectedReport(null)}
       >
-        <View style={styles.modalOverlay}>
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
           <View style={[styles.modalContent, { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderWidth: 1 }]}>
             <View style={[styles.modalHeader, { borderBottomColor: '#f1f5f9' }]}>
               <View>
@@ -2473,10 +2477,14 @@ export default function PainelCoordScreen() {
       <Modal
         visible={isNovoPopupModalVisible}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => setIsNovoPopupModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
           <View style={[styles.novoPopupContent, !isDarkMode && { backgroundColor: '#ffffff' }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, !isDarkMode && { color: '#0f172a' }]}>NOVO COMUNICADO GLOBAL</Text>
@@ -2567,10 +2575,14 @@ export default function PainelCoordScreen() {
       <Modal
         visible={customDialog.visible}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => setCustomDialog((prev) => ({ ...prev, visible: false }))}
       >
-        <View style={styles.modalOverlay}>
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
           <View style={[styles.dialogContent, !isDarkMode && { backgroundColor: '#ffffff' }]}>
             <Text style={[styles.dialogTitle, !isDarkMode && { color: '#0f172a' }]}>{customDialog.title}</Text>
             <Text style={[styles.dialogMessage, !isDarkMode && { color: '#475569' }]}>{customDialog.message}</Text>
@@ -3642,12 +3654,20 @@ const styles = StyleSheet.create({
   // Modais
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
-    backdropFilter: 'blur(4px)',
-    WebkitBackdropFilter: 'blur(4px)',
+    ...(Platform.OS === 'web'
+      ? {
+          animationDuration: '0.45s',
+          animationName: 'mmsNaturalBlurIn',
+          animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          animationFillMode: 'forwards',
+          backgroundColor: 'transparent',
+        }
+      : {
+          backgroundColor: 'rgba(15, 23, 42, 0.4)',
+        }),
   },
   modalContent: {
     backgroundColor: '#1e293b',
