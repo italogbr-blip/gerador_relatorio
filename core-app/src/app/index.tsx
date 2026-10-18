@@ -158,6 +158,8 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 // Ícones Flat Material Design Oficiais (Google Material Design)
 const MATERIAL_PATHS = {
   refresh: 'M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
+  home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+  plus: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
   settings: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
   public: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
   logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
@@ -215,27 +217,30 @@ const MaterialFlatIcon = ({
   );
 };
 
-// Item Animado do Menu Flutuante (Feedback visual com bounce spring e material flat)
-const AnimatedFlatMenuItem = ({
-  icon,
-  size = 25,
-  color,
-  active = false,
-  onPress,
-  label,
-}: {
+// ─── COMPONENTE FABBAR (ADAPTADO DO REPOSITÓRIO RYANASHCRAFT/FABBAR) ───
+// Reproduz fielmente a barra Liquid Glass com abas integradas e botão flutuante (+) FAB com elevação
+interface FabBarTabConfig {
+  id: string;
+  label: string;
   icon: MaterialIconName;
-  size?: number;
-  color?: string;
-  active?: boolean;
+}
+
+const FabBarTabButton = ({
+  tab,
+  isActive,
+  isDarkMode,
+  onPress,
+}: {
+  tab: FabBarTabConfig;
+  isActive: boolean;
+  isDarkMode: boolean;
   onPress: () => void;
-  label?: string;
 }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.84,
+      toValue: 0.88,
       useNativeDriver: Platform.OS !== 'web',
       friction: 6,
       tension: 140,
@@ -245,7 +250,7 @@ const AnimatedFlatMenuItem = ({
   const handlePressOut = () => {
     Animated.sequence([
       Animated.spring(scaleAnim, {
-        toValue: 1.18,
+        toValue: 1.12,
         useNativeDriver: Platform.OS !== 'web',
         friction: 4,
         tension: 100,
@@ -259,16 +264,21 @@ const AnimatedFlatMenuItem = ({
     ]).start();
   };
 
-  const iconColor = active ? '#2563eb' : (color || '#475569');
+  const activeColor = isDarkMode ? '#60a5fa' : '#2563eb';
+  const inactiveColor = isDarkMode ? '#94a3b8' : '#64748b';
+  const iconColor = isActive ? activeColor : inactiveColor;
 
   return (
     <TouchableOpacity
-      style={styles.floatingNavTabItem}
+      style={[
+        styles.fabBarTab,
+        isActive && (isDarkMode ? styles.fabBarTabActiveDark : styles.fabBarTabActiveLight),
+      ]}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={0.8}
-      accessibilityLabel={label}
+      accessibilityLabel={tab.label}
     >
       <Animated.View
         style={{
@@ -277,10 +287,109 @@ const AnimatedFlatMenuItem = ({
           justifyContent: 'center',
         }}
       >
-        <MaterialFlatIcon name={icon} size={size} color={iconColor} />
+        <MaterialFlatIcon name={tab.icon} size={20} color={iconColor} />
+        <Text
+          style={[
+            styles.fabBarTabLabel,
+            isDarkMode ? styles.fabBarTabLabelDark : styles.fabBarTabLabelLight,
+            isActive && (isDarkMode ? styles.fabBarTabLabelActiveDark : styles.fabBarTabLabelActiveLight),
+          ]}
+          numberOfLines={1}
+        >
+          {tab.label}
+        </Text>
       </Animated.View>
-      {active && <View style={styles.floatingNavActiveIndicator} />}
     </TouchableOpacity>
+  );
+};
+
+const FabBar = ({
+  activeTab,
+  onSelectTab,
+  onFabPress,
+  isDarkMode,
+}: {
+  activeTab: string;
+  onSelectTab: (tabId: string) => void;
+  onFabPress: () => void;
+  isDarkMode: boolean;
+}) => {
+  const fabScaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handleFabPressIn = () => {
+    Animated.spring(fabScaleAnim, {
+      toValue: 0.86,
+      useNativeDriver: Platform.OS !== 'web',
+      friction: 5,
+      tension: 140,
+    }).start();
+  };
+
+  const handleFabPressOut = () => {
+    Animated.sequence([
+      Animated.spring(fabScaleAnim, {
+        toValue: 1.15,
+        useNativeDriver: Platform.OS !== 'web',
+        friction: 4,
+        tension: 100,
+      }),
+      Animated.spring(fabScaleAnim, {
+        toValue: 1,
+        useNativeDriver: Platform.OS !== 'web',
+        friction: 5,
+        tension: 80,
+      }),
+    ]).start();
+  };
+
+  const tabs: FabBarTabConfig[] = [
+    { id: 'inicio', label: 'Início', icon: 'home' },
+    { id: 'coord', label: 'Coordenação', icon: 'settings' },
+    { id: 'relatorios', label: 'Relatórios', icon: 'public' },
+    { id: 'logout', label: 'Sair', icon: 'logout' },
+  ];
+
+  return (
+    <View style={styles.fabBarWrapper} pointerEvents="box-none">
+      <View style={styles.fabBarContainer}>
+        {/* 1. Cápsula de Abas Liquid Glass */}
+        <View
+          style={[
+            styles.fabBarCapsule,
+            isDarkMode ? styles.fabBarCapsuleDark : styles.fabBarCapsuleLight,
+          ]}
+        >
+          {tabs.map((tab) => (
+            <FabBarTabButton
+              key={tab.id}
+              tab={tab}
+              isActive={activeTab === tab.id}
+              isDarkMode={isDarkMode}
+              onPress={() => onSelectTab(tab.id)}
+            />
+          ))}
+        </View>
+
+        {/* 2. Floating Action Button (FAB) Tinted Liquid Glass (+) */}
+        <TouchableOpacity
+          style={styles.fabButtonTouch}
+          onPress={onFabPress}
+          onPressIn={handleFabPressIn}
+          onPressOut={handleFabPressOut}
+          activeOpacity={0.85}
+          accessibilityLabel="Iniciar Novo Relatório"
+        >
+          <Animated.View
+            style={[
+              styles.fabButtonCircle,
+              { transform: [{ scale: fabScaleAnim }] },
+            ]}
+          >
+            <MaterialFlatIcon name="plus" size={26} color="#ffffff" />
+          </Animated.View>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 };
 
@@ -741,7 +850,7 @@ export default function ReportGenerator() {
   };
 
   const { editId } = useLocalSearchParams<{ editId?: string }>();
-  const [activeMenuTab, setActiveMenuTab] = useState<'refresh' | 'coord' | 'relatorios' | 'logout'>('refresh');
+  const [activeMenuTab, setActiveMenuTab] = useState<'inicio' | 'coord' | 'relatorios' | 'logout'>('inicio');
   const [editingReportId, setEditingReportId] = useState<number | null>(null);
   const [isLoadingReportEdit, setIsLoadingReportEdit] = useState<boolean>(false);
   const [pdfGenerated, setPdfGenerated] = useState<boolean>(false);
@@ -3920,58 +4029,24 @@ export default function ReportGenerator() {
         </View>
       )}
 
-      {/* Menu Flutuante em Pílula (Menos alto, mais largo, fiel à imagem com animações) */}
-      <View style={styles.floatingNavWrapper} pointerEvents="box-none">
-        <View style={styles.floatingNavPill}>
-          {/* 1. Sincronizar / Refresh com indicador ativo azul */}
-          <AnimatedFlatMenuItem
-            icon="refresh"
-            size={26}
-            active={activeMenuTab === 'refresh'}
-            onPress={() => {
-              setActiveMenuTab('refresh');
-              handleRefresh();
-            }}
-            label="Sincronizar"
-          />
-
-          {/* 2. Coordenação / Configurações (Engrenagem) */}
-          <AnimatedFlatMenuItem
-            icon="settings"
-            size={26}
-            active={activeMenuTab === 'coord'}
-            onPress={() => {
-              setActiveMenuTab('coord');
-              handleGoCoord();
-            }}
-            label="Painel de Coordenação"
-          />
-
-          {/* 3. Meus Relatórios / Histórico (Globo) */}
-          <AnimatedFlatMenuItem
-            icon="public"
-            size={26}
-            active={activeMenuTab === 'relatorios'}
-            onPress={() => {
-              setActiveMenuTab('relatorios');
-              router.push('/meus_relatorios');
-            }}
-            label="Meus Relatórios"
-          />
-
-          {/* 4. Sair / Logout */}
-          <AnimatedFlatMenuItem
-            icon="logout"
-            size={26}
-            active={activeMenuTab === 'logout'}
-            onPress={() => {
-              setActiveMenuTab('logout');
-              handleMenuLogout();
-            }}
-            label="Encerrar Sessão"
-          />
-        </View>
-      </View>
+      {/* Menu FabBar Estilo iOS Liquid Glass com Floating Action Button (+) Adaptado de Ryan Ashcraft */}
+      <FabBar
+        activeTab={activeMenuTab}
+        onSelectTab={(tabId) => {
+          setActiveMenuTab(tabId as any);
+          if (tabId === 'inicio') {
+            handleRefresh();
+          } else if (tabId === 'coord') {
+            handleGoCoord();
+          } else if (tabId === 'relatorios') {
+            router.push('/meus_relatorios');
+          } else if (tabId === 'logout') {
+            handleMenuLogout();
+          }
+        }}
+        onFabPress={limparTudo}
+        isDarkMode={isDarkMode}
+      />
     </SafeAreaView>
   );
 }
@@ -5573,45 +5648,124 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontFamily: modernFont,
   },
-  // ─── ESTILOS ANEXO 3: MENU FLUTUANTE EM PÍLULA ───
-  floatingNavWrapper: {
+  // ─── ESTILOS FABBAR (INSPIRADO NO REPOSITÓRIO RYANASHCRAFT/FABBAR) ───
+  fabBarWrapper: {
     position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as any,
-    bottom: 24,
+    bottom: 22,
     left: 0,
     right: 0,
     alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 9999,
+    pointerEvents: 'box-none' as any,
   },
-  floatingNavPill: {
-    backgroundColor: '#ffffff',
+  fabBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 44,
-    borderRadius: 9999,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 6,
-    gap: 34,
+    gap: 10,
+    maxWidth: '96%',
   },
-  floatingNavTabItem: {
+  fabBarCapsule: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    minHeight: 32,
+    height: 60,
+    borderRadius: 9999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    gap: 4,
   },
-  floatingNavActiveIndicator: {
-    width: 22,
-    height: 3,
+  fabBarCapsuleLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderColor: 'rgba(255, 255, 255, 0.75)',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 6,
+    ...(Platform.OS === 'web'
+      ? ({
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        } as any)
+      : {}),
+  },
+  fabBarCapsuleDark: {
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 22,
+    elevation: 8,
+    ...(Platform.OS === 'web'
+      ? ({
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        } as any)
+      : {}),
+  },
+  fabBarTab: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    minWidth: 64,
+    height: 50,
+  },
+  fabBarTabActiveLight: {
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+  },
+  fabBarTabActiveDark: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  fabBarTabLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  fabBarTabLabelLight: {
+    color: '#64748b',
+  },
+  fabBarTabLabelDark: {
+    color: '#94a3b8',
+  },
+  fabBarTabLabelActiveLight: {
+    color: '#2563eb',
+    fontWeight: '800',
+  },
+  fabBarTabLabelActiveDark: {
+    color: '#60a5fa',
+    fontWeight: '800',
+  },
+  fabButtonTouch: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabButtonCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#2563eb',
-    borderRadius: 2,
-    marginTop: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.42,
+    shadowRadius: 18,
+    elevation: 9,
+    ...(Platform.OS === 'web'
+      ? ({
+          cursor: 'pointer',
+          boxShadow: '0 8px 24px rgba(37, 99, 235, 0.42)',
+        } as any)
+      : {}),
   },
   demoBannerBox: {
     marginTop: 24,
