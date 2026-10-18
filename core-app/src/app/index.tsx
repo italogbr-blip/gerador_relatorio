@@ -142,13 +142,12 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
         border: 2px solid #f43f5e !important;
         box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
       }
-      /* Efeito Blur de Todo o Conteúdo de Fundo para Pop-ups e Modais */
+      /* Efeito Blur Suave para Pop-ups e Modais */
       .modal-blur-overlay,
-      div[data-modal-blur="true"],
-      div[role="dialog"] {
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
-        background-color: rgba(15, 23, 42, 0.45) !important;
+      div[data-modal-blur="true"] {
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+        background-color: rgba(15, 23, 42, 0.35) !important;
       }
     `;
     document.head.appendChild(style);
@@ -2440,8 +2439,36 @@ export default function ReportGenerator() {
     );
   };
 
-  // Fechar / Limpar Aba de Relatório em Andamento (Imediato, sem bloqueios)
+  // Adicionar Relatório / Ativar Novo Slot (Até 4 Abas)
+  const adicionarNovoRelatorio = () => {
+    if (tabs.length >= 4) return;
+    const nextSlot = [1, 2, 3, 4].find((id) => !tabs.includes(id));
+    if (!nextSlot) return;
+
+    const userName =
+      userSession?.user?.user_metadata?.name ||
+      userSession?.user?.email?.split('@')[0] ||
+      '';
+    const newTabState = createDefaultTab(userName);
+    const newTabs = [...tabs, nextSlot].sort((a, b) => a - b);
+
+    setTabs(newTabs);
+    setTabStore((prev) => ({ ...prev, [nextSlot]: newTabState }));
+    setActiveTab(nextSlot);
+
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('mms_tab_' + nextSlot, JSON.stringify(newTabState));
+        localStorage.setItem('mms_active_tab', String(nextSlot));
+      } catch (e) {}
+    }
+  };
+
+  // Fechar / Excluir Aba de Relatório em Andamento e Esvaziar o Slot
   const fecharAba = (slotId: number) => {
+    // SOMENTE O SLOT 1 NÃO PODE SER EXCLUÍDO
+    if (slotId === 1) return;
+
     const tabData = tabStore[slotId];
     const hasData = Boolean(
       tabData &&
@@ -2455,31 +2482,12 @@ export default function ReportGenerator() {
         } catch (e) {}
       }
 
-      const userName =
-        userSession?.user?.user_metadata?.name ||
-        userSession?.user?.email?.split('@')[0] ||
-        '';
-      const cleanDefault = createDefaultTab(userName);
-
       setTabs((prevTabs) => {
         const remaining = prevTabs.filter((t) => t !== slotId);
 
-        // Se fechou e não sobrou nenhuma aba, mantém apenas a aba 1 vazia
-        if (remaining.length === 0) {
-          setActiveTab(1);
-          setTabStore({ 1: cleanDefault });
-          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-            try {
-              localStorage.setItem('mms_active_tab', '1');
-              localStorage.setItem('mms_tab_1', JSON.stringify(cleanDefault));
-            } catch (e) {}
-          }
-          return [1];
-        }
-
-        // Se fechou a aba que estava ativa, foca imediatamente em outra restante
+        // Se fechou a aba que estava ativa, foca imediatamente no slot 1 (ou primeiro restante)
         if (activeTab === slotId) {
-          const nextActive = remaining[0];
+          const nextActive = remaining.includes(1) ? 1 : remaining[0] || 1;
           setActiveTab(nextActive);
           if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
             try {
@@ -2488,7 +2496,7 @@ export default function ReportGenerator() {
           }
         }
 
-        // Limpa os dados da aba fechada no estado
+        // Limpa e esvazia os dados da aba fechada no estado
         setTabStore((prevStore) => {
           const nextStore = { ...prevStore };
           delete nextStore[slotId];
@@ -2501,10 +2509,10 @@ export default function ReportGenerator() {
 
     if (hasData) {
       showCustomConfirm(
-        'REMOVER RELATÓRIO',
-        `Deseja realmente remover o Relatório ${slotId}? Todos os dados deste formulário serão perdidos.`,
+        'EXCLUIR RELATÓRIO',
+        `Deseja realmente excluir o Relatório ${slotId}? Todos os dados deste formulário serão perdidos e o slot será esvaziado.`,
         executeClose,
-        'Remover',
+        'Excluir',
         'Cancelar'
       );
     } else {
@@ -2514,36 +2522,59 @@ export default function ReportGenerator() {
 
   // Renderizador dos Slots do Agrupamento de Relatórios em Andamento
   const renderDraftTabSlot = (slotId: number) => {
+    const isSlotOccupied = tabs.includes(slotId);
     const isActive = activeTab === slotId;
     const tabData = tabStore[slotId];
-    const isSlotOccupied = tabs.includes(slotId) || isActive || Boolean(tabData && (tabData.unidade || tabData.info));
-    const tabName = tabData?.unidade ? tabData.unidade.toUpperCase() : 'Vazio';
-    const showRemoveBtn = isSlotOccupied && (tabs.length > 1 || Boolean(tabData && (tabData.unidade || tabData.info)));
+    const tabName = isSlotOccupied
+      ? (tabData?.unidade ? tabData.unidade.toUpperCase() : 'Vazio')
+      : 'Vazio';
+
+    // Somente slots 2, 3 e 4 ocupados podem ser excluídos pelo X; slot 1 NUNCA pode ser excluído
+    const showRemoveBtn = slotId !== 1 && isSlotOccupied;
 
     return (
       <TouchableOpacity
         key={slotId}
         style={[
           styles.draftTabSlot,
-          isActive ? styles.draftTabSlotActive : styles.draftTabSlotInactive,
+          !isSlotOccupied
+            ? styles.draftTabSlotEmpty
+            : isActive
+            ? styles.draftTabSlotActive
+            : styles.draftTabSlotInactive,
         ]}
         onPress={() => {
-          if (!tabs.includes(slotId)) {
-            const userName = userSession?.user?.user_metadata?.name || userSession?.user?.email?.split('@')[0] || '';
-            const newTabState = tabStore[slotId] || createDefaultTab(userName);
-            setTabs((prev) => [...prev, slotId].sort());
-            setTabStore((prev) => ({ ...prev, [slotId]: newTabState }));
-          }
-          setActiveTab(slotId);
-          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-            try {
-              localStorage.setItem('mms_active_tab', String(slotId));
-            } catch (e) {}
+          if (!isSlotOccupied) {
+            // Se clicar em um slot esvaziado, cria e ativa o relatório se tabs.length < 4
+            if (tabs.length < 4) {
+              const userName =
+                userSession?.user?.user_metadata?.name ||
+                userSession?.user?.email?.split('@')[0] ||
+                '';
+              const newTabState = tabStore[slotId] || createDefaultTab(userName);
+              const newTabs = [...tabs, slotId].sort((a, b) => a - b);
+              setTabs(newTabs);
+              setTabStore((prev) => ({ ...prev, [slotId]: newTabState }));
+              setActiveTab(slotId);
+              if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+                try {
+                  localStorage.setItem('mms_tab_' + slotId, JSON.stringify(newTabState));
+                  localStorage.setItem('mms_active_tab', String(slotId));
+                } catch (e) {}
+              }
+            }
+          } else {
+            setActiveTab(slotId);
+            if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+              try {
+                localStorage.setItem('mms_active_tab', String(slotId));
+              } catch (e) {}
+            }
           }
         }}
         activeOpacity={0.85}
       >
-        {/* Botão de Fechar / Limpar (✕) */}
+        {/* Botão de Fechar / Excluir (✕) - Somente slots 2, 3 e 4 ocupados */}
         {showRemoveBtn && (
           <TouchableOpacity
             style={styles.draftTabRemoveBtn}
@@ -2552,17 +2583,33 @@ export default function ReportGenerator() {
               fecharAba(slotId);
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel={`Fechar Relatório ${slotId}`}
+            accessibilityLabel={`Excluir e esvaziar Relatório ${slotId}`}
           >
             <Text style={styles.draftTabRemoveText}>✕</Text>
           </TouchableOpacity>
         )}
 
-        <Text style={[styles.draftTabSlotTitle, isActive && styles.draftTabSlotTitleActive]}>
+        <Text
+          style={[
+            styles.draftTabSlotTitle,
+            !isSlotOccupied
+              ? styles.draftTabSlotTitleEmpty
+              : isActive
+              ? styles.draftTabSlotTitleActive
+              : styles.draftTabSlotTitleInactive,
+          ]}
+        >
           RELATÓRIO {slotId}
         </Text>
         <Text
-          style={[styles.draftTabSlotName, isActive ? styles.draftTabSlotNameActive : styles.draftTabSlotNameInactive]}
+          style={[
+            styles.draftTabSlotName,
+            !isSlotOccupied
+              ? styles.draftTabSlotNameEmpty
+              : isActive
+              ? styles.draftTabSlotNameActive
+              : styles.draftTabSlotNameInactive,
+          ]}
           numberOfLines={1}
         >
           {tabName}
@@ -2833,7 +2880,29 @@ export default function ReportGenerator() {
 
           {/* Controle de Abas Simultâneas: Relatórios em Andamento */}
           <View style={styles.draftTabsSection}>
-            <Text style={styles.draftTabsSectionTitle}>RELATÓRIOS EM ANDAMENTO</Text>
+            <View style={styles.draftTabsHeaderRow}>
+              <Text style={styles.draftTabsSectionTitle}>RELATÓRIOS EM ANDAMENTO</Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.btnAddDraftReport,
+                  tabs.length >= 4 && styles.btnAddDraftReportDisabled,
+                ]}
+                onPress={adicionarNovoRelatorio}
+                disabled={tabs.length >= 4}
+                activeOpacity={tabs.length >= 4 ? 1 : 0.8}
+                accessibilityLabel="Adicionar Relatório"
+              >
+                <Text
+                  style={[
+                    styles.btnAddDraftReportText,
+                    tabs.length >= 4 && styles.btnAddDraftReportTextDisabled,
+                  ]}
+                >
+                  + Adicionar Relatório
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.draftTabsGroupCard}>
               {/* Linha Superior: Relatório 1 e Relatório 2 */}
@@ -4163,13 +4232,13 @@ const styles = StyleSheet.create({
   },
   dropdownModalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
     paddingTop: 64,
     paddingRight: 16,
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
   },
   dropdownMenuCard: {
     width: 280,
@@ -4448,7 +4517,7 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 36,
   },
@@ -4565,14 +4634,47 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 16,
   },
+  draftTabsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    width: '100%',
+  },
   draftTabsSectionTitle: {
     fontSize: 11,
     fontWeight: '900',
     color: '#475569',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    marginBottom: 8,
     fontFamily: modernFont,
+  },
+  btnAddDraftReport: {
+    backgroundColor: '#eff6ff',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#bfdbfe',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnAddDraftReportDisabled: {
+    backgroundColor: '#e2e8f0',
+    borderColor: '#cbd5e1',
+    opacity: 0.6,
+  },
+  btnAddDraftReportText: {
+    color: '#2563eb',
+    fontWeight: '900',
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  btnAddDraftReportTextDisabled: {
+    color: '#64748b',
   },
   draftTabsGroupCard: {
     backgroundColor: '#f8fafc',
@@ -4614,6 +4716,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'transparent',
   },
+  draftTabSlotEmpty: {
+    backgroundColor: 'rgba(241, 245, 249, 0.45)',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#cbd5e1',
+    opacity: 0.7,
+  },
   draftTabRemoveBtn: {
     position: 'absolute',
     top: 5,
@@ -4645,6 +4754,14 @@ const styles = StyleSheet.create({
     color: '#2563eb',
     fontWeight: '900',
   },
+  draftTabSlotTitleInactive: {
+    color: '#64748b',
+    fontWeight: '700',
+  },
+  draftTabSlotTitleEmpty: {
+    color: '#94a3b8',
+    fontWeight: '700',
+  },
   draftTabSlotName: {
     fontSize: 13,
     fontWeight: '900',
@@ -4657,8 +4774,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   draftTabSlotNameInactive: {
-    color: '#0f172a',
-    fontWeight: '900',
+    color: '#334155',
+    fontWeight: '700',
+  },
+  draftTabSlotNameEmpty: {
+    color: '#94a3b8',
+    fontWeight: '500',
   },
   formContainer: {
     width: '100%',
@@ -5972,12 +6093,12 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
   },
   authCard: {
     backgroundColor: colors.white,
