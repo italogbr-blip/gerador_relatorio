@@ -118,6 +118,59 @@ html, body {
   flex-direction: row !important;
   align-items: center !important;
   gap: 12px !important;
+  text-decoration: none !important;
+}
+
+.mms-navbar__brand-container {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.mms-navbar__brand-icon {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: var(--mms-radius-md) !important;
+  background: linear-gradient(135deg, #10b981 0%, #0284c7 100%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3) !important;
+  flex-shrink: 0 !important;
+}
+
+.mms-navbar__brand-text {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.mms-navbar__brand-title-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.mms-navbar__brand-name {
+  color: var(--mms-white) !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+  letter-spacing: 1px !important;
+  font-family: var(--mms-font-sans) !important;
+}
+
+.mms-navbar__brand-badge {
+  background: rgba(56, 189, 248, 0.15) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  color: #38bdf8 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.8px !important;
+  padding: 2px 6px !important;
+  border-radius: 6px !important;
+  text-transform: uppercase !important;
 }
 
 .mms-navbar__logo-box {
@@ -222,7 +275,7 @@ html, body {
   flex-direction: row !important;
   justify-content: flex-end !important;
   align-items: center !important;
-  margin-bottom: 8px !important;
+  margin-bottom: 36px !important; /* Quebra de duas linhas abaixo do botão iniciar novo relatório */
 }
 
 .mms-btn-novo-relatorio {
@@ -247,11 +300,15 @@ html, body {
 }
 
 .mms-main-title {
-  font-size: 22px !important;
+  font-size: 20px !important;
   font-weight: 900 !important;
   color: var(--mms-navy-900) !important;
-  letter-spacing: -0.3px !important;
-  margin-bottom: 16px !important;
+  letter-spacing: -0.5px !important;
+  text-transform: uppercase !important;
+  text-align: center !important;
+  border-bottom: 2px solid #f1f5f9 !important;
+  padding-bottom: 6px !important; /* Junte mais a linha divisória */
+  margin-bottom: 20px !important;
   font-family: var(--mms-font-sans) !important;
 }
 
@@ -394,6 +451,96 @@ html, body {
   outline: none !important;
   border-color: var(--mms-primary) !important;
   box-shadow: 0 0 0 3px var(--mms-primary-glow) !important;
+}
+
+/* ─── 8.1. CORREÇÃO DEFINITIVA DO CAMPO DE DATA (IOS SAFARI & WEB) ─── */
+.mms-date-input-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.mms-input-date,
+input[type="date"],
+input.mms-input-date {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: center !important;
+  min-height: 1.5em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: normal !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer !important;
+  opacity: 0.65 !important;
+}
+
+/* ─── 8.2. CONTROLE DE HORÁRIOS E ALINHAMENTO DE INPUTS (H / M) ─── */
+.mms-time-card-item {
+  width: 100% !important;
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: var(--mms-radius-lg) !important;
+  padding: 14px 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.mms-time-section-label {
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  color: var(--mms-navy-900) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.8px !important;
+  text-align: center !important;
+}
+
+.mms-time-inputs-wrapper {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+
+.mms-time-input-box {
+  width: 68px !important;
+  height: 52px !important;
+  border: 2px solid #cbd5e1 !important;
+  border-radius: 14px !important;
+  text-align: center !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  box-sizing: border-box !important;
+}
+
+.mms-time-suffix {
+  color: #94a3b8 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  margin: 0 2px !important;
 }
 
 /* ─── 9. SEÇÃO DE PREVIEW DO DOCUMENTO ─── */

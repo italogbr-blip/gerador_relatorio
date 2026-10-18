@@ -2769,15 +2769,29 @@ export default function ReportGenerator() {
 
       {/* Navbar Superior 100% Idêntica ao index.php:269-358 */}
       <View style={styles.navbar} className="mms-navbar">
-        {/* Esquerda: Ícone Gradiente com Documento */}
-        <View style={styles.navLeftGradientBox} className="mms-navbar__brand">
-          {Platform.OS === 'web' ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="#ffffff">
-              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <Text style={{ color: '#fff', fontSize: 16 }}>📄</Text>
-          )}
+        {/* Esquerda: Logo / Marca do Sistema (MMS RELATÓRIOS) */}
+        <View style={styles.navBrandContainer} className="mms-navbar__brand">
+          <View style={styles.navLeftGradientBox} className="mms-navbar__brand-icon">
+            {Platform.OS === 'web' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+            ) : (
+              <Text style={{ color: '#fff', fontSize: 16 }}>📑</Text>
+            )}
+          </View>
+          <View style={styles.navBrandTextWrap} className="mms-navbar__brand-text">
+            <View style={styles.navBrandTitleRow} className="mms-navbar__brand-title-row">
+              <Text style={styles.navBrandName} className="mms-navbar__brand-name">MMS</Text>
+              <View style={styles.navBrandBadge} className="mms-navbar__brand-badge">
+                <Text style={styles.navBrandBadgeText}>RELATÓRIOS</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         {/* Direita: Notificações e Menu */}
@@ -3224,47 +3238,55 @@ export default function ReportGenerator() {
             </View>
 
             {/* Data */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>DATA:</Text>
+            <View style={styles.inputGroup} className="mms-field-group">
+              <Text style={styles.label} className="mms-field-label">DATA:</Text>
               {Platform.OS === 'web' ? (
-                <input
-                  id="field-data"
-                  type={currentData.data ? 'date' : 'text'}
-                  value={currentData.data}
-                  onChange={(e: any) => updateCurrentTab({ data: e.target.value })}
-                  onClick={(e: any) => {
-                    e.target.type = 'date';
-                    try {
-                      e.target.showPicker();
-                    } catch (err) {}
-                  }}
-                  onFocus={(e: any) => {
-                    e.target.type = 'date';
-                    try {
-                      e.target.showPicker();
-                    } catch (err) {}
-                  }}
-                  onBlur={(e: any) => {
-                    if (!e.target.value) e.target.type = 'text';
-                  }}
-                  placeholder="Selecionar a data aqui 📅"
-                  style={{
-                    border: fieldErrors.data ? '2px solid #f87171' : '1px solid #cbd5e1',
-                    borderRadius: '12px',
-                    height: '48px',
-                    padding: '0 16px',
-                    fontSize: '13px',
-                    fontFamily: corporateFont,
-                    backgroundColor: fieldErrors.data ? '#ffe4e6' : '#f8fafc',
-                    color: '#1e293b',
-                    width: '100%',
-                    outline: 'none',
-                    cursor: 'pointer',
-                    boxSizing: 'border-box',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                />
+                <View style={styles.dateInputContainer} className="mms-date-input-container">
+                  <input
+                    id="field-data"
+                    type={currentData.data ? 'date' : 'text'}
+                    value={currentData.data}
+                    onChange={(e: any) => updateCurrentTab({ data: e.target.value })}
+                    onClick={(e: any) => {
+                      e.target.type = 'date';
+                      try {
+                        if (e.target.showPicker) e.target.showPicker();
+                      } catch (err) {}
+                    }}
+                    onFocus={(e: any) => {
+                      e.target.type = 'date';
+                      try {
+                        if (e.target.showPicker) e.target.showPicker();
+                      } catch (err) {}
+                    }}
+                    onBlur={(e: any) => {
+                      if (!e.target.value) e.target.type = 'text';
+                    }}
+                    placeholder="Selecione a data aqui 📅"
+                    className="mms-input-control mms-input-date"
+                    style={{
+                      border: fieldErrors.data ? '2px solid #f87171' : '1px solid #cbd5e1',
+                      borderRadius: 12,
+                      height: 48,
+                      minHeight: 48,
+                      padding: '0 12px',
+                      fontSize: 14,
+                      fontFamily: corporateFont,
+                      backgroundColor: fieldErrors.data ? '#ffe4e6' : '#f8fafc',
+                      color: '#1e293b',
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      outline: 'none',
+                      cursor: 'pointer',
+                      boxSizing: 'border-box',
+                      WebkitAppearance: 'none',
+                      MozAppearance: 'none',
+                      appearance: 'none',
+                      textAlign: 'center',
+                    }}
+                  />
+                </View>
               ) : (
                 <TextInput
                   nativeID="field-data"
@@ -3272,7 +3294,7 @@ export default function ReportGenerator() {
                   style={[styles.input, fieldErrors.data && styles.inputError]}
                   value={currentData.data}
                   onChangeText={(val) => updateCurrentTab({ data: val })}
-                  placeholder="Selecionar a data aqui 📅"
+                  placeholder="Selecione a data aqui 📅"
                   placeholderTextColor={colors.slate400}
                 />
               )}
@@ -3370,12 +3392,12 @@ export default function ReportGenerator() {
 
                 {currentData.listaSaidas.map((item, idx) => (
                   <View key={item.id} style={styles.saidaRowContainer}>
-                    <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop]}>
-                      <View style={[styles.saidaLabelGroup, isDesktop && styles.saidaLabelGroupDesktop]}>
+                    <View style={styles.timeSectionBlock}>
+                      <View style={styles.saidaLabelGroup}>
                         <TextInput
                           style={[
                             styles.saidaLabelInput,
-                            { width: Math.max(54, (item.label1 || 'Previsto').length * 8.2) }
+                            { width: Math.max(70, (item.label1 || 'Previsto').length * 9.5) }
                           ]}
                           value={item.label1}
                           onChangeText={(val) => updateSaidaItem(item.id, 'label1', val)}
@@ -3413,8 +3435,10 @@ export default function ReportGenerator() {
                       </View>
                     </View>
 
-                    <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop, { marginTop: 14 }]}>
-                      <Text style={[styles.saidaRealLabel, isDesktop && styles.saidaRealLabelDesktop]}>REAL:</Text>
+                    <View style={styles.saidaRealDivider} />
+
+                    <View style={styles.timeSectionBlock}>
+                      <Text style={styles.saidaRealLabel}>REAL:</Text>
                       <View style={styles.timeInputsWrapper}>
                         <TextInput
                           nativeID={`field-saida_h2_${item.id}`}
@@ -3451,15 +3475,15 @@ export default function ReportGenerator() {
                   </View>
                 ))}
 
-                <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemSaida}>
+                <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemSaida} activeOpacity={0.7}>
                   <View style={[styles.checkbox, currentData.semSaida && styles.checkboxChecked]}>
                     {currentData.semSaida && <Text style={styles.checkmark}>✓</Text>}
                   </View>
                   <Text style={styles.checkboxLabel}>N/A SAÍDA DE HOTEL</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.btnNovaSaida} onPress={addSaidaLine}>
-                  <Text style={styles.btnNovaSaidaText}>- ADICIONAR NOVA SAÍDA</Text>
+                <TouchableOpacity style={styles.btnNovaSaida} onPress={addSaidaLine} activeOpacity={0.7}>
+                  <Text style={styles.btnNovaSaidaText}>+ ADICIONAR NOVA SAÍDA</Text>
                 </TouchableOpacity>
               </View>
 
@@ -3470,88 +3494,80 @@ export default function ReportGenerator() {
                 </View>
 
                 {/* Previsão Embarque */}
-                <View style={styles.saidaRowContainer}>
-                  <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop]}>
-                    <Text style={[styles.timeSectionLabel, isDesktop && styles.timeSectionLabelDesktop]}>PREVISÃO:</Text>
-                    <View style={styles.timeInputsWrapper}>
-                      <TextInput
-                        nativeID="field-h3"
-                        id="field-h3"
-                        ref={(r) => { if (r) inputRefs.current['field-h3'] = r; }}
-                        style={[styles.timeInput, currentData.semEmbarquePrev && styles.disabledInput, fieldErrors.h3 && styles.inputError]}
-                        value={currentData.h3}
-                        onChangeText={(val) => handleTimeChange(val, 'h3', 'field-h3')}
-                        maxLength={2}
-                        keyboardType="numeric"
-                        editable={!currentData.semEmbarquePrev}
-                      />
-                      <Text style={styles.timeSufix}>h</Text>
-                      <TextInput
-                        nativeID="field-m3"
-                        id="field-m3"
-                        ref={(r) => { if (r) inputRefs.current['field-m3'] = r; }}
-                        style={[styles.timeInput, currentData.semEmbarquePrev && styles.disabledInput, fieldErrors.m3 && styles.inputError]}
-                        value={currentData.m3}
-                        onChangeText={(val) => handleMinChange(val, 'm3', 'field-m3')}
-                        maxLength={2}
-                        keyboardType="numeric"
-                        editable={!currentData.semEmbarquePrev}
-                      />
-                      <Text style={styles.timeSufix}>m</Text>
-                    </View>
+                <View style={styles.timeCardItem}>
+                  <Text style={styles.timeSectionLabel}>PREVISÃO:</Text>
+                  <View style={styles.timeInputsWrapper}>
+                    <TextInput
+                      nativeID="field-h3"
+                      id="field-h3"
+                      ref={(r) => { if (r) inputRefs.current['field-h3'] = r; }}
+                      style={[styles.timeInput, currentData.semEmbarquePrev && styles.disabledInput, fieldErrors.h3 && styles.inputError]}
+                      value={currentData.h3}
+                      onChangeText={(val) => handleTimeChange(val, 'h3', 'field-h3')}
+                      maxLength={2}
+                      keyboardType="numeric"
+                      editable={!currentData.semEmbarquePrev}
+                    />
+                    <Text style={styles.timeSufix}>h</Text>
+                    <TextInput
+                      nativeID="field-m3"
+                      id="field-m3"
+                      ref={(r) => { if (r) inputRefs.current['field-m3'] = r; }}
+                      style={[styles.timeInput, currentData.semEmbarquePrev && styles.disabledInput, fieldErrors.m3 && styles.inputError]}
+                      value={currentData.m3}
+                      onChangeText={(val) => handleMinChange(val, 'm3', 'field-m3')}
+                      maxLength={2}
+                      keyboardType="numeric"
+                      editable={!currentData.semEmbarquePrev}
+                    />
+                    <Text style={styles.timeSufix}>m</Text>
                   </View>
-
-                  <View style={styles.naDivider} />
-
-                  <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemEmbarquePrev}>
-                    <View style={[styles.checkbox, currentData.semEmbarquePrev && styles.checkboxChecked]}>
-                      {currentData.semEmbarquePrev && <Text style={styles.checkmark}>✓</Text>}
-                    </View>
-                    <Text style={styles.checkboxLabel}>N/A EMBARQUE</Text>
-                  </TouchableOpacity>
                 </View>
+
+                <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemEmbarquePrev} activeOpacity={0.7}>
+                  <View style={[styles.checkbox, currentData.semEmbarquePrev && styles.checkboxChecked]}>
+                    {currentData.semEmbarquePrev && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxLabel}>N/A EMBARQUE</Text>
+                </TouchableOpacity>
 
                 {/* Real Embarque */}
-                <View style={styles.saidaRowContainer}>
-                  <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop]}>
-                    <Text style={[styles.timeSectionLabel, isDesktop && styles.timeSectionLabelDesktop]}>REAL:</Text>
-                    <View style={styles.timeInputsWrapper}>
-                      <TextInput
-                        nativeID="field-h4"
-                        id="field-h4"
-                        ref={(r) => { if (r) inputRefs.current['field-h4'] = r; }}
-                        style={[styles.timeInput, currentData.semEmbarque && styles.disabledInput, fieldErrors.h4 && styles.inputError]}
-                        value={currentData.h4}
-                        onChangeText={(val) => handleTimeChange(val, 'h4', 'field-h4')}
-                        maxLength={2}
-                        keyboardType="numeric"
-                        editable={!currentData.semEmbarque}
-                      />
-                      <Text style={styles.timeSufix}>h</Text>
-                      <TextInput
-                        nativeID="field-m4"
-                        id="field-m4"
-                        ref={(r) => { if (r) inputRefs.current['field-m4'] = r; }}
-                        style={[styles.timeInput, currentData.semEmbarque && styles.disabledInput, fieldErrors.m4 && styles.inputError]}
-                        value={currentData.m4}
-                        onChangeText={(val) => handleMinChange(val, 'm4', 'field-m4')}
-                        maxLength={2}
-                        keyboardType="numeric"
-                        editable={!currentData.semEmbarque}
-                      />
-                      <Text style={styles.timeSufix}>m</Text>
-                    </View>
+                <View style={styles.timeCardItem}>
+                  <Text style={styles.timeSectionLabel}>REAL:</Text>
+                  <View style={styles.timeInputsWrapper}>
+                    <TextInput
+                      nativeID="field-h4"
+                      id="field-h4"
+                      ref={(r) => { if (r) inputRefs.current['field-h4'] = r; }}
+                      style={[styles.timeInput, currentData.semEmbarque && styles.disabledInput, fieldErrors.h4 && styles.inputError]}
+                      value={currentData.h4}
+                      onChangeText={(val) => handleTimeChange(val, 'h4', 'field-h4')}
+                      maxLength={2}
+                      keyboardType="numeric"
+                      editable={!currentData.semEmbarque}
+                    />
+                    <Text style={styles.timeSufix}>h</Text>
+                    <TextInput
+                      nativeID="field-m4"
+                      id="field-m4"
+                      ref={(r) => { if (r) inputRefs.current['field-m4'] = r; }}
+                      style={[styles.timeInput, currentData.semEmbarque && styles.disabledInput, fieldErrors.m4 && styles.inputError]}
+                      value={currentData.m4}
+                      onChangeText={(val) => handleMinChange(val, 'm4', 'field-m4')}
+                      maxLength={2}
+                      keyboardType="numeric"
+                      editable={!currentData.semEmbarque}
+                    />
+                    <Text style={styles.timeSufix}>m</Text>
                   </View>
-
-                  <View style={styles.naDivider} />
-
-                  <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemEmbarque}>
-                    <View style={[styles.checkbox, currentData.semEmbarque && styles.checkboxChecked]}>
-                      {currentData.semEmbarque && <Text style={styles.checkmark}>✓</Text>}
-                    </View>
-                    <Text style={styles.checkboxLabel}>N/A EMBARQUE</Text>
-                  </TouchableOpacity>
                 </View>
+
+                <TouchableOpacity style={styles.checkboxRow} onPress={toggleSemEmbarque} activeOpacity={0.7}>
+                  <View style={[styles.checkbox, currentData.semEmbarque && styles.checkboxChecked]}>
+                    {currentData.semEmbarque && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxLabel}>N/A EMBARQUE</Text>
+                </TouchableOpacity>
               </View>
 
               {/* Card 3: Atendimento */}
@@ -3561,56 +3577,63 @@ export default function ReportGenerator() {
                 </View>
 
                 {/* Início Atendimento */}
-                <View style={styles.saidaRowContainer}>
-                  <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop]}>
-                    <Text style={[styles.timeSectionLabel, isDesktop && styles.timeSectionLabelDesktop]}>INÍCIO:</Text>
-                    <View style={styles.timeInputsWrapper}>
-                      <TextInput
-                        nativeID="field-h5"
-                        id="field-h5"
-                        ref={(r) => { if (r) inputRefs.current['field-h5'] = r; }}
-                        style={[styles.timeInput, fieldErrors.h5 && styles.inputError]}
-                        value={currentData.h5}
-                        onChangeText={(val) => handleTimeChange(val, 'h5', 'field-h5')}
-                        maxLength={2}
-                        keyboardType="numeric"
-                      />
-                      <Text style={styles.timeSufix}>h</Text>
-                      <TextInput
-                        nativeID="field-m5"
-                        id="field-m5"
-                        ref={(r) => { if (r) inputRefs.current['field-m5'] = r; }}
-                        style={[styles.timeInput, fieldErrors.m5 && styles.inputError]}
-                        value={currentData.m5}
-                        onChangeText={(val) => handleMinChange(val, 'm5', 'field-m5')}
-                        maxLength={2}
-                        keyboardType="numeric"
-                      />
-                      <Text style={styles.timeSufix}>m</Text>
-                    </View>
+                <View style={styles.timeCardItem}>
+                  <Text style={styles.timeSectionLabel}>INÍCIO:</Text>
+                  <View style={styles.timeInputsWrapper}>
+                    <TextInput
+                      nativeID="field-h5"
+                      id="field-h5"
+                      ref={(r) => { if (r) inputRefs.current['field-h5'] = r; }}
+                      style={[styles.timeInput, fieldErrors.h5 && styles.inputError]}
+                      value={currentData.h5}
+                      onChangeText={(val) => handleTimeChange(val, 'h5', 'field-h5')}
+                      maxLength={2}
+                      keyboardType="numeric"
+                    />
+                    <Text style={styles.timeSufix}>h</Text>
+                    <TextInput
+                      nativeID="field-m5"
+                      id="field-m5"
+                      ref={(r) => { if (r) inputRefs.current['field-m5'] = r; }}
+                      style={[styles.timeInput, fieldErrors.m5 && styles.inputError]}
+                      value={currentData.m5}
+                      onChangeText={(val) => handleMinChange(val, 'm5', 'field-m5')}
+                      maxLength={2}
+                      keyboardType="numeric"
+                    />
+                    <Text style={styles.timeSufix}>m</Text>
                   </View>
                 </View>
 
                 {/* Fim Atendimento */}
-                <View style={styles.saidaRowContainer}>
-                  <View style={[styles.timeSectionBlock, isDesktop && styles.timeSectionBlockDesktop]}>
-                    <Text style={[styles.timeSectionLabel, isDesktop && styles.timeSectionLabelDesktop]}>FIM:</Text>
-                    <View style={styles.timeInputsWrapper}>
-                      <TextInput
-                        nativeID="field-h6"
-                        id="field-h6"
-                        ref={(r) => { if (r) inputRefs.current['field-h6'] = r; }}
-                        style={[styles.timeInput, fieldErrors.h6 && styles.inputError]}
-                        value={currentData.h6}
-                        onChangeText={(val) => handleTimeChange(val, 'h6', 'field-h6')}
-                        maxLength={2}
-                        keyboardType="numeric"
-                      />
-                      <Text style={styles.timeSufix}>h</Text>
-                      <TextInput
-                        nativeID="field-m6"
-                        id="field-m6"
-                        ref={(r) => { if (r) inputRefs.current['field-m6'] = r; }}
+                <View style={styles.timeCardItem}>
+                  <Text style={styles.timeSectionLabel}>FIM:</Text>
+                  <View style={styles.timeInputsWrapper}>
+                    <TextInput
+                      nativeID="field-h6"
+                      id="field-h6"
+                      ref={(r) => { if (r) inputRefs.current['field-h6'] = r; }}
+                      style={[styles.timeInput, fieldErrors.h6 && styles.inputError]}
+                      value={currentData.h6}
+                      onChangeText={(val) => handleTimeChange(val, 'h6', 'field-h6')}
+                      maxLength={2}
+                      keyboardType="numeric"
+                    />
+                    <Text style={styles.timeSufix}>h</Text>
+                    <TextInput
+                      nativeID="field-m6"
+                      id="field-m6"
+                      ref={(r) => { if (r) inputRefs.current['field-m6'] = r; }}
+                      style={[styles.timeInput, fieldErrors.m6 && styles.inputError]}
+                      value={currentData.m6}
+                      onChangeText={(val) => handleMinChange(val, 'm6', 'field-m6')}
+                      maxLength={2}
+                      keyboardType="numeric"
+                    />
+                    <Text style={styles.timeSufix}>m</Text>
+                  </View>
+                </View>
+              </View>
                         style={[styles.timeInput, fieldErrors.m6 && styles.inputError]}
                         value={currentData.m6}
                         onChangeText={(val) => handleMinChange(val, 'm6', 'field-m6')}
@@ -4381,16 +4404,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 50,
   },
+  navBrandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  navBrandTextWrap: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+  navBrandTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  navBrandName: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 1,
+    fontFamily: modernFont,
+  },
+  navBrandBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  navBrandBadgeText: {
+    color: '#38bdf8',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    fontFamily: modernFont,
+  },
   navLeftGradientBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 9,
     backgroundColor: '#10b981',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#3b82f6',
+    shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.35,
     shadowRadius: 6,
     elevation: 3,
   },
@@ -4762,7 +4821,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 36, // quebra de 2 linhas para baixo do botão iniciar novo relatório
   },
   headerLogoImage: {
     height: 52,
@@ -4799,10 +4858,10 @@ const styles = StyleSheet.create({
     fontSize: 20, // text-xl
     fontWeight: '900', // font-black
     textAlign: 'center', // text-center
-    marginBottom: 16, // mb-4
+    marginBottom: 20, // mb-5
     borderBottomWidth: 2, // border-b-2
     borderBottomColor: '#f1f5f9', // border-slate-100
-    paddingBottom: 16, // pb-4
+    paddingBottom: 6, // junte mais à linha divisória
     paddingHorizontal: 4,
     color: '#1e293b', // text-slate-800
     textTransform: 'uppercase', // uppercase
@@ -5058,6 +5117,12 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     marginBottom: 4,
   },
+  dateInputContainer: {
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    overflow: 'hidden',
+  },
   label: {
     fontWeight: '900',
     fontSize: 11,
@@ -5276,9 +5341,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
-    gap: 14,
+    gap: 10,
     position: 'relative',
     alignItems: 'center',
     shadowColor: '#0f172a',
@@ -5286,6 +5351,30 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 3,
     elevation: 1,
+  },
+  timeCardItem: {
+    width: '100%',
+    alignSelf: 'stretch',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  saidaRealDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginVertical: 4,
   },
   naDivider: {
     width: '100%',
@@ -5303,68 +5392,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    gap: 6,
   },
   timeSectionBlockDesktop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'center',
     width: '100%',
+    gap: 6,
   },
   timeSectionLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
     color: '#0f172a',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
+    letterSpacing: 0.8,
     textAlign: 'center',
     fontFamily: corporateFont,
   },
   timeSectionLabelDesktop: {
-    marginBottom: 0,
-    textAlign: 'left',
+    textAlign: 'center',
   },
   saidaLabelGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    gap: 2,
   },
   saidaLabelGroupDesktop: {
-    marginBottom: 0,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   saidaLabelInput: {
     fontSize: 16,
     fontWeight: '900',
     color: '#1d4ed8',
-    textAlign: 'left',
+    textAlign: 'center',
     paddingVertical: 1,
-    paddingHorizontal: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#93c5fd',
+    paddingHorizontal: 4,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#bfdbfe',
     fontFamily: corporateFont,
   },
   saidaRealLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
     color: '#0f172a',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
+    letterSpacing: 0.8,
     textAlign: 'center',
     fontFamily: corporateFont,
   },
   saidaRealLabelDesktop: {
-    marginBottom: 0,
-    textAlign: 'left',
+    textAlign: 'center',
   },
   colon: {
     fontWeight: 'bold',
     fontSize: 16,
     color: '#1d4ed8',
-    marginLeft: 0,
-    paddingLeft: 0,
+    marginLeft: 2,
   },
   btnRemoveSaida: {
     position: 'absolute',
@@ -5396,12 +5480,11 @@ const styles = StyleSheet.create({
     borderColor: '#f1f5f9',
   },
   timeRowLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
     color: '#0f172a',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
+    letterSpacing: 0.8,
     textAlign: 'center',
     fontFamily: corporateFont,
   },
@@ -5409,20 +5492,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
   },
   timeInput: {
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#cbd5e1',
-    borderRadius: 12,
+    borderRadius: 14,
     width: 68,
-    height: 48,
+    height: 52,
     textAlign: 'center',
     fontSize: 18,
     fontWeight: '900',
     backgroundColor: '#ffffff',
     color: '#0f172a',
     fontFamily: corporateFont,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
   },
   disabledInput: {
     backgroundColor: '#f1f5f9',
@@ -5430,10 +5518,11 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   timeSufix: {
-    color: '#64748b',
+    color: '#94a3b8',
     fontWeight: '700',
     fontSize: 14,
-    marginHorizontal: 4,
+    marginHorizontal: 3,
+    textAlign: 'center',
   },
   checkboxRow: {
     flexDirection: 'row',
