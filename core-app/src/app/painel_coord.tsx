@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -478,10 +478,14 @@ export default function PainelCoordScreen() {
 
     if (typeof localStorage !== 'undefined') {
       try {
-        const raw = localStorage.getItem('mms_mensagens_store');
+        const raw = localStorage.getItem('mms_mensagens_store') || localStorage.getItem('mms_mensagens_local');
         const list = raw ? JSON.parse(raw) : [];
         list.unshift(novaMsg);
         localStorage.setItem('mms_mensagens_store', JSON.stringify(list.slice(0, 50)));
+        localStorage.setItem('mms_mensagens_local', JSON.stringify(list.slice(0, 50)));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mms_mensagens_atualizadas'));
+        }
       } catch (e) {}
     }
 
@@ -503,7 +507,7 @@ export default function PainelCoordScreen() {
     setIsNovaMensagemModalVisible(false);
     setSalvandoMensagem(false);
     carregarMensagens();
-    showCustomAlert('Sucesso', 'Mensagem enviada com sucesso para os usuÃ¡rios!');
+    showCustomAlert('Sucesso', 'Mensagem enviada com sucesso para os usuários!');
   };
 
   const handleExcluirMensagem = async (msgId: number) => {
@@ -511,10 +515,18 @@ export default function PainelCoordScreen() {
       try {
         if (typeof localStorage !== 'undefined') {
           try {
-            const raw = localStorage.getItem('mms_mensagens_store');
-            if (raw) {
-              const list = JSON.parse(raw).filter((m: any) => m.id !== msgId);
-              localStorage.setItem('mms_mensagens_store', JSON.stringify(list));
+            const raw1 = localStorage.getItem('mms_mensagens_store');
+            if (raw1) {
+              const list1 = JSON.parse(raw1).filter((m: any) => m.id !== msgId);
+              localStorage.setItem('mms_mensagens_store', JSON.stringify(list1));
+            }
+            const raw2 = localStorage.getItem('mms_mensagens_local');
+            if (raw2) {
+              const list2 = JSON.parse(raw2).filter((m: any) => m.id !== msgId);
+              localStorage.setItem('mms_mensagens_local', JSON.stringify(list2));
+            }
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('mms_mensagens_atualizadas'));
             }
           } catch (e) {}
         }
@@ -1015,6 +1027,23 @@ export default function PainelCoordScreen() {
       'Deseja remover este comunicado?',
       async () => {
         try {
+          if (typeof localStorage !== 'undefined') {
+            try {
+              const rawP1 = localStorage.getItem('mms_popups_store');
+              if (rawP1) {
+                const listP1 = JSON.parse(rawP1).filter((p: any) => p.id !== popupId);
+                localStorage.setItem('mms_popups_store', JSON.stringify(listP1));
+              }
+              const rawP2 = localStorage.getItem('mms_popups_local');
+              if (rawP2) {
+                const listP2 = JSON.parse(rawP2).filter((p: any) => p.id !== popupId);
+                localStorage.setItem('mms_popups_local', JSON.stringify(listP2));
+              }
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('mms_mensagens_atualizadas'));
+              }
+            } catch (e) {}
+          }
           const { error } = await supabase.from('notificacoes').delete().eq('id', popupId);
           if (error) {
             showCustomAlert('Erro', error.message);
@@ -1033,7 +1062,7 @@ export default function PainelCoordScreen() {
   // Salvar Novo Pop-up
   const handleSalvarNovoPopup = async () => {
     if (!novoPopupTitulo.trim() || !novoPopupMensagem.trim()) {
-      showCustomAlert('AtenÃ§Ã£o', 'Preencha o tÃ­tulo e a mensagem do comunicado.');
+      showCustomAlert('Atenção', 'Preencha o título e a mensagem do comunicado.');
       return;
     }
 
@@ -1053,6 +1082,26 @@ export default function PainelCoordScreen() {
       if (error) {
         showCustomAlert('Erro', error.message);
       } else {
+        const createdPopup = data && data[0] ? data[0] : {
+          id: Date.now(),
+          titulo: novoPopupTitulo.trim(),
+          mensagem: novoPopupMensagem.trim(),
+          tipo: novoPopupTipo,
+          ativa: 1,
+          data_criacao: new Date().toISOString(),
+        };
+        if (typeof localStorage !== 'undefined') {
+          try {
+            const rawP = localStorage.getItem('mms_popups_store') || localStorage.getItem('mms_popups_local');
+            const listP = rawP ? JSON.parse(rawP) : [];
+            listP.unshift(createdPopup);
+            localStorage.setItem('mms_popups_store', JSON.stringify(listP.slice(0, 50)));
+            localStorage.setItem('mms_popups_local', JSON.stringify(listP.slice(0, 50)));
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('mms_mensagens_atualizadas'));
+            }
+          } catch (e) {}
+        }
         setNovoPopupTitulo('');
         setNovoPopupMensagem('');
         setIsNovoPopupModalVisible(false);

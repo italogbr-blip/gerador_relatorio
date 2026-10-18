@@ -142,12 +142,12 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
         border: 2px solid #f43f5e !important;
         box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
       }
-      /* Efeito Blur Suave para Pop-ups e Modais (sem escurecer) */
+      /* Efeito Blur Suave e Reduzido para Pop-ups e Modais (sem escurecer) */
       .modal-blur-overlay,
       div[data-modal-blur="true"] {
-        backdrop-filter: blur(6px) !important;
-        -webkit-backdrop-filter: blur(6px) !important;
-        background-color: transparent !important;
+        backdrop-filter: blur(2px) !important;
+        -webkit-backdrop-filter: blur(2px) !important;
+        background-color: rgba(15, 23, 42, 0.08) !important;
       }
     `;
     document.head.appendChild(style);
@@ -999,28 +999,40 @@ export default function ReportGenerator() {
 
   const carregarNotificacoesInApp = async () => {
     try {
-      // 1. Busca comunicado global ativo (notificacoes)
+      // 1. Busca comunicados da coordenação (tabela notificacoes)
       let popupAtivo: any = null;
+      let allNotifs: any[] = [];
       try {
         const { data: pops } = await supabase
           .from('notificacoes')
           .select('*')
-          .eq('ativa', 1)
           .order('id', { ascending: false })
-          .limit(1);
-        if (pops && pops.length > 0) popupAtivo = pops[0];
+          .limit(20);
+        if (pops && pops.length > 0) {
+          allNotifs = pops;
+          popupAtivo = pops.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
+        }
       } catch (e) {}
 
-      if (!popupAtivo && typeof localStorage !== 'undefined') {
+      // Fallback local para comunicados/popups
+      if (typeof localStorage !== 'undefined') {
         try {
-          const rawP = localStorage.getItem('mms_popups_local');
+          const rawP = localStorage.getItem('mms_popups_store') || localStorage.getItem('mms_popups_local');
           if (rawP) {
             const listP = JSON.parse(rawP);
-            popupAtivo = listP.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
+            if (!popupAtivo) {
+              popupAtivo = listP.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
+            }
+            listP.forEach((lp: any) => {
+              if (!allNotifs.some((n: any) => n.id === lp.id || n.titulo === lp.titulo)) {
+                allNotifs.push(lp);
+              }
+            });
           }
         } catch (e) {}
       }
 
+      // Se houver comunicado ativo, aciona o pop-up modal na tela se ainda não visto
       if (popupAtivo) {
         setActivePopup(popupAtivo);
         const popKey = 'mms_popup_visto_' + popupAtivo.id;
@@ -1034,7 +1046,7 @@ export default function ReportGenerator() {
         }
       }
 
-      // 2. Busca mensagens in-app (mms_mensagens)
+      // 2. Busca mensagens diretas in-app (mms_mensagens)
       let msgs: any[] = [];
       try {
         const { data: dbMsgs } = await supabase
@@ -1045,32 +1057,56 @@ export default function ReportGenerator() {
         if (dbMsgs) msgs = dbMsgs;
       } catch (e) {}
 
+      // Fallback e sincronização com localStorage de mensagens
       if (typeof localStorage !== 'undefined') {
         try {
-          const rawM = localStorage.getItem('mms_mensagens_local');
+          const rawM = localStorage.getItem('mms_mensagens_store') || localStorage.getItem('mms_mensagens_local');
           if (rawM) {
             const localMsgs = JSON.parse(rawM);
             const map = new Map();
-            localMsgs.forEach((m: any) => map.set(String(m.id || m.data_envio), m));
-            msgs.forEach((m: any) => map.set(String(m.id || m.data_envio), m));
-            msgs = Array.from(map.values()).sort(
-              (a, b) => new Date(b.data_envio).getTime() - new Date(a.data_envio).getTime()
-            );
+            localMsgs.forEach((m: any) => map.set(String(m.id || m.data_envio || m.titulo), m));
+            msgs.forEach((m: any) => map.set(String(m.id || m.data_envio || m.titulo), m));
+            msgs = Array.from(map.values());
           }
         } catch (e) {}
       }
 
+      // 3. INTEGRAÇÃO CRÍTICA: Insere também todos os comunicados da coordenação na lista do sininho 🔔
+      // Garante que mesmo quando abre em pop-up, o preposto encontra o histórico no menu de notificações
+      if (allNotifs.length > 0) {
+        allNotifs.forEach((n: any) => {
+          const exists = msgs.some((m: any) => 
+            (m.notif_id && m.notif_id === n.id) || 
+            (m.titulo === n.titulo && m.mensagem === n.mensagem)
+          );
+          if (!exists) {
+            msgs.push({
+              id: 'notif_' + n.id,
+              notif_id: n.id,
+              titulo: n.titulo,
+              mensagem: n.mensagem,
+              tipo: n.tipo || 'aviso',
+              data_envio: n.created_at || n.data_criacao || new Date().toISOString(),
+              is_coordenacao: true,
+            });
+          }
+        });
+      }
+
+      // Ordena tudo por data mais recente
+      msgs.sort((a, b) => new Date(b.data_envio).getTime() - new Date(a.data_envio).getTime());
+
       setMensagensList(msgs);
 
-      // Calcula mensagens não lidas
-      let lidas: number[] = [];
+      // 4. Calcula mensagens e comunicados não lidos
+      let lidas: any[] = [];
       if (typeof localStorage !== 'undefined') {
         try {
           const rawLidas = localStorage.getItem('mms_mensagens_lidas');
           if (rawLidas) lidas = JSON.parse(rawLidas);
         } catch (e) {}
       }
-      const naoLidas = msgs.filter((m) => !lidas.includes(m.id));
+      const naoLidas = msgs.filter((m) => !lidas.includes(m.id) && !lidas.includes(m.notif_id));
       setUnreadCount(naoLidas.length);
     } catch (err) {
       console.warn('Erro ao carregar notificações in-app:', err);
@@ -1080,6 +1116,9 @@ export default function ReportGenerator() {
   const handleMarcarTodasLidas = () => {
     if (typeof localStorage !== 'undefined') {
       const ids = mensagensList.map((m) => m.id);
+      mensagensList.forEach((m) => {
+        if (m.notif_id) ids.push(m.notif_id);
+      });
       localStorage.setItem('mms_mensagens_lidas', JSON.stringify(ids));
       setUnreadCount(0);
     }
@@ -1342,10 +1381,27 @@ export default function ReportGenerator() {
       carregarNotificacoesInApp();
       if (typeof window !== 'undefined') {
         window.addEventListener('mms_mensagens_atualizadas', carregarNotificacoesInApp);
+        window.addEventListener('storage', carregarNotificacoesInApp);
       }
     }).catch(() => {
       setIsAuthChecking(false);
     });
+
+    // Polling contínuo de 10 em 10 segundos para receber notificações da coordenação automaticamente
+    const notifInterval = setInterval(() => {
+      carregarNotificacoesInApp();
+    }, 10000);
+
+    // Canal Realtime do Supabase para atualizar notificações e comunicados no exato instante em que são criados
+    const realtimeChannel = supabase
+      .channel('notificacoes-app-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notificacoes' }, () => {
+        carregarNotificacoesInApp();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mms_mensagens' }, () => {
+        carregarNotificacoesInApp();
+      })
+      .subscribe();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
@@ -1363,7 +1419,17 @@ export default function ReportGenerator() {
       setIsAuthChecking(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearInterval(notifInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('mms_mensagens_atualizadas', carregarNotificacoesInApp);
+        window.removeEventListener('storage', carregarNotificacoesInApp);
+      }
+      try {
+        supabase.removeChannel(realtimeChannel);
+      } catch (e) {}
+      subscription.unsubscribe();
+    };
   }, []);
 
   const currentData = tabStore[activeTab] || createDefaultTab();
@@ -4532,13 +4598,13 @@ const styles = StyleSheet.create({
   },
   dropdownModalBackdrop: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(15, 23, 42, 0.08)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
     paddingTop: 64,
     paddingRight: 16,
-    backdropFilter: 'blur(4px)',
-    WebkitBackdropFilter: 'blur(4px)',
+    backdropFilter: 'blur(1.5px)',
+    WebkitBackdropFilter: 'blur(1.5px)',
   },
   dropdownMenuCard: {
     width: 240,

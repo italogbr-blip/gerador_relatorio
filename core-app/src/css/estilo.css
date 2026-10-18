@@ -649,9 +649,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   right: 0 !important;
   bottom: 0 !important;
   z-index: 1000 !important;
-  background-color: rgba(15, 23, 42, 0.45) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+  background-color: rgba(15, 23, 42, 0.12) !important;
+  backdrop-filter: blur(2.5px) !important;
+  -webkit-backdrop-filter: blur(2.5px) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
