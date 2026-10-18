@@ -48,36 +48,18 @@ export default function PainelCoordScreen() {
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [unauthReason, setUnauthReason] = useState<'unauthenticated' | 'forbidden' | null>(null);
 
-  // Tema Claro / Escuro Persistente (Padrão: Light)
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('app_theme_dark');
-      if (saved !== null) {
-        return saved === 'true';
-      }
-    }
-    return false;
-  });
+  // Tema da Coordenação: 100% Tema Claro Exclusivo
+  const isDarkMode = false;
 
-  const toggleTheme = () => {
-    const nextVal = !isDarkMode;
-    setIsDarkMode(nextVal);
+  useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      if (nextVal) {
-        document.body.classList.remove('light-theme');
-        document.body.classList.add('dark-theme');
-      } else {
-        document.body.classList.remove('dark-theme');
-        document.body.classList.add('light-theme');
-      }
-      try {
-        localStorage.setItem('app_theme_dark', String(nextVal));
-      } catch (e) {}
+      document.body.classList.remove('dark-theme');
+      document.body.classList.add('light-theme');
     }
-  };
+  }, []);
 
-  // Abas do Painel: 'relatorios' | 'ranking' | 'usuarios' | 'popups' | 'sistema' | 'version'
-  const [activeTab, setActiveTab] = useState<'relatorios' | 'ranking' | 'usuarios' | 'popups' | 'sistema' | 'version'>('relatorios');
+  // Abas do Painel: 'relatorios' | 'ranking' | 'popups' | 'mensagens' | 'seguranca' | 'sistema' | 'version'
+  const [activeTab, setActiveTab] = useState<'relatorios' | 'ranking' | 'popups' | 'mensagens' | 'seguranca' | 'sistema' | 'version'>('relatorios');
 
   // Estados de Controle de Versões (Central mms_versao_app)
   const [versoesList, setVersoesList] = useState<AppVersionRecord[]>([]);
@@ -86,6 +68,11 @@ export default function PainelCoordScreen() {
   const [inputVersaoDescricao, setInputVersaoDescricao] = useState<string>('');
   const [salvandoVersao, setSalvandoVersao] = useState<boolean>(false);
   const [msgSucessoVersao, setMsgSucessoVersao] = useState<string>('');
+
+  // Estados de Segurança / Auditoria e Acessos Falhos (Logins mal sucedidos)
+  const [acessosFalhos, setAcessosFalhos] = useState<any[]>([]);
+  const [ultimosLogins, setUltimosLogins] = useState<any[]>([]);
+  const [loadingSeguranca, setLoadingSeguranca] = useState<boolean>(false);
 
   // Estados de Dados
   const [relatorios, setRelatorios] = useState<any[]>([]);
@@ -106,8 +93,10 @@ export default function PainelCoordScreen() {
 
   // Filtro de Usuários
   const [filtroBuscaUsuario, setFiltroBuscaUsuario] = useState<string>('');
+  const [filtroUsuarioId, setFiltroUsuarioId] = useState<number | null>(null);
+  const [isUsuarioDropdownOpen, setIsUsuarioDropdownOpen] = useState<boolean>(false);
 
-  // Header Anexo 6: Data/Hora e IP
+  // Navbar Superior: Data/Hora e IP
   const [dataHoraAtual, setDataHoraAtual] = useState<string>('17/10/2026 18:43');
   const [userIp, setUserIp] = useState<string>('2804:14d:2a23:9...');
 
@@ -153,7 +142,7 @@ export default function PainelCoordScreen() {
   const [novoPopupTipo, setNovoPopupTipo] = useState<'aviso' | 'urgente' | 'feedback'>('aviso');
   const [salvandoPopup, setSalvandoPopup] = useState<boolean>(false);
 
-  // Personalização do Footer / Rodapé (Anexo 2)
+  // Personalização do Rodapé / Versão
   const [footerDraft, setFooterDraft] = useState<FooterConfig>(defaultFooterConfig);
   const [salvandoFooter, setSalvandoFooter] = useState<boolean>(false);
 
@@ -281,7 +270,9 @@ export default function PainelCoordScreen() {
             {
               usuario_id: matchedUser?.id ? Number(matchedUser.id) : null,
               username: usuarioDigitado || 'desconhecido',
+              ip: userIp || '127.0.0.1',
               user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 500) : 'App',
+              data_tentativa: new Date().toISOString(),
             },
           ]);
         } catch (e) {}
@@ -359,10 +350,61 @@ export default function PainelCoordScreen() {
         carregarUsuarios(),
         carregarPopups(),
         carregarVersoes(),
+        carregarSeguranca(),
       ]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const carregarSeguranca = async () => {
+    setLoadingSeguranca(true);
+    try {
+      const [resFalhos, resLogins] = await Promise.all([
+        supabase
+          .from('coord_acessos_falhos')
+          .select('*')
+          .order('data_tentativa', { ascending: false })
+          .limit(100),
+        supabase
+          .from('registro_logins')
+          .select('*')
+          .order('data_login', { ascending: false })
+          .limit(50),
+      ]);
+
+      if (!resFalhos.error && resFalhos.data) {
+        setAcessosFalhos(resFalhos.data);
+      }
+      if (!resLogins.error && resLogins.data) {
+        setUltimosLogins(resLogins.data);
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar dados de segurança:', e);
+    } finally {
+      setLoadingSeguranca(false);
+    }
+  };
+
+  const handleLimparAcessosFalhos = async () => {
+    showCustomAlert(
+      'LIMPAR HISTÓRICO DE ACESSOS FALHOS',
+      'Tem certeza que deseja apagar todos os registros de tentativas de acesso incorretas?',
+      async () => {
+        try {
+          const { error } = await supabase.from('coord_acessos_falhos').delete().neq('id', 0);
+          if (error) {
+            showCustomAlert('Erro', 'Não foi possível limpar: ' + error.message);
+          } else {
+            setAcessosFalhos([]);
+            showCustomAlert('Sucesso', 'Histórico de acessos falhos limpo com sucesso.');
+          }
+        } catch (e: any) {
+          showCustomAlert('Erro', e.message);
+        }
+      },
+      true
+    );
   };
 
   const carregarVersoes = async () => {
@@ -438,25 +480,38 @@ export default function PainelCoordScreen() {
     return trimmed;
   };
 
-  // Carregamento Otimizado dos Relatórios: Seleciona apenas colunas necessárias para listagem rápida sem transferir megabytes de fotos base64
+  const limparFiltros = () => {
+    setFiltroEmpresa('TODAS');
+    setFiltroBusca('');
+    setFiltroBuscaUsuario('');
+    setFiltroUsuarioId(null);
+    setFiltroDataInicio('');
+    setFiltroDataFim('');
+    setPaginaRelatorios(1);
+    setTimeout(() => {
+      carregarRelatorios();
+    }, 50);
+  };
+
+  // Carregamento Confiável e 100% Funcional dos Relatórios com select('*')
   const carregarRelatorios = async () => {
+    setLoading(true);
     try {
       let query = supabase
         .from('relatorios')
-        .select('id, empresa, unidade, local_atendimento, data_criacao, ip_origem, teve_anexo, pdf_url, caminho_pdf, usuario_id', { count: 'exact' });
+        .select('*', { count: 'exact' });
 
       if (filtroEmpresa && filtroEmpresa !== 'TODAS') {
         query = query.eq('empresa', filtroEmpresa);
       }
 
+      if (filtroUsuarioId) {
+        query = query.eq('usuario_id', filtroUsuarioId);
+      }
+
       if (filtroBusca.trim()) {
         const term = `%${filtroBusca.trim()}%`;
         query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term}`);
-      }
-
-      if (filtroBuscaUsuario.trim()) {
-        const userTerm = `%${filtroBuscaUsuario.trim()}%`;
-        query = query.or(`ip_origem.ilike.${userTerm},unidade.ilike.${userTerm}`);
       }
 
       const dtIni = formatarDataFiltro(filtroDataInicio);
@@ -475,12 +530,29 @@ export default function PainelCoordScreen() {
       query = query.order('data_criacao', { ascending: false }).range(from, to);
 
       const { data, count, error } = await query;
-      if (!error && data) {
-        setRelatorios(data);
-        if (count !== null) setTotalRelatoriosGeral(count);
+      if (error) {
+        console.warn('Erro ao carregar relatórios do painel:', error.message);
+      } else if (data) {
+        // Se houver busca por usuário por texto, filtra também localmente
+        let resultado = data;
+        if (filtroBuscaUsuario.trim()) {
+          const uTerm = filtroBuscaUsuario.toLowerCase().trim();
+          resultado = resultado.filter((r) => {
+            const parsed = parseReportData(r);
+            const prep = (parsed?.preposto || '').toLowerCase();
+            const autor = (usuarios.find((u) => u.id === r.usuario_id)?.nome || '').toLowerCase();
+            const autorUser = (usuarios.find((u) => u.id === r.usuario_id)?.username || '').toLowerCase();
+            const rUnid = (r.unidade || '').toLowerCase();
+            return prep.includes(uTerm) || autor.includes(uTerm) || autorUser.includes(uTerm) || rUnid.includes(uTerm);
+          });
+        }
+        setRelatorios(resultado);
+        if (count !== null && count !== undefined) setTotalRelatoriosGeral(count);
       }
     } catch (e) {
       console.warn('Erro ao carregar relatórios do painel:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -833,14 +905,14 @@ export default function PainelCoordScreen() {
   // 2. Verificação de Acesso / Senha do Painel (Usuário italogabriel e Senha 253095)
   if (!isAuthorized || !isPanelUnlocked) {
     return (
-      <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
-        <View style={[styles.navbar, !isDarkMode && { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
+        <View style={[styles.navbar, { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
           <View style={styles.navLeft}>
             <View style={styles.coordBadgeIcon}>
               <Text style={{ fontSize: 16 }}>🛡️</Text>
             </View>
             <View>
-              <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
+              <Text style={[styles.navTitle, { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
               <Text style={styles.navSubtitle}>ACESSO RESTRITO POR USUÁRIO E SENHA</Text>
             </View>
           </View>
@@ -852,15 +924,15 @@ export default function PainelCoordScreen() {
         </View>
 
         <View style={styles.restrictedContainer}>
-          <View style={[styles.coordLockCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
-            <View style={styles.coordLockIconCircle}>
+          <View style={[styles.coordLockCard, { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+            <View style={[styles.coordLockIconCircle, { backgroundColor: '#eff6ff', borderColor: '#dbeafe' }]}>
               <Text style={{ fontSize: 36 }}>🔐</Text>
             </View>
 
-            <Text style={[styles.coordLockTitle, !isDarkMode && { color: '#0f172a' }]}>
+            <Text style={[styles.coordLockTitle, { color: '#0f172a' }]}>
               Painel de Coordenação
             </Text>
-            <Text style={styles.coordLockSubtitle}>
+            <Text style={[styles.coordLockSubtitle, { color: '#64748b' }]}>
               Insira usuário e senha autorizados para acessar o painel
             </Text>
 
@@ -871,15 +943,11 @@ export default function PainelCoordScreen() {
             )}
 
             <View style={styles.coordLockInputGroup}>
-              <Text style={[styles.coordLockInputLabel, !isDarkMode && { color: '#475569' }]}>
+              <Text style={[styles.coordLockInputLabel, { color: '#475569' }]}>
                 USUÁRIO
               </Text>
               <TextInput
-                style={[
-                  styles.coordLockInput,
-                  styles.coordLockInputDisabled,
-                  !isDarkMode && styles.coordLockInputDisabledLight,
-                ]}
+                style={styles.coordLockInputDisabled}
                 value="italogabriel"
                 editable={false}
                 selectTextOnFocus={false}
@@ -887,15 +955,15 @@ export default function PainelCoordScreen() {
             </View>
 
             <View style={styles.coordLockInputGroup}>
-              <Text style={[styles.coordLockInputLabel, !isDarkMode && { color: '#475569' }]}>
+              <Text style={[styles.coordLockInputLabel, { color: '#475569' }]}>
                 SENHA DE ACESSO
               </Text>
               <TextInput
-                style={[styles.coordLockInput, !isDarkMode && styles.coordLockInputLight]}
+                style={[styles.coordLockInput, styles.coordLockInputLight]}
                 value={inputSenhaPainel}
                 onChangeText={setInputSenhaPainel}
                 placeholder="Digite a senha..."
-                placeholderTextColor="#64748b"
+                placeholderTextColor="#94a3b8"
                 secureTextEntry
                 onSubmitEditing={handleDesbloquearPainel}
               />
@@ -930,28 +998,28 @@ export default function PainelCoordScreen() {
   // 4. Painel de Coordenação Autorizado e Desbloqueado
   return (
     <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
-      {/* Top Navbar Escuro Fiel ao Anexo 6 */}
-      <View style={styles.anexo6Header}>
-        <View style={styles.anexo6TopRow}>
-          <View style={styles.anexo6LogoGroup}>
-            <View style={styles.anexo6LogoIcon}>
-              <Text style={styles.anexo6LogoRay}>⚡</Text>
+      {/* Top Navbar */}
+      <View style={[styles.coordNavbar, !isDarkMode && styles.coordNavbarLight]}>
+        <View style={styles.coordNavTopRow}>
+          <View style={styles.coordNavLogoGroup}>
+            <View style={styles.coordNavLogoIcon}>
+              <Text style={styles.coordNavLogoRay}>⚡</Text>
             </View>
-            <Text style={styles.anexo6LogoText}>COORDENAÇÃO</Text>
+            <Text style={[styles.coordNavLogoText, !isDarkMode && { color: '#0f172a' }]}>COORDENAÇÃO</Text>
           </View>
-          <View style={styles.anexo6DateTimeGroup}>
-            <Text style={styles.anexo6DateTimeText}>{dataHoraAtual}</Text>
-            <Text style={styles.anexo6IpText}>IP: {userIp}</Text>
+          <View style={styles.coordNavDateTimeGroup}>
+            <Text style={[styles.coordNavDateTimeText, !isDarkMode && { color: '#475569' }]}>{dataHoraAtual}</Text>
+            <Text style={[styles.coordNavIpText, !isDarkMode && { color: '#64748b' }]}>IP: {userIp}</Text>
           </View>
         </View>
 
-        <View style={styles.anexo6UserControlRow}>
-          <Text style={styles.anexo6UserGreeting}>
-            Olá, <Text style={styles.anexo6UserName}>italogabriel</Text>
+        <View style={styles.coordNavUserControlRow}>
+          <Text style={[styles.coordNavUserGreeting, !isDarkMode && { color: '#475569' }]}>
+            Olá, <Text style={[styles.coordNavUserName, !isDarkMode && { color: '#0f172a' }]}>italogabriel</Text>
           </Text>
-          <View style={styles.anexo6ButtonsGroup}>
+          <View style={styles.coordNavButtonsGroup}>
             <TouchableOpacity
-              style={styles.anexo6NotificationBtn}
+              style={[styles.coordNavNotificationBtn, !isDarkMode && { backgroundColor: '#f1f5f9' }]}
               onPress={() => setActiveTab('popups')}
               activeOpacity={0.8}
             >
@@ -959,144 +1027,124 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.anexo6VoltarBtn}
+              style={[styles.coordNavVoltarBtn, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#cbd5e1' }]}
               onPress={() => router.push('/')}
               activeOpacity={0.8}
             >
-              <Text style={styles.anexo6VoltarBtnText}>VOLTAR</Text>
+              <Text style={[styles.coordNavVoltarBtnText, !isDarkMode && { color: '#334155' }]}>VOLTAR</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.anexo6SairBtn}
+              style={styles.coordNavSairBtn}
               onPress={handleBloquearPainel}
               activeOpacity={0.8}
             >
-              <Text style={styles.anexo6SairBtnText}>SAIR</Text>
+              <Text style={styles.coordNavSairBtnText}>SAIR</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.anexo6ThemeBtn}
-              onPress={toggleTheme}
-              title="Alternar Tema"
-            >
-              <Text style={{ fontSize: 13 }}>{isDarkMode ? '☀️' : '🌙'}</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Card Superior Visão Geral (Fiel ao Anexo 2) */}
-        <View style={[styles.anexo2HeaderCard, !isDarkMode && styles.anexo2HeaderCardLight]}>
-          <View style={styles.anexo2HeaderLeft}>
-            <View style={styles.anexo2HeaderIconBox}>
+        {/* Card Superior Visão Geral */}
+        <View style={styles.overviewSummaryCardLight}>
+          <View style={styles.overviewSummaryLeft}>
+            <View style={styles.overviewSummaryIconBox}>
               <Text style={{ fontSize: 22, color: '#ffffff' }}>📊</Text>
             </View>
             <View>
-              <Text style={[styles.anexo2HeaderTitle, !isDarkMode && { color: '#0f172a' }]}>
+              <Text style={[styles.overviewSummaryTitle, { color: '#0f172a' }]}>
                 VISÃO GERAL
               </Text>
-              <Text style={styles.anexo2HeaderSubtitle}>
+              <Text style={styles.overviewSummarySubtitle}>
                 Análise de métricas e performance
               </Text>
             </View>
           </View>
 
-          <View style={styles.anexo2HeaderRight}>
-            <View style={[styles.anexo2MonthSelector, !isDarkMode && styles.anexo2MonthSelectorLight]}>
-              <Text style={[styles.anexo2MonthText, !isDarkMode && { color: '#0f172a' }]}>
+          <View style={styles.overviewSummaryRight}>
+            <View style={styles.overviewMonthSelectorLight}>
+              <Text style={[styles.overviewMonthText, { color: '#0f172a' }]}>
                 📅 {nomeMesAtual}
               </Text>
             </View>
             <TouchableOpacity
-              style={styles.anexo2BtnFiltrar}
+              style={styles.overviewBtnFiltrar}
               onPress={() => carregarRelatorios()}
               activeOpacity={0.8}
             >
-              <Text style={styles.anexo2BtnFiltrarText}>FILTRAR ›</Text>
+              <Text style={styles.overviewBtnFiltrarText}>FILTRAR ›</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* 4 Cards de Métricas / KPIs (Fiel ao Anexo 2) */}
-        <View style={styles.anexo2KpiGrid}>
-          {/* 1. HOJE */}
-          <View
-            style={[
-              styles.anexo2KpiCard,
-              styles.anexo2KpiCardHoje,
-              !isDarkMode ? styles.anexo2KpiCardLight : styles.anexo2KpiCardDark,
-            ]}
-          >
-            <Text style={[styles.anexo2KpiLabel, { color: '#2563eb' }]}>HOJE</Text>
-            <Text style={[styles.anexo2KpiValue, !isDarkMode && { color: '#0f172a' }]}>
-              {relatoriosHojeCount}
-            </Text>
-            <Text style={styles.anexo2KpiFootnote}>relatórios gerados</Text>
-          </View>
-
-          {/* 2. NO MÊS */}
-          <View
-            style={[
-              styles.anexo2KpiCard,
-              styles.anexo2KpiCardMes,
-              !isDarkMode ? styles.anexo2KpiCardLight : styles.anexo2KpiCardDark,
-            ]}
-          >
-            <Text style={[styles.anexo2KpiLabel, { color: '#10b981' }]}>NO MÊS</Text>
-            <Text style={[styles.anexo2KpiValue, !isDarkMode && { color: '#0f172a' }]}>
-              {relatoriosMesCount}
-            </Text>
-            <Text style={styles.anexo2KpiFootnote}>{mesAnoCurto}</Text>
-          </View>
-
-          {/* 3. USUÁRIOS ATIVOS */}
-          <View
-            style={[
-              styles.anexo2KpiCard,
-              styles.anexo2KpiCardUsuarios,
-              !isDarkMode ? styles.anexo2KpiCardLight : styles.anexo2KpiCardDark,
-            ]}
-          >
-            <Text style={[styles.anexo2KpiLabel, { color: '#f59e0b' }]}>USUÁRIOS ATIVOS</Text>
-            <Text style={[styles.anexo2KpiValue, !isDarkMode && { color: '#0f172a' }]}>
-              {usuarios.length > 0 ? 1 : 0}
-            </Text>
-            <Text style={styles.anexo2KpiFootnote}>online no momento</Text>
-          </View>
-
-          {/* 4. TOTAL GERAL */}
-          <View
-            style={[
-              styles.anexo2KpiCard,
-              styles.anexo2KpiCardTotal,
-              !isDarkMode ? styles.anexo2KpiCardLight : styles.anexo2KpiCardDark,
-            ]}
-          >
-            <Text style={[styles.anexo2KpiLabel, { color: '#475569' }]}>TOTAL GERAL</Text>
-            <Text style={[styles.anexo2KpiValue, !isDarkMode && { color: '#0f172a' }]}>
+        {/* 4 Cards de Métricas / KPIs */}
+        <View style={styles.kpiCardsGrid}>
+          {/* 1. TOTAL GERAL */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardTotal, styles.kpiMetricCardLight]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={[styles.kpiMetricLabel, { color: '#475569' }]}>TOTAL GERAL</Text>
+              <Text style={{ fontSize: 14 }}>📊</Text>
+            </View>
+            <Text style={[styles.kpiMetricValue, { color: '#0f172a' }]}>
               {totalRelatoriosGeral}
             </Text>
-            <Text style={styles.anexo2KpiFootnote}>relatórios salvos</Text>
+            <Text style={styles.kpiMetricFootnote}>Relatórios emitidos</Text>
+          </View>
+
+          {/* 2. NESTE MÊS */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardMes, styles.kpiMetricCardLight]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>NESTE MÊS</Text>
+              <Text style={{ fontSize: 14 }}>📅</Text>
+            </View>
+            <Text style={[styles.kpiMetricValue, { color: '#0284c7' }]}>
+              {relatoriosMesCount}
+            </Text>
+            <Text style={styles.kpiMetricFootnote}>Atendimentos no mês atual</Text>
+          </View>
+
+          {/* 3. HOJE */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardHoje, styles.kpiMetricCardLight]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={[styles.kpiMetricLabel, { color: '#ea580c' }]}>HOJE</Text>
+              <Text style={{ fontSize: 14 }}>⚡</Text>
+            </View>
+            <Text style={[styles.kpiMetricValue, { color: '#0f172a' }]}>
+              {relatoriosHojeCount}
+            </Text>
+            <Text style={styles.kpiMetricFootnote}>Relatórios gerados hoje</Text>
+          </View>
+
+          {/* 4. USUÁRIOS */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardUsuarios, styles.kpiMetricCardLight]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={[styles.kpiMetricLabel, { color: '#8b5cf6' }]}>USUÁRIOS</Text>
+              <Text style={{ fontSize: 14 }}>👥</Text>
+            </View>
+            <Text style={[styles.kpiMetricValue, { color: '#ea580c' }]}>
+              {usuarios.length > 0 ? usuarios.length : 10}
+            </Text>
+            <Text style={styles.kpiMetricFootnote}>Contas registradas</Text>
           </View>
         </View>
 
-        {/* Abas de Navegação (Fiel ao Anexo 2 - Sem container escuro) */}
-        <View style={styles.anexo2TabsBar}>
+        {/* Abas de Navegação */}
+        <View style={styles.tabsBarRow}>
           <TouchableOpacity
             style={[
-              styles.anexo2TabItem,
-              activeTab === 'relatorios' &&
-                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+              styles.tabNavButton,
+              activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
             ]}
             onPress={() => setActiveTab('relatorios')}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>📊</Text>
             <Text
               style={[
-                styles.anexo2TabItemText,
-                activeTab === 'relatorios' && styles.anexo2TabItemTextActive,
+                styles.tabNavButtonText,
+                activeTab === 'relatorios' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
               ]}
             >
               RELATÓRIOS
@@ -1105,18 +1153,17 @@ export default function PainelCoordScreen() {
 
           <TouchableOpacity
             style={[
-              styles.anexo2TabItem,
-              activeTab === 'ranking' &&
-                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+              styles.tabNavButton,
+              activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
             ]}
             onPress={() => setActiveTab('ranking')}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>🏆</Text>
             <Text
               style={[
-                styles.anexo2TabItemText,
-                activeTab === 'ranking' && styles.anexo2TabItemTextActive,
+                styles.tabNavButtonText,
+                activeTab === 'ranking' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
               ]}
             >
               RANKING
@@ -1125,18 +1172,17 @@ export default function PainelCoordScreen() {
 
           <TouchableOpacity
             style={[
-              styles.anexo2TabItem,
-              activeTab === 'popups' &&
-                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+              styles.tabNavButton,
+              activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
             ]}
             onPress={() => setActiveTab('popups')}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>📢</Text>
             <Text
               style={[
-                styles.anexo2TabItemText,
-                activeTab === 'popups' && styles.anexo2TabItemTextActive,
+                styles.tabNavButtonText,
+                activeTab === 'popups' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
               ]}
             >
               POP-UPS
@@ -1145,18 +1191,17 @@ export default function PainelCoordScreen() {
 
           <TouchableOpacity
             style={[
-              styles.anexo2TabItem,
-              activeTab === 'usuarios' &&
-                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+              styles.tabNavButton,
+              activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
             ]}
-            onPress={() => setActiveTab('usuarios')}
-            activeOpacity={0.8}
+            onPress={() => setActiveTab('mensagens')}
+            activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>💬</Text>
             <Text
               style={[
-                styles.anexo2TabItemText,
-                activeTab === 'usuarios' && styles.anexo2TabItemTextActive,
+                styles.tabNavButtonText,
+                activeTab === 'mensagens' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
               ]}
             >
               MENSAGENS
@@ -1165,18 +1210,20 @@ export default function PainelCoordScreen() {
 
           <TouchableOpacity
             style={[
-              styles.anexo2TabItem,
-              activeTab === 'sistema' &&
-                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+              styles.tabNavButton,
+              activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
             ]}
-            onPress={() => setActiveTab('sistema')}
-            activeOpacity={0.8}
+            onPress={() => {
+              setActiveTab('seguranca');
+              carregarSeguranca();
+            }}
+            activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>🛡️</Text>
             <Text
               style={[
-                styles.anexo2TabItemText,
-                activeTab === 'sistema' && styles.anexo2TabItemTextActive,
+                styles.tabNavButtonText,
+                activeTab === 'seguranca' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
               ]}
             >
               SEGURANÇA
@@ -1185,18 +1232,36 @@ export default function PainelCoordScreen() {
 
           <TouchableOpacity
             style={[
-              styles.anexo2TabItem,
-              activeTab === 'version' &&
-                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+              styles.tabNavButton,
+              activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
+            ]}
+            onPress={() => setActiveTab('sistema')}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: 13, marginRight: 6 }}>⚙️</Text>
+            <Text
+              style={[
+                styles.tabNavButtonText,
+                activeTab === 'sistema' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
+              ]}
+            >
+              SISTEMA
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tabNavButton,
+              activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
             ]}
             onPress={() => setActiveTab('version')}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>🏷️</Text>
             <Text
               style={[
-                styles.anexo2TabItemText,
-                activeTab === 'version' && styles.anexo2TabItemTextActive,
+                styles.tabNavButtonText,
+                activeTab === 'version' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
               ]}
             >
               VERSION
@@ -1207,114 +1272,138 @@ export default function PainelCoordScreen() {
         {/* ════════════════ ABA 1: RELATÓRIOS GERAIS ════════════════ */}
         {activeTab === 'relatorios' && (
           <View style={styles.tabContent}>
-            {/* Título da Seção Fiel ao Anexo 2 */}
-            <View style={styles.anexo2SectionTitleRow}>
-              <Text style={{ fontSize: 16 }}>📊</Text>
-              <Text style={[styles.anexo2SectionTitleText, !isDarkMode && { color: '#0f172a' }]}>
-                RELATÓRIOS GERADOS
-              </Text>
-            </View>
+            {/* Card Unificado: Cabeçalho com Título + Corpo de Filtros */}
+            <View style={styles.reportsFilterCardContainer}>
+              <View style={styles.reportsFilterCardHeader}>
+                <Text style={{ fontSize: 16 }}>📊</Text>
+                <Text style={styles.reportsFilterCardHeaderTitle}>
+                  RELATÓRIOS GERADOS
+                </Text>
+              </View>
 
-            {/* Filtros conforme Anexo 2 */}
-            <View style={[styles.anexo6FilterCard, !isDarkMode && styles.anexo6FilterCardLight]}>
-              <View style={styles.anexo2FilterResponsiveRow}>
-                {/* DE */}
-                <View style={styles.anexo2DateBox}>
-                  <Text style={styles.anexo6FilterLabel}>DE:</Text>
+              <View style={styles.reportsFilterCardBody}>
+                <View style={styles.reportsFilterRow}>
+                  {/* DE */}
+                  <View style={styles.reportsFilterFieldBox}>
+                  <Text style={styles.reportsFilterFieldLabel}>DE:</Text>
                   <TextInput
-                    style={[styles.anexo6FilterInput, !isDarkMode && styles.anexo6FilterInputLight]}
+                    style={styles.reportsFilterInput}
                     placeholder="dd/mm/aaaa"
                     placeholderTextColor="#94a3b8"
                     value={filtroDataInicio}
                     onChangeText={setFiltroDataInicio}
                   />
-                  <Text style={{ fontSize: 12, color: '#64748b', marginLeft: 4 }}>📅</Text>
                 </View>
 
                 {/* ATÉ */}
-                <View style={styles.anexo2DateBox}>
-                  <Text style={styles.anexo6FilterLabel}>ATÉ:</Text>
+                <View style={styles.reportsFilterFieldBox}>
+                  <Text style={styles.reportsFilterFieldLabel}>ATÉ:</Text>
                   <TextInput
-                    style={[styles.anexo6FilterInput, !isDarkMode && styles.anexo6FilterInputLight]}
+                    style={styles.reportsFilterInput}
                     placeholder="dd/mm/aaaa"
                     placeholderTextColor="#94a3b8"
                     value={filtroDataFim}
                     onChangeText={setFiltroDataFim}
                   />
-                  <Text style={{ fontSize: 12, color: '#64748b', marginLeft: 4 }}>📅</Text>
                 </View>
 
                 {/* Buscar Usuário */}
-                <TextInput
-                  style={[styles.anexo2SearchUserInput, !isDarkMode && styles.anexo6FilterInputLight]}
-                  placeholder="Buscar usuário..."
-                  placeholderTextColor="#94a3b8"
-                  value={filtroBuscaUsuario}
-                  onChangeText={setFiltroBuscaUsuario}
-                />
+                <View style={[styles.reportsFilterFieldBox, { flex: 1.2, minWidth: 150 }]}>
+                  <TextInput
+                    style={styles.reportsFilterInputNoBorder}
+                    placeholder="Buscar usuário..."
+                    placeholderTextColor="#94a3b8"
+                    value={filtroBuscaUsuario}
+                    onChangeText={setFiltroBuscaUsuario}
+                  />
+                </View>
 
                 {/* Unidade */}
-                <TextInput
-                  style={[styles.anexo2SearchUnidadeInput, !isDarkMode && styles.anexo6FilterInputLight]}
-                  placeholder="Unidade..."
-                  placeholderTextColor="#94a3b8"
-                  value={filtroBusca}
-                  onChangeText={setFiltroBusca}
-                />
+                <View style={[styles.reportsFilterFieldBox, { flex: 1.2, minWidth: 140 }]}>
+                  <TextInput
+                    style={styles.reportsFilterInputNoBorder}
+                    placeholder="Unidade..."
+                    placeholderTextColor="#94a3b8"
+                    value={filtroBusca}
+                    onChangeText={setFiltroBusca}
+                  />
+                </View>
 
-                {/* Select Empresa */}
+                {/* Empresa Dropdown */}
                 <TouchableOpacity
-                  style={[styles.anexo2SelectBox, !isDarkMode && styles.anexo6SelectBoxLight]}
+                  style={[styles.reportsFilterFieldBox, styles.reportsDropdownBtn]}
                   onPress={() => setIsEmpresaDropdownOpen(!isEmpresaDropdownOpen)}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.anexo6SelectBoxText, !isDarkMode && { color: '#0f172a' }]}>
+                  <Text style={styles.reportsDropdownBtnText} numberOfLines={1}>
                     {filtroEmpresa === 'TODAS' ? 'Empresa...' : filtroEmpresa}
                   </Text>
-                  <Text style={styles.anexo6SelectChevron}>⌵</Text>
+                  <Text style={styles.reportsDropdownChevron}>▾</Text>
                 </TouchableOpacity>
 
-                {/* Select Usuário */}
+                {/* Usuário Dropdown */}
                 <TouchableOpacity
-                  style={[styles.anexo2SelectBox, !isDarkMode && styles.anexo6SelectBoxLight]}
+                  style={[styles.reportsFilterFieldBox, styles.reportsDropdownBtn]}
+                  onPress={() => setIsUsuarioDropdownOpen(!isUsuarioDropdownOpen)}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.anexo6SelectBoxText, !isDarkMode && { color: '#0f172a' }]}>
-                    Usuário...
+                  <Text style={styles.reportsDropdownBtnText} numberOfLines={1}>
+                    {filtroUsuarioId ? (usuarios.find((u) => u.id === filtroUsuarioId)?.nome || 'Usuário...') : 'Usuário...'}
                   </Text>
-                  <Text style={styles.anexo6SelectChevron}>⌵</Text>
+                  <Text style={styles.reportsDropdownChevron}>▾</Text>
                 </TouchableOpacity>
 
                 {/* Botões FILTRAR e LIMPAR */}
-                <View style={styles.anexo2ButtonsGroup}>
-                  <TouchableOpacity
-                    style={styles.anexo6BtnFiltrar}
-                    onPress={() => {
-                      setPaginaRelatorios(1);
-                      carregarRelatorios();
-                    }}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.anexo6BtnFiltrarText}>FILTRAR</Text>
-                  </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.btnReportsFiltrar}
+                  onPress={() => {
+                    setPaginaRelatorios(1);
+                    carregarRelatorios();
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.btnReportsFiltrarText}>FILTRAR</Text>
+                </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.anexo6BtnLimpar}
-                    onPress={() => {
-                      setFiltroBusca('');
-                      setFiltroBuscaUsuario('');
-                      setFiltroEmpresa('TODAS');
-                      setFiltroDataInicio('');
-                      setFiltroDataFim('');
-                      setPaginaRelatorios(1);
-                      carregarRelatorios();
-                    }}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.anexo6BtnLimparText}>LIMPAR</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  style={styles.btnReportsLimpar}
+                  onPress={limparFiltros}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.btnReportsLimparText}>LIMPAR</Text>
+                </TouchableOpacity>
               </View>
+
+              {/* Dropdown de Usuários */}
+              {isUsuarioDropdownOpen && (
+                <View style={styles.coordDropdownOptionsListLight}>
+                  <TouchableOpacity
+                    style={[styles.coordDropdownOptionItem, !filtroUsuarioId && styles.coordDropdownOptionItemActive]}
+                    onPress={() => {
+                      setFiltroUsuarioId(null);
+                      setIsUsuarioDropdownOpen(false);
+                    }}
+                  >
+                    <Text style={styles.coordDropdownOptionText}>TODOS OS USUÁRIOS</Text>
+                    {!filtroUsuarioId && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
+                  </TouchableOpacity>
+                  {usuarios.map((u) => (
+                    <TouchableOpacity
+                      key={u.id}
+                      style={[styles.coordDropdownOptionItem, filtroUsuarioId === u.id && styles.coordDropdownOptionItemActive]}
+                      onPress={() => {
+                        setFiltroUsuarioId(u.id);
+                        setIsUsuarioDropdownOpen(false);
+                      }}
+                    >
+                      <Text style={styles.coordDropdownOptionText}>
+                        {u.nome || u.username} ({u.username})
+                      </Text>
+                      {filtroUsuarioId === u.id && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
 
               {isEmpresaDropdownOpen && (
                 <View style={[styles.coordDropdownOptionsList, !isDarkMode && styles.coordDropdownOptionsListLight]}>
@@ -1345,9 +1434,10 @@ export default function PainelCoordScreen() {
                   ))}
                 </View>
               )}
+              </View>
             </View>
 
-            {/* Listagem conforme Anexo 6 */}
+            {/* Listagem de Relatórios */}
             {loading ? (
               <View style={styles.loadingBox}>
                 <ActivityIndicator size="large" color="#06b6d4" />
@@ -1360,11 +1450,11 @@ export default function PainelCoordScreen() {
                 <Text style={styles.emptySubtitle}>Ajuste os filtros ou verifique a conexão com o banco de dados.</Text>
               </View>
             ) : (
-              <View style={[styles.anexo6TableCard, !isDarkMode && styles.anexo6TableCardLight]}>
-                {/* Header da Lista conforme Anexo 6 */}
-                <View style={styles.anexo6ListHeaderRow}>
-                  <Text style={styles.anexo6ListHeaderText}>UNIDADE / AUTOR</Text>
-                  <Text style={styles.anexo6ListHeaderText}>EMPRESA</Text>
+              <View style={[styles.reportsTableCard, !isDarkMode && styles.reportsTableCardLight]}>
+                {/* Header da Lista */}
+                <View style={styles.reportsListHeaderRow}>
+                  <Text style={styles.reportsListHeaderText}>UNIDADE / AUTOR</Text>
+                  <Text style={styles.reportsListHeaderText}>EMPRESA</Text>
                 </View>
 
                 {relatorios.map((item) => {
@@ -1382,66 +1472,66 @@ export default function PainelCoordScreen() {
                   const ipOrigem = item.ip_origem || '2804:14d...';
 
                   return (
-                    <View key={item.id} style={styles.anexo6ItemCard}>
-                      <View style={styles.anexo6ItemTop}>
-                        <Text style={styles.anexo6ItemUnidade} numberOfLines={1}>
+                    <View key={item.id} style={styles.reportsItemCard}>
+                      <View style={styles.reportsItemTop}>
+                        <Text style={styles.reportsItemUnidade} numberOfLines={1}>
                           {item.unidade || 'Sem unidade'}
                         </Text>
-                        <View style={styles.anexo6EmpresaBadge}>
-                          <Text style={styles.anexo6EmpresaBadgeText}>
+                        <View style={styles.reportsEmpresaBadge}>
+                          <Text style={styles.reportsEmpresaBadgeText}>
                             {(item.empresa || 'OUTROS').toUpperCase()}
                           </Text>
                         </View>
                       </View>
 
-                      <Text style={styles.anexo6ItemSub} numberOfLines={1}>
+                      <Text style={styles.reportsItemSub} numberOfLines={1}>
                         POR: 🌐 IP: {ipOrigem} ({preposto.toUpperCase()})
                       </Text>
 
-                      <View style={styles.anexo6ItemTimeRow}>
-                        <Text style={styles.anexo6ItemTimeText}>🕒 {dataFormatada}</Text>
+                      <View style={styles.reportsItemTimeRow}>
+                        <Text style={styles.reportsItemTimeText}>🕒 {dataFormatada}</Text>
                       </View>
 
-                      {/* Botões Flats / Pílulas conforme Anexo 6 */}
-                      <View style={styles.anexo6ActionPillsRow}>
+                      {/* Botões de Ação */}
+                      <View style={styles.reportsActionPillsRow}>
                         <TouchableOpacity
-                          style={[styles.anexo6Pill, styles.anexo6PillDownload]}
+                          style={[styles.actionPill, styles.actionPillDownload]}
                           onPress={() => openReportPdf(item)}
                           activeOpacity={0.8}
                         >
-                          <Text style={styles.anexo6PillDownloadText}>📥 DOWNLOAD</Text>
+                          <Text style={styles.actionPillDownloadText}>📥 DOWNLOAD</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                          style={[styles.anexo6Pill, styles.anexo6PillVisualizar]}
+                          style={[styles.actionPill, styles.actionPillVisualizar]}
                           onPress={() => handleVisualizarRelatorio(item)}
                           activeOpacity={0.8}
                         >
-                          <Text style={styles.anexo6PillVisualizarText}>👁️ VISUALIZAR</Text>
+                          <Text style={styles.actionPillVisualizarText}>👁️ VISUALIZAR</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                          style={[styles.anexo6Pill, styles.anexo6PillEditar]}
+                          style={[styles.actionPill, styles.actionPillEditar]}
                           onPress={() => router.push(`/?editId=${item.id}`)}
                           activeOpacity={0.8}
                         >
-                          <Text style={styles.anexo6PillEditarText}>✏️ EDITAR</Text>
+                          <Text style={styles.actionPillEditarText}>✏️ EDITAR</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                          style={[styles.anexo6Pill, styles.anexo6PillCompartilhar]}
+                          style={[styles.actionPill, styles.actionPillCompartilhar]}
                           onPress={() => shareWhatsApp(item)}
                           activeOpacity={0.8}
                         >
-                          <Text style={styles.anexo6PillCompartilharText}>📤 COMPARTILHAR</Text>
+                          <Text style={styles.actionPillCompartilharText}>📤 COMPARTILHAR</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                          style={[styles.anexo6Pill, styles.anexo6PillExcluir]}
+                          style={[styles.actionPill, styles.actionPillExcluir]}
                           onPress={() => handleExcluirRelatorio(item.id)}
                           activeOpacity={0.8}
                         >
-                          <Text style={styles.anexo6PillExcluirText}>🗑️ EXCLUIR</Text>
+                          <Text style={styles.actionPillExcluirText}>🗑️ EXCLUIR</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -1708,7 +1798,7 @@ export default function PainelCoordScreen() {
               </View>
             </View>
 
-            {/* Card de Personalização do Rodapé (Footer - Anexo 2) */}
+            {/* Card de Personalização do Rodapé (Footer) */}
             <View style={[styles.sectionCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }, { marginTop: 20 }]}>
               <View style={styles.sectionHeader}>
                 <Text style={{ fontSize: 24 }}>🎨</Text>
@@ -1849,7 +1939,7 @@ export default function PainelCoordScreen() {
 
                 {/* Versão do App */}
                 <View style={styles.footerFormField}>
-                  <Text style={[styles.footerInputLabel, !isDarkMode && { color: '#334155' }]}>VERSÃO NO BADGE (ANEXO 2):</Text>
+                  <Text style={[styles.footerInputLabel, !isDarkMode && { color: '#334155' }]}>VERSÃO NO BADGE:</Text>
                   <TextInput
                     style={[styles.footerInput, !isDarkMode && styles.footerInputLight]}
                     value={footerDraft.versao}
@@ -1877,13 +1967,259 @@ export default function PainelCoordScreen() {
           </View>
         )}
 
+        {/* ════════════════ ABA 4: MENSAGENS IN-APP ════════════════ */}
+        {activeTab === 'mensagens' && (
+          <View style={styles.tabContent}>
+            <View style={styles.cardContainer}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 20 }}>💬</Text>
+                  </View>
+                  <View>
+                    <Text style={[styles.cardTitle, { color: '#0f172a' }]}>
+                      MENSAGENS & COMUNICADOS DIRETOS
+                    </Text>
+                    <Text style={styles.cardSubtitle}>
+                      Envie comunicados e avisos aos usuários do gerador de relatórios
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={{ backgroundColor: '#2563eb', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+                  onPress={() => setIsNovoPopupModalVisible(true)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 11, letterSpacing: 0.5 }}>
+                    + NOVA MENSAGEM
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
+                <View style={styles.versionTableHeaderRow}>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>TÍTULO</Text>
+                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>MENSAGEM</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 120 }]}>TIPO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA</Text>
+                </View>
+
+                {popups.length === 0 ? (
+                  <View style={{ padding: 28, alignItems: 'center' }}>
+                    <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma mensagem cadastrada.</Text>
+                  </View>
+                ) : (
+                  popups.map((p, idx) => (
+                    <View key={p.id || idx} style={[styles.versionTableRow, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
+                      <View style={{ width: 180 }}>
+                        <Text style={{ fontWeight: '800', color: '#0f172a', fontSize: 12 }}>{p.titulo}</Text>
+                      </View>
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <Text style={{ color: '#475569', fontSize: 12 }} numberOfLines={2}>{p.mensagem}</Text>
+                      </View>
+                      <View style={{ width: 120 }}>
+                        <View style={{ backgroundColor: p.tipo === 'urgente' ? '#fee2e2' : '#e0f2fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: p.tipo === 'urgente' ? '#dc2626' : '#0284c7', textTransform: 'uppercase' }}>
+                            {p.tipo || 'aviso'}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{ width: 140 }}>
+                        <Text style={{ color: '#64748b', fontSize: 11 }}>
+                          {p.data_criacao ? new Date(p.data_criacao).toLocaleDateString('pt-BR') : 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ════════════════ ABA 5: SEGURANÇA & AUDITORIA (LOGINS MAL SUCEDIDOS) ════════════════ */}
+        {activeTab === 'seguranca' && (
+          <View style={styles.tabContent}>
+            {/* 1. TENTATIVAS DE ACESSO FALHO (LOGINS MAL SUCEDIDOS) */}
+            <View style={styles.cardContainer}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 20 }}>⚠️</Text>
+                  </View>
+                  <View>
+                    <Text style={[styles.cardTitle, { color: '#dc2626' }]}>
+                      ACESSOS FALHOS AO PAINEL (LOGINS MAL SUCEDIDOS)
+                    </Text>
+                    <Text style={styles.cardSubtitle}>
+                      Histórico em tempo real de tentativas incorretas de login da coordenação gravadas no banco
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
+                    <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                      {acessosFalhos.length} TENTATIVAS FALHAS
+                    </Text>
+                  </View>
+
+                  {acessosFalhos.length > 0 && (
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#dc2626', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 }}
+                      onPress={handleLimparAcessosFalhos}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                        LIMPAR
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              {/* Tabela de Acessos Falhos */}
+              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
+                <View style={styles.versionTableHeaderRow}>
+                  <Text style={[styles.versionHeaderColText, { width: 160 }]}>USUÁRIO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>IP DE ORIGEM</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>DATA / HORA</Text>
+                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>NAVEGADOR / DISPOSITIVO</Text>
+                </View>
+
+                {loadingSeguranca ? (
+                  <View style={{ padding: 32, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#dc2626" />
+                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando histórico de segurança...</Text>
+                  </View>
+                ) : acessosFalhos.length === 0 ? (
+                  <View style={{ padding: 32, alignItems: 'center' }}>
+                    <Text style={{ color: '#059669', fontSize: 13, fontWeight: '700' }}>
+                      ✅ Nenhuma tentativa de acesso falha registrada.
+                    </Text>
+                  </View>
+                ) : (
+                  acessosFalhos.map((af, idx) => {
+                    const dataStr = af.data_tentativa
+                      ? new Date(af.data_tentativa).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })
+                      : 'N/A';
+                    return (
+                      <View
+                        key={af.id || idx}
+                        style={[
+                          styles.versionTableRow,
+                          idx % 2 === 1 && { backgroundColor: '#fff5f5' },
+                        ]}
+                      >
+                        <View style={{ width: 160 }}>
+                          <Text style={{ color: '#dc2626', fontWeight: '800', fontSize: 12 }}>
+                            {af.username || 'Desconhecido'}
+                          </Text>
+                        </View>
+                        <View style={{ width: 170 }}>
+                          <Text style={{ color: '#475569', fontSize: 12, fontFamily: 'monospace' }}>
+                            🌐 {af.ip || '127.0.0.1'}
+                          </Text>
+                        </View>
+                        <View style={{ width: 170 }}>
+                          <Text style={{ color: '#64748b', fontSize: 12 }}>
+                            🕒 {dataStr}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: '#64748b', fontSize: 11 }} numberOfLines={1}>
+                            {af.user_agent || 'App / Browser'}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </View>
+
+            {/* 2. AUDITORIA DE LOGINS BEM-SUCEDIDOS */}
+            <View style={[styles.cardContainer, { marginTop: 16 }]}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 20 }}>🛡️</Text>
+                  </View>
+                  <View>
+                    <Text style={[styles.cardTitle, { color: '#0f172a' }]}>
+                      AUDITORIA DE LOGINS BEM-SUCEDIDOS
+                    </Text>
+                    <Text style={styles.cardSubtitle}>
+                      Histórico de autenticações autorizadas no sistema
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
+                <View style={styles.versionTableHeaderRow}>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>USUÁRIO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>IP DE ACESSO</Text>
+                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>DATA / HORA</Text>
+                </View>
+
+                {ultimosLogins.length === 0 ? (
+                  <View style={{ padding: 24, alignItems: 'center' }}>
+                    <Text style={{ color: '#94a3b8', fontSize: 12 }}>Nenhum login registrado.</Text>
+                  </View>
+                ) : (
+                  ultimosLogins.map((lg, idx) => {
+                    const dataStr = lg.data_login
+                      ? new Date(lg.data_login).toLocaleString('pt-BR')
+                      : 'N/A';
+                    return (
+                      <View
+                        key={lg.id || idx}
+                        style={[
+                          styles.versionTableRow,
+                          idx % 2 === 1 && { backgroundColor: '#f8fafc' },
+                        ]}
+                      >
+                        <View style={{ width: 180 }}>
+                          <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>
+                            {lg.username || `ID ${lg.usuario_id}`}
+                          </Text>
+                        </View>
+                        <View style={{ width: 180 }}>
+                          <Text style={{ color: '#475569', fontSize: 12, fontFamily: 'monospace' }}>
+                            🌐 {lg.ip || '127.0.0.1'}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: '#64748b', fontSize: 12 }}>
+                            🕒 {dataStr}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* ════════════════ ABA 6: CONTROLE DE VERSÕES ════════════════ */}
         {activeTab === 'version' && (
           <View style={styles.tabContent}>
-            <View style={[styles.cardContainer, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+            {/* Card com Container Branco e Cantos Arredondados */}
+            <View style={styles.cardContainer}>
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardTitle, !isDarkMode && { color: '#0f172a' }]}>
+                  <Text style={[styles.cardTitle, { color: '#0f172a' }]}>
                     🏷️ CONTROLE DE VERSÕES DO SISTEMA
                   </Text>
                   <Text style={styles.cardSubtitle}>
@@ -2341,8 +2677,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  // ─── ESTILOS ANEXO 2 (VISÃO GERAL, KPIS LIGHT COM TOPO COLORIDO, ABAS E FILTROS) ───
-  anexo2HeaderCard: {
+  /* ─── RESUMO MENSAL / VISÃO GERAL ─── */
+  overviewSummaryCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
     borderWidth: 1,
@@ -2361,20 +2697,20 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  anexo2HeaderCardLight: {
+  overviewSummaryCardLight: {
     backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
   },
-  anexo2HeaderCardDark: {
+  overviewSummaryCardDark: {
     backgroundColor: '#1e293b',
     borderColor: '#334155',
   },
-  anexo2HeaderLeft: {
+  overviewSummaryLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
   },
-  anexo2HeaderIconBox: {
+  overviewSummaryIconBox: {
     width: 44,
     height: 44,
     borderRadius: 12,
@@ -2382,25 +2718,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  anexo2HeaderTitle: {
+  overviewSummaryTitle: {
     fontSize: 16,
     fontWeight: '900',
     color: '#0f172a',
     letterSpacing: 0.5,
     fontFamily: modernFont,
   },
-  anexo2HeaderSubtitle: {
+  overviewSummarySubtitle: {
     fontSize: 12,
     color: '#64748b',
     marginTop: 2,
     fontFamily: modernFont,
   },
-  anexo2HeaderRight: {
+  overviewSummaryRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  anexo2MonthSelector: {
+  overviewMonthSelector: {
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -2411,21 +2747,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  anexo2MonthSelectorLight: {
+  overviewMonthSelectorLight: {
     backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
   },
-  anexo2MonthSelectorDark: {
+  overviewMonthSelectorDark: {
     backgroundColor: '#0f172a',
     borderColor: '#334155',
   },
-  anexo2MonthText: {
+  overviewMonthText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#0f172a',
     fontFamily: modernFont,
   },
-  anexo2BtnFiltrar: {
+  overviewBtnFiltrar: {
     backgroundColor: '#2563eb',
     paddingHorizontal: 16,
     paddingVertical: 9,
@@ -2433,7 +2769,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  anexo2BtnFiltrarText: {
+  overviewBtnFiltrarText: {
     color: '#ffffff',
     fontSize: 11,
     fontWeight: '900',
@@ -2441,20 +2777,22 @@ const styles = StyleSheet.create({
     fontFamily: modernFont,
   },
 
-  // KPI Cards Anexo 2
-  anexo2KpiGrid: {
+  /* ─── CARDS DE MÉTRICAS (KPIS) ─── */
+  kpiCardsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
     marginBottom: 20,
   },
-  anexo2KpiCard: {
+  kpiMetricCard: {
     flex: 1,
     minWidth: 160,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 18,
     paddingVertical: 16,
     borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
     borderTopWidth: 4,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
@@ -2462,105 +2800,130 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
-  anexo2KpiCardLight: {
+  kpiMetricCardLight: {
     backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
   },
-  anexo2KpiCardDark: {
-    backgroundColor: '#1e293b',
-    borderColor: '#334155',
+  kpiMetricCardDark: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
   },
-  anexo2KpiCardHoje: {
-    borderTopColor: '#2563eb',
+  kpiMetricCardHoje: {
+    borderTopColor: '#ea580c',
   },
-  anexo2KpiCardMes: {
-    borderTopColor: '#10b981',
+  kpiMetricCardMes: {
+    borderTopColor: '#0284c7',
   },
-  anexo2KpiCardUsuarios: {
-    borderTopColor: '#f59e0b',
+  kpiMetricCardUsuarios: {
+    borderTopColor: '#8b5cf6',
   },
-  anexo2KpiCardTotal: {
+  kpiMetricCardTotal: {
     borderTopColor: '#334155',
   },
-  anexo2KpiLabel: {
+  kpiMetricLabel: {
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.8,
     fontFamily: modernFont,
     marginBottom: 6,
   },
-  anexo2KpiValue: {
+  kpiMetricValue: {
     fontSize: 30,
     fontWeight: '900',
     color: '#0f172a',
     fontFamily: modernFont,
     marginBottom: 4,
   },
-  anexo2KpiFootnote: {
+  kpiMetricFootnote: {
     fontSize: 11,
     color: '#64748b',
     fontFamily: modernFont,
   },
 
-  // Abas Anexo 2 (Sem caixa escura envolvente)
-  anexo2TabsBar: {
+  /* ─── NAVEGAÇÃO POR ABAS ─── */
+  tabsBarRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    backgroundColor: 'transparent',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 24, // mb-6 (24px)
     alignItems: 'center',
   },
-  anexo2TabItem: {
+  tabNavButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
+  },
+  tabNavButtonActive: {
+    backgroundColor: '#1e293b',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabNavButtonInactive: {
     backgroundColor: 'transparent',
   },
-  anexo2TabItemActiveLight: {
-    backgroundColor: '#1e293b',
-  },
-  anexo2TabItemActiveDark: {
-    backgroundColor: '#2563eb',
-  },
-  anexo2TabItemText: {
+  tabNavButtonText: {
     fontSize: 11,
-    fontWeight: '800',
     letterSpacing: 0.8,
-    color: '#64748b',
     fontFamily: modernFont,
   },
-  anexo2TabItemTextActive: {
+  tabNavButtonTextActive: {
     color: '#ffffff',
     fontWeight: '900',
   },
+  tabNavButtonTextInactive: {
+    color: '#64748b',
+    fontWeight: '800',
+  },
 
-  // Título da Seção Anexo 2
-  anexo2SectionTitleRow: {
+  /* ─── CARD UNIFICADO DE FILTROS DE RELATÓRIOS ─── */
+  reportsFilterCardContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 24,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  reportsFilterCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
   },
-  anexo2SectionTitleText: {
+  reportsFilterCardHeaderTitle: {
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 0.8,
     color: '#0f172a',
     fontFamily: modernFont,
   },
-
-  // Filtros Responsivos Anexo 2
-  anexo2FilterResponsiveRow: {
+  reportsFilterCardBody: {
+    padding: 16,
+    flexDirection: 'column',
+    gap: 16,
+    backgroundColor: '#ffffff',
+  },
+  reportsFilterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
     width: '100%',
   },
-  anexo2DateBox: {
+  reportsFilterFieldBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
@@ -2568,53 +2931,75 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 8,
     paddingHorizontal: 10,
-    height: 40,
-    minWidth: 130,
+    height: 38,
+    minWidth: 115,
     flex: 1,
   },
-  anexo2SearchUserInput: {
+  reportsFilterFieldLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748b',
+    marginRight: 6,
+    fontFamily: modernFont,
+  },
+  reportsFilterInput: {
     flex: 1,
-    minWidth: 140,
-    height: 40,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    height: 36,
     fontSize: 12,
     color: '#0f172a',
     fontFamily: modernFont,
   },
-  anexo2SearchUnidadeInput: {
+  reportsFilterInputNoBorder: {
     flex: 1,
-    minWidth: 110,
-    height: 40,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    height: 36,
     fontSize: 12,
     color: '#0f172a',
     fontFamily: modernFont,
   },
-  anexo2SelectBox: {
-    flex: 1,
-    minWidth: 120,
-    height: 40,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+  reportsDropdownBtn: {
     justifyContent: 'space-between',
+    minWidth: 130,
   },
-  anexo2ButtonsGroup: {
-    flexDirection: 'row',
+  reportsDropdownBtnText: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '600',
+    fontFamily: modernFont,
+  },
+  reportsDropdownChevron: {
+    fontSize: 12,
+    color: '#64748b',
+    marginLeft: 4,
+  },
+  btnReportsFiltrar: {
+    backgroundColor: '#1e293b',
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    borderRadius: 8,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+  },
+  btnReportsFiltrarText: {
+    color: '#ffffff',
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.8,
+    fontFamily: modernFont,
+  },
+  btnReportsLimpar: {
+    backgroundColor: '#e2e8f0',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnReportsLimparText: {
+    color: '#475569',
+    fontWeight: '800',
+    fontSize: 12,
+    letterSpacing: 0.8,
+    fontFamily: modernFont,
   },
 
   // KPIs
@@ -2937,12 +3322,53 @@ const styles = StyleSheet.create({
   },
 
   // Seções & Cards
-  sectionCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
+  cardContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e2e8f0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+    marginBottom: 20,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  sectionCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+    marginBottom: 20,
     gap: 16,
   },
   sectionHeader: {
@@ -2953,12 +3379,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '900',
-    color: '#ffffff',
+    color: '#0f172a',
     letterSpacing: 0.5,
+    fontFamily: modernFont,
   },
   sectionSubtitle: {
-    fontSize: 11,
-    color: '#94a3b8',
+    fontSize: 12,
+    color: '#64748b',
+    fontFamily: modernFont,
   },
 
   // Ranking
@@ -3781,29 +4209,29 @@ const styles = StyleSheet.create({
     fontFamily: modernFont,
   },
 
-  /* Tela de Bloqueio por Senha (coord/index.php) */
+  /* Tela de Bloqueio por Senha (100% Tema Claro) */
   coordLockCard: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 28,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e2e8f0',
     alignItems: 'center',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
   coordLockIconCircle: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+    backgroundColor: '#eff6ff',
     borderWidth: 1,
-    borderColor: 'rgba(37, 99, 235, 0.3)',
+    borderColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -3811,14 +4239,14 @@ const styles = StyleSheet.create({
   coordLockTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#ffffff',
+    color: '#0f172a',
     textAlign: 'center',
     marginBottom: 6,
     fontFamily: modernFont,
   },
   coordLockSubtitle: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: '#64748b',
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 18,
@@ -3848,38 +4276,44 @@ const styles = StyleSheet.create({
   coordLockInputLabel: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#94a3b8',
+    color: '#475569',
     letterSpacing: 1,
     marginBottom: 8,
     fontFamily: modernFont,
   },
   coordLockInput: {
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#cbd5e1',
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: '#ffffff',
+    color: '#0f172a',
     fontSize: 14,
     fontFamily: modernFont,
   },
   coordLockInputLight: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
     borderColor: '#cbd5e1',
     color: '#0f172a',
   },
   coordLockInputDisabled: {
-    backgroundColor: '#0a0f1d',
-    borderColor: '#1e293b',
-    color: '#cbd5e1',
-    opacity: 0.9,
-    fontWeight: '700',
+    backgroundColor: '#e2e8f0',
+    borderColor: '#e2e8f0',
+    borderWidth: 1,
+    color: '#64748b',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: modernFont,
+    ...(Platform.OS === 'web' ? { cursor: 'not-allowed' } : {}),
   },
   coordLockInputDisabledLight: {
     backgroundColor: '#e2e8f0',
-    borderColor: '#cbd5e1',
-    color: '#334155',
+    borderColor: '#e2e8f0',
+    color: '#64748b',
   },
   btnDesbloquearPainel: {
     width: '100%',
@@ -4069,14 +4503,14 @@ const styles = StyleSheet.create({
     fontFamily: modernFont,
   },
   versionInput: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#cbd5e1',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 13,
-    color: '#f8fafc',
+    color: '#0f172a',
     fontFamily: modernFont,
   },
   versionInputLight: {
@@ -4107,26 +4541,27 @@ const styles = StyleSheet.create({
   },
   versionTableContainer: {
     borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 10,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
     overflow: 'hidden',
   },
   versionTableHeaderRow: {
     flexDirection: 'row',
-    backgroundColor: '#1e293b',
+    backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#e2e8f0',
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
   versionTableHeaderRowLight: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#f8fafc',
     borderBottomColor: '#e2e8f0',
   },
   versionHeaderColText: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#94a3b8',
+    color: '#475569',
     letterSpacing: 1,
     textTransform: 'uppercase',
     fontFamily: modernFont,
@@ -4137,10 +4572,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#ffffff',
   },
   versionTableRowLight: {
     borderBottomColor: '#f1f5f9',
+    backgroundColor: '#ffffff',
   },
   versionRowOddDark: {
     backgroundColor: 'rgba(30, 41, 59, 0.4)',
@@ -4179,31 +4616,35 @@ const styles = StyleSheet.create({
   },
   versionDescText: {
     fontSize: 12,
-    color: '#cbd5e1',
+    color: '#334155',
     fontFamily: modernFont,
   },
 
-  // ─── ESTILOS FIÉIS AO ANEXO 6 ───
-  anexo6Header: {
-    backgroundColor: '#0b1329',
+  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO ─── */
+  coordNavbar: {
+    backgroundColor: '#ffffff',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: '#e2e8f0',
   },
-  anexo6TopRow: {
+  coordNavbarLight: {
+    backgroundColor: '#ffffff',
+    borderBottomColor: '#e2e8f0',
+  },
+  coordNavTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  anexo6LogoGroup: {
+  coordNavLogoGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  anexo6LogoIcon: {
+  coordNavLogoIcon: {
     width: 32,
     height: 32,
     borderRadius: 8,
@@ -4216,58 +4657,58 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  anexo6LogoRay: {
+  coordNavLogoRay: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: '900',
   },
-  anexo6LogoText: {
+  coordNavLogoText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 1.2,
     fontFamily: modernFont,
   },
-  anexo6DateTimeGroup: {
+  coordNavDateTimeGroup: {
     alignItems: 'flex-end',
   },
-  anexo6DateTimeText: {
+  coordNavDateTimeText: {
     color: '#94a3b8',
     fontSize: 11,
     fontWeight: '700',
     fontFamily: modernFont,
   },
-  anexo6IpText: {
+  coordNavIpText: {
     color: '#64748b',
     fontSize: 10,
     fontFamily: modernFont,
   },
-  anexo6UserControlRow: {
+  coordNavUserControlRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 4,
   },
-  anexo6UserGreeting: {
+  coordNavUserGreeting: {
     color: '#94a3b8',
     fontSize: 13,
     fontFamily: modernFont,
   },
-  anexo6UserName: {
+  coordNavUserName: {
     color: '#ffffff',
     fontWeight: '900',
   },
-  anexo6ButtonsGroup: {
+  coordNavButtonsGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  anexo6NotificationBtn: {
+  coordNavNotificationBtn: {
     padding: 6,
     borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
-  anexo6VoltarBtn: {
+  coordNavVoltarBtn: {
     backgroundColor: '#1e293b',
     paddingVertical: 7,
     paddingHorizontal: 14,
@@ -4275,169 +4716,40 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
-  anexo6VoltarBtnText: {
+  coordNavVoltarBtnText: {
     color: '#ffffff',
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.8,
     fontFamily: modernFont,
   },
-  anexo6SairBtn: {
+  coordNavSairBtn: {
     backgroundColor: '#e11d48',
     paddingVertical: 7,
     paddingHorizontal: 16,
     borderRadius: 8,
   },
-  anexo6SairBtnText: {
+  coordNavSairBtnText: {
     color: '#ffffff',
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.8,
     fontFamily: modernFont,
   },
-  anexo6ThemeBtn: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
 
-  // Filtros Anexo 6
-  anexo6FilterCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    gap: 10,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  anexo6FilterCardLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  anexo6FilterRow: {
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-  },
-  anexo6DateBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-  },
-  anexo6FilterLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#475569',
-    marginRight: 6,
-    fontFamily: modernFont,
-  },
-  anexo6FilterInput: {
-    flex: 1,
-    height: 38,
-    fontSize: 12,
-    color: '#0f172a',
-    fontFamily: modernFont,
-  },
-  anexo6FilterInputLight: {
-    color: '#0f172a',
-  },
-  anexo6SearchInput: {
-    flex: 1,
-    height: 40,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 12,
-    color: '#0f172a',
-    fontFamily: modernFont,
-  },
-  anexo6SelectBox: {
-    flex: 1,
-    height: 40,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  anexo6SelectBoxLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  anexo6SelectBoxText: {
-    fontSize: 12,
-    color: '#475569',
-    fontFamily: modernFont,
-  },
-  anexo6SelectChevron: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  anexo6FilterButtonsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-  },
-  anexo6BtnFiltrar: {
-    backgroundColor: '#1e293b',
-    paddingVertical: 10,
-    paddingHorizontal: 22,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  anexo6BtnFiltrarText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    fontFamily: modernFont,
-  },
-  anexo6BtnLimpar: {
-    backgroundColor: '#e2e8f0',
-    paddingVertical: 10,
-    paddingHorizontal: 22,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  anexo6BtnLimparText: {
-    color: '#334155',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    fontFamily: modernFont,
-  },
-
-  // Listagem de Relatórios Anexo 6
-  anexo6TableCard: {
+  /* ─── TABELA E CARDS DE RELATÓRIOS ─── */
+  reportsTableCard: {
     backgroundColor: '#ffffff',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     overflow: 'hidden',
   },
-  anexo6TableCardLight: {
+  reportsTableCardLight: {
     backgroundColor: '#ffffff',
     borderColor: '#e2e8f0',
   },
-  anexo6ListHeaderRow: {
+  reportsListHeaderRow: {
     backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
@@ -4447,7 +4759,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  anexo6ListHeaderText: {
+  reportsListHeaderText: {
     fontSize: 11,
     fontWeight: '900',
     color: '#475569',
@@ -4455,20 +4767,20 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontFamily: modernFont,
   },
-  anexo6ItemCard: {
+  reportsItemCard: {
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     backgroundColor: '#ffffff',
   },
-  anexo6ItemTop: {
+  reportsItemTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
   },
-  anexo6ItemUnidade: {
+  reportsItemUnidade: {
     fontSize: 14,
     fontWeight: '900',
     color: '#2563eb',
@@ -4476,90 +4788,90 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
-  anexo6EmpresaBadge: {
+  reportsEmpresaBadge: {
     backgroundColor: '#e0f2fe',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  anexo6EmpresaBadgeText: {
+  reportsEmpresaBadgeText: {
     fontSize: 10,
     fontWeight: '900',
     color: '#0284c7',
     letterSpacing: 0.5,
     fontFamily: modernFont,
   },
-  anexo6ItemSub: {
+  reportsItemSub: {
     fontSize: 11,
     color: '#64748b',
     marginBottom: 4,
     fontFamily: modernFont,
   },
-  anexo6ItemTimeRow: {
+  reportsItemTimeRow: {
     marginBottom: 10,
   },
-  anexo6ItemTimeText: {
+  reportsItemTimeText: {
     fontSize: 11,
     color: '#475569',
     fontWeight: '600',
     fontFamily: modernFont,
   },
-  anexo6ActionPillsRow: {
+  reportsActionPillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  anexo6Pill: {
+  actionPill: {
     borderRadius: 8,
     borderWidth: 1,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  anexo6PillDownload: {
+  actionPillDownload: {
     backgroundColor: '#eff6ff',
     borderColor: '#bfdbfe',
   },
-  anexo6PillDownloadText: {
+  actionPillDownloadText: {
     color: '#1d4ed8',
     fontSize: 11,
     fontWeight: '900',
     fontFamily: modernFont,
   },
-  anexo6PillVisualizar: {
+  actionPillVisualizar: {
     backgroundColor: '#f5f3ff',
     borderColor: '#ddd6fe',
   },
-  anexo6PillVisualizarText: {
+  actionPillVisualizarText: {
     color: '#6d28d9',
     fontSize: 11,
     fontWeight: '900',
     fontFamily: modernFont,
   },
-  anexo6PillEditar: {
+  actionPillEditar: {
     backgroundColor: '#fefce8',
     borderColor: '#fef08a',
   },
-  anexo6PillEditarText: {
+  actionPillEditarText: {
     color: '#b45309',
     fontSize: 11,
     fontWeight: '900',
     fontFamily: modernFont,
   },
-  anexo6PillCompartilhar: {
+  actionPillCompartilhar: {
     backgroundColor: '#f0fdf4',
     borderColor: '#bbf7d0',
   },
-  anexo6PillCompartilharText: {
+  actionPillCompartilharText: {
     color: '#15803d',
     fontSize: 11,
     fontWeight: '900',
     fontFamily: modernFont,
   },
-  anexo6PillExcluir: {
+  actionPillExcluir: {
     backgroundColor: '#fef2f2',
     borderColor: '#fecaca',
   },
-  anexo6PillExcluirText: {
+  actionPillExcluirText: {
     color: '#b91c1c',
     fontSize: 11,
     fontWeight: '900',

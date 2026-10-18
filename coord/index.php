@@ -302,14 +302,14 @@ if (empty($_SESSION['coord_panel_unlocked'])) {
     </head>
     <body class="bg-slate-100 min-h-screen flex flex-col">
         <!-- CABEÇALHO COORDENAÇÃO -->
-        <header class="bg-slate-900 text-white p-4 shadow-md w-full flex justify-between items-center z-50">
+        <header class="bg-white text-slate-800 p-4 border-b border-slate-200 shadow-sm w-full flex justify-between items-center z-50">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                 </div>
-                <span class="text-sm md:text-base font-black tracking-widest uppercase">Coordenação</span>
+                <span class="text-sm md:text-base font-black tracking-widest uppercase text-slate-800">Coordenação</span>
             </div>
-            <div class="text-right text-[10px] md:text-xs text-slate-400 font-medium">
+            <div class="text-right text-[10px] md:text-xs text-slate-500 font-medium">
                 <div><?php echo date('d/m/Y H:i'); ?></div>
                 <div>IP: <?php echo htmlspecialchars(obterIPCliente()); ?></div>
             </div>
@@ -889,37 +889,37 @@ $logs_sistema = file_exists($caminhoLog) ? file_get_contents($caminhoLog) : "Sis
 </head>
 <body class="transition-colors duration-300">
 
-    <!-- Navbar Principal com Cabeçalho Customizado -->
-    <nav class="bg-slate-900 text-white shadow-lg w-full z-50 sticky top-0">
+    <!-- Navbar Principal com Cabeçalho Customizado (Tema Claro) -->
+    <nav class="bg-white text-slate-800 border-b border-slate-200 shadow-sm w-full z-50 sticky top-0">
         <div class="w-full max-w-[1600px] mx-auto p-3 md:py-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
             <div class="flex items-center justify-between w-full sm:w-auto">
                 <div class="flex items-center gap-2.5">
                     <div class="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
-                    <span class="text-base md:text-xl font-black tracking-widest uppercase">Coordenação</span>
+                    <span class="text-base md:text-xl font-black tracking-widest uppercase text-slate-800">Coordenação</span>
                 </div>
-                <div class="text-right text-[10px] text-slate-400 font-medium sm:hidden leading-tight truncate max-w-[150px]">
-                    <div class="font-bold text-slate-300"><?php echo date('d/m/Y H:i'); ?></div>
+                <div class="text-right text-[10px] text-slate-500 font-medium sm:hidden leading-tight truncate max-w-[150px]">
+                    <div class="font-bold text-slate-700"><?php echo date('d/m/Y H:i'); ?></div>
                     <div class="truncate opacity-80" title="<?php echo htmlspecialchars(obterIPCliente()); ?>">IP: <?php echo htmlspecialchars(substr(obterIPCliente(), 0, 15) . (strlen(obterIPCliente()) > 15 ? '...' : '')); ?></div>
                 </div>
             </div>
             
-            <div class="flex items-center justify-between sm:justify-end gap-2 md:gap-4 w-full sm:w-auto border-t sm:border-t-0 border-slate-800/80 pt-2 sm:pt-0">
-                <div class="text-right text-xs text-slate-400 font-medium hidden sm:block leading-tight border-r border-slate-700 pr-4">
-                    <div class="font-bold text-slate-300"><?php echo date('d/m/Y \à\s H:i'); ?></div>
+            <div class="flex items-center justify-between sm:justify-end gap-2 md:gap-4 w-full sm:w-auto border-t sm:border-t-0 border-slate-200 pt-2 sm:pt-0">
+                <div class="text-right text-xs text-slate-500 font-medium hidden sm:block leading-tight border-r border-slate-200 pr-4">
+                    <div class="font-bold text-slate-700"><?php echo date('d/m/Y \à\s H:i'); ?></div>
                     <div class="text-[10px] opacity-80">IP Conectado: <?php echo htmlspecialchars(obterIPCliente()); ?></div>
                 </div>
                 <div class="flex items-center justify-between w-full sm:w-auto gap-2">
-                    <span class="text-xs md:text-sm font-medium">Olá, <b><?php echo htmlspecialchars($_SESSION['username'] ?? 'Admin'); ?></b></span>
+                    <span class="text-xs md:text-sm font-medium text-slate-700">Olá, <b><?php echo htmlspecialchars($_SESSION['username'] ?? 'Admin'); ?></b></span>
                     <div class="flex items-center gap-3">
-                        <button id="notificationBell" class="notification-bell text-white opacity-80 hover:opacity-100 transition-opacity" title="Notificações">
+                        <button id="notificationBell" class="notification-bell text-slate-600 hover:text-slate-900 transition-opacity" title="Notificações">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                               <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
                             <span class="badge hidden" id="notifCount"></span>
                         </button>
-                        <a href="../" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors shadow-sm">Voltar</a>
+                        <a href="../" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors shadow-sm">Voltar</a>
                         <a href="../logout.php" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors shadow-sm">Sair</a>
                     </div>
                 </div>

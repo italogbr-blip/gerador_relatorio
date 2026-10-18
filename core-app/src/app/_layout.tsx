@@ -77,7 +77,7 @@ export default function Layout() {
             text-size-adjust: 100%;
           }
 
-          /* Scrollbar Estilizado Conforme Anexo 1 */
+          /* Scrollbar Estilizado Customizado */
           ::-webkit-scrollbar {
             width: 14px;
             height: 14px;

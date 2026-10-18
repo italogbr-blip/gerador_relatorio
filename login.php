@@ -164,32 +164,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
             font-family: 'Outfit', sans-serif;
             background-color: #f8fafc;
         }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .light-panel {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
         }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-6 relative overflow-y-auto overflow-x-hidden">
+<body class="min-h-screen flex items-center justify-center p-6 relative overflow-y-auto overflow-x-hidden bg-slate-50">
 
-    <!-- Efeitos de Fundo -->
-    <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-40"></div>
-    <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-40"></div>
-
-    <div class="w-full max-w-md glass-panel rounded-3xl shadow-2xl p-8 relative z-10 text-white">
+    <div class="w-full max-w-md light-panel rounded-3xl shadow-xl p-8 relative z-10 text-slate-800">
         
         <div class="flex justify-center mb-6">
-            <div class="bg-white p-3 rounded-lg shadow-lg">
+            <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                 <img src="images/logo.png" alt="Logo MMS" class="h-14 object-contain">
             </div>
         </div>
         
-        <h2 class="text-3xl font-extrabold text-center tracking-tight mb-2">Bem-vindo de volta</h2>
-        <p class="text-center text-slate-400 text-sm mb-8 font-light">Acesse o portal da MMS Suporte Logístico</p>
+        <h2 class="text-3xl font-extrabold text-center tracking-tight mb-2 text-slate-800">Bem-vindo de volta</h2>
+        <p class="text-center text-slate-500 text-sm mb-8 font-normal">Acesse o portal da MMS Suporte Logístico</p>
 
         <?php if ($erro): ?>
-            <div class="bg-rose-500/10 border border-rose-500/30 text-rose-300 px-4 py-3 rounded-lg mb-6 text-sm font-semibold text-center tracking-wide">
+            <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg mb-6 text-sm font-semibold text-center tracking-wide">
                 <?php echo $erro; ?>
             </div>
         <?php endif; ?>
@@ -197,29 +192,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_REQUESTED_WI
         <form method="POST" action="" class="space-y-5">
             
             <div>
-                <label class="block text-xs text-slate-400 uppercase tracking-widest font-semibold mb-2 ml-1">Usuário</label>
+                <label class="block text-xs text-slate-600 uppercase tracking-widest font-semibold mb-2 ml-1">Usuário</label>
                 <input type="text" name="username" placeholder="Seu nome de usuário" required
-                    class="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-4 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                    class="w-full bg-slate-50 border border-slate-300 rounded-lg p-4 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
             </div>
 
             <div>
-                <label class="block text-xs text-slate-400 uppercase tracking-widest font-semibold mb-2 ml-1">Senha</label>
+                <label class="block text-xs text-slate-600 uppercase tracking-widest font-semibold mb-2 ml-1">Senha</label>
                 <input type="password" name="senha" placeholder="••••••••" required
-                    class="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-4 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                    class="w-full bg-slate-50 border border-slate-300 rounded-lg p-4 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
             </div>
 
             <button type="submit" <?php echo ($rate_data['bloqueado_ate'] > time()) ? 'disabled' : ''; ?>
-                class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_25px_rgba(37,99,235,0.6)] hover:bg-blue-500 transform hover:-translate-y-1 transition-all duration-200 mt-6 tracking-wide <?php echo ($rate_data['bloqueado_ate'] > time()) ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg shadow-md hover:bg-blue-700 transform hover:-translate-y-0.5 transition-all duration-200 mt-6 tracking-wide <?php echo ($rate_data['bloqueado_ate'] > time()) ? 'opacity-50 cursor-not-allowed' : ''; ?>">
                 <?php echo ($rate_data['bloqueado_ate'] > time()) ? 'Bloqueado Temporariamente' : 'Acessar Plataforma'; ?>
             </button>
         </form>
         
-        <div class="mt-8 pt-6 border-t border-slate-800 flex flex-col items-center">
-            <p class="text-sm text-slate-400">Não tem uma conta? <a href="cadastro.php" class="text-blue-400 font-bold hover:text-blue-300">Cadastre-se</a></p>
+        <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center">
+            <p class="text-sm text-slate-500">Não tem uma conta? <a href="cadastro.php" class="text-blue-600 font-bold hover:text-blue-700">Cadastre-se</a></p>
         </div>
 
         <?php if($rate_data['tentativas'] > 0 && $rate_data['bloqueado_ate'] <= time()): ?>
-        <div class="mt-4 text-center text-xs text-amber-400">
+        <div class="mt-4 text-center text-xs text-amber-600">
             ⚠️ <?php echo $rate_data['tentativas']; ?> tentativa(s) falhada(s)
         </div>
         <?php endif; ?>

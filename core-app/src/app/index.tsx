@@ -142,7 +142,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
         border: 2px solid #f43f5e !important;
         box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
       }
-      /* Efeito Blur de Todo o Conteúdo de Fundo para Pop-ups (Anexo 5) */
+      /* Efeito Blur de Todo o Conteúdo de Fundo para Pop-ups e Modais */
       .modal-blur-overlay,
       div[data-modal-blur="true"],
       div[role="dialog"] {
@@ -162,6 +162,7 @@ const MATERIAL_PATHS = {
   plus: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
   settings: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
   public: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
+  folder: 'M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z',
   logout: 'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
   info: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
   alert: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z',
@@ -217,8 +218,8 @@ const MaterialFlatIcon = ({
   );
 };
 
-// ─── COMPONENTE FABBAR (ADAPTADO DO REPOSITÓRIO RYANASHCRAFT/FABBAR) ───
-// Reproduz fielmente a barra Liquid Glass com abas integradas e botão flutuante (+) FAB com elevação
+// ─── COMPONENTE FABBAR (INSPIRADO NO REPOSITÓRIO RYANASHCRAFT/FABBAR) ───
+// Reproduz a barra Liquid Glass com cápsula de abas e botão FAB (+)
 interface FabBarTabConfig {
   id: string;
   label: string;
@@ -253,7 +254,7 @@ const FabBarTabButton = ({
         toValue: 1.12,
         useNativeDriver: Platform.OS !== 'web',
         friction: 4,
-        tension: 100,
+        tension: 110,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
@@ -303,6 +304,11 @@ const FabBarTabButton = ({
   );
 };
 
+// Controle de visibilidade do Botão FAB (+) Circular Flutuante
+// Ocultado conforme solicitação do usuário. Código preservado para uso futuro.
+// Para reativar o botão futuramente, basta alterar SHOW_FAB_BUTTON para true.
+const SHOW_FAB_BUTTON = false;
+
 const FabBar = ({
   activeTab,
   onSelectTab,
@@ -311,7 +317,7 @@ const FabBar = ({
 }: {
   activeTab: string;
   onSelectTab: (tabId: string) => void;
-  onFabPress: () => void;
+  onFabPress?: () => void;
   isDarkMode: boolean;
 }) => {
   const fabScaleAnim = useRef(new Animated.Value(1)).current;
@@ -320,7 +326,7 @@ const FabBar = ({
     Animated.spring(fabScaleAnim, {
       toValue: 0.86,
       useNativeDriver: Platform.OS !== 'web',
-      friction: 5,
+      friction: 6,
       tension: 140,
     }).start();
   };
@@ -345,7 +351,7 @@ const FabBar = ({
   const tabs: FabBarTabConfig[] = [
     { id: 'inicio', label: 'Início', icon: 'home' },
     { id: 'coord', label: 'Coordenação', icon: 'settings' },
-    { id: 'relatorios', label: 'Relatórios', icon: 'public' },
+    { id: 'relatorios', label: 'Relatórios', icon: 'folder' },
     { id: 'logout', label: 'Sair', icon: 'logout' },
   ];
 
@@ -371,23 +377,26 @@ const FabBar = ({
         </View>
 
         {/* 2. Floating Action Button (FAB) Tinted Liquid Glass (+) */}
-        <TouchableOpacity
-          style={styles.fabButtonTouch}
-          onPress={onFabPress}
-          onPressIn={handleFabPressIn}
-          onPressOut={handleFabPressOut}
-          activeOpacity={0.85}
-          accessibilityLabel="Iniciar Novo Relatório"
-        >
-          <Animated.View
-            style={[
-              styles.fabButtonCircle,
-              { transform: [{ scale: fabScaleAnim }] },
-            ]}
+        {/* Ocultado conforme solicitação do usuário. Código preservado intacto para uso futuro caso necessário. */}
+        {SHOW_FAB_BUTTON && (
+          <TouchableOpacity
+            style={styles.fabButtonTouch}
+            onPress={onFabPress}
+            onPressIn={handleFabPressIn}
+            onPressOut={handleFabPressOut}
+            activeOpacity={0.85}
+            accessibilityLabel="Iniciar Novo Relatório"
           >
-            <MaterialFlatIcon name="plus" size={26} color="#ffffff" />
-          </Animated.View>
-        </TouchableOpacity>
+            <Animated.View
+              style={[
+                styles.fabButtonCircle,
+                { transform: [{ scale: fabScaleAnim }] },
+              ]}
+            >
+              <MaterialFlatIcon name="plus" size={26} color="#ffffff" />
+            </Animated.View>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -701,7 +710,7 @@ const InfoBoxEditor = ({
   );
 };
 
-// Indicador pulsante de status sincronizado (idêntico ao anexo 2 e index.php)
+// Indicador pulsante de status sincronizado
 const PulsingStatusDot = () => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(0.45)).current;
@@ -2433,70 +2442,90 @@ export default function ReportGenerator() {
 
   // Fechar / Limpar Aba de Relatório em Andamento (Imediato, sem bloqueios)
   const fecharAba = (slotId: number) => {
-    // 1. Limpa o cache local da aba específica
-    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-      try {
-        localStorage.removeItem('mms_tab_' + slotId);
-      } catch (e) {}
-    }
+    const tabData = tabStore[slotId];
+    const hasData = Boolean(
+      tabData &&
+      (tabData.unidade || (tabData.listaSaidas && tabData.listaSaidas.length > 0) || tabData.info)
+    );
 
-    const userName =
-      userSession?.user?.user_metadata?.name ||
-      userSession?.user?.email?.split('@')[0] ||
-      '';
-    const cleanDefault = createDefaultTab(userName);
-
-    setTabs((prevTabs) => {
-      const remaining = prevTabs.filter((t) => t !== slotId);
-
-      // Se todas as abas foram fechadas, reseta para a Aba 1 vazia
-      if (remaining.length === 0) {
-        setActiveTab(1);
-        setTabStore({ 1: cleanDefault });
-        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-          try {
-            localStorage.setItem('mms_active_tab', '1');
-            localStorage.setItem('mms_tab_1', JSON.stringify(cleanDefault));
-          } catch (e) {}
-        }
-        return [1];
+    const executeClose = () => {
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.removeItem('mms_tab_' + slotId);
+        } catch (e) {}
       }
 
-      // Se fechou a aba que estava ativa, foca imediatamente em outra restante
-      if (activeTab === slotId) {
-        const nextActive = remaining[0];
-        setActiveTab(nextActive);
-        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-          try {
-            localStorage.setItem('mms_active_tab', String(nextActive));
-          } catch (e) {}
-        }
-      }
+      const userName =
+        userSession?.user?.user_metadata?.name ||
+        userSession?.user?.email?.split('@')[0] ||
+        '';
+      const cleanDefault = createDefaultTab(userName);
 
-      // Limpa os dados da aba fechada no estado
-      setTabStore((prevStore) => {
-        const nextStore = { ...prevStore };
-        delete nextStore[slotId];
-        return nextStore;
+      setTabs((prevTabs) => {
+        const remaining = prevTabs.filter((t) => t !== slotId);
+
+        // Se fechou e não sobrou nenhuma aba, mantém apenas a aba 1 vazia
+        if (remaining.length === 0) {
+          setActiveTab(1);
+          setTabStore({ 1: cleanDefault });
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem('mms_active_tab', '1');
+              localStorage.setItem('mms_tab_1', JSON.stringify(cleanDefault));
+            } catch (e) {}
+          }
+          return [1];
+        }
+
+        // Se fechou a aba que estava ativa, foca imediatamente em outra restante
+        if (activeTab === slotId) {
+          const nextActive = remaining[0];
+          setActiveTab(nextActive);
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem('mms_active_tab', String(nextActive));
+            } catch (e) {}
+          }
+        }
+
+        // Limpa os dados da aba fechada no estado
+        setTabStore((prevStore) => {
+          const nextStore = { ...prevStore };
+          delete nextStore[slotId];
+          return nextStore;
+        });
+
+        return remaining;
       });
+    };
 
-      return remaining;
-    });
+    if (hasData) {
+      showCustomConfirm(
+        'REMOVER RELATÓRIO',
+        `Deseja realmente remover o Relatório ${slotId}? Todos os dados deste formulário serão perdidos.`,
+        executeClose,
+        'Remover',
+        'Cancelar'
+      );
+    } else {
+      executeClose();
+    }
   };
 
-  // Renderizador dos Slots do Agrupamento de Relatórios em Andamento (Fiel ao Anexo 4)
-  const renderAnexo4Slot = (slotId: number) => {
+  // Renderizador dos Slots do Agrupamento de Relatórios em Andamento
+  const renderDraftTabSlot = (slotId: number) => {
     const isActive = activeTab === slotId;
     const tabData = tabStore[slotId];
-    const isSlotOccupied = tabs.includes(slotId) || Boolean(tabData && (tabData.unidade || tabData.info));
+    const isSlotOccupied = tabs.includes(slotId) || isActive || Boolean(tabData && (tabData.unidade || tabData.info));
     const tabName = tabData?.unidade ? tabData.unidade.toUpperCase() : 'Vazio';
+    const showRemoveBtn = isSlotOccupied && (tabs.length > 1 || Boolean(tabData && (tabData.unidade || tabData.info)));
 
     return (
       <TouchableOpacity
         key={slotId}
         style={[
-          styles.anexo4Slot,
-          isActive ? styles.anexo4SlotActive : styles.anexo4SlotInactive,
+          styles.draftTabSlot,
+          isActive ? styles.draftTabSlotActive : styles.draftTabSlotInactive,
         ]}
         onPress={() => {
           if (!tabs.includes(slotId)) {
@@ -2514,10 +2543,10 @@ export default function ReportGenerator() {
         }}
         activeOpacity={0.85}
       >
-        {/* Botão de Fechar / Limpar (✕) conforme Anexo 4 */}
-        {isSlotOccupied && (
+        {/* Botão de Fechar / Limpar (✕) */}
+        {showRemoveBtn && (
           <TouchableOpacity
-            style={styles.anexo4RemoveBtn}
+            style={styles.draftTabRemoveBtn}
             onPress={(e) => {
               e.stopPropagation?.();
               fecharAba(slotId);
@@ -2525,15 +2554,15 @@ export default function ReportGenerator() {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityLabel={`Fechar Relatório ${slotId}`}
           >
-            <Text style={styles.anexo4RemoveText}>✕</Text>
+            <Text style={styles.draftTabRemoveText}>✕</Text>
           </TouchableOpacity>
         )}
 
-        <Text style={[styles.anexo4SlotTitle, isActive && styles.anexo4SlotTitleActive]}>
+        <Text style={[styles.draftTabSlotTitle, isActive && styles.draftTabSlotTitleActive]}>
           RELATÓRIO {slotId}
         </Text>
         <Text
-          style={[styles.anexo4SlotName, isActive ? styles.anexo4SlotNameActive : styles.anexo4SlotNameInactive]}
+          style={[styles.draftTabSlotName, isActive ? styles.draftTabSlotNameActive : styles.draftTabSlotNameInactive]}
           numberOfLines={1}
         >
           {tabName}
@@ -2802,28 +2831,28 @@ export default function ReportGenerator() {
             </View>
           )}
 
-          {/* Controle de Abas Simultâneas - Agrupamento Fiel ao Anexo 4 */}
-          <View style={styles.anexo4Section}>
-            <Text style={styles.anexo4SectionTitle}>RELATÓRIOS EM ANDAMENTO</Text>
+          {/* Controle de Abas Simultâneas: Relatórios em Andamento */}
+          <View style={styles.draftTabsSection}>
+            <Text style={styles.draftTabsSectionTitle}>RELATÓRIOS EM ANDAMENTO</Text>
 
-            <View style={styles.anexo4GroupCard}>
+            <View style={styles.draftTabsGroupCard}>
               {/* Linha Superior: Relatório 1 e Relatório 2 */}
-              <View style={styles.anexo4Row}>
-                {renderAnexo4Slot(1)}
-                {renderAnexo4Slot(2)}
+              <View style={styles.draftTabsRow}>
+                {renderDraftTabSlot(1)}
+                {renderDraftTabSlot(2)}
               </View>
 
               {/* Linha Inferior: Relatório 3 e Relatório 4 */}
-              <View style={styles.anexo4Row}>
-                {renderAnexo4Slot(3)}
-                {renderAnexo4Slot(4)}
+              <View style={styles.draftTabsRow}>
+                {renderDraftTabSlot(3)}
+                {renderDraftTabSlot(4)}
               </View>
             </View>
           </View>
 
-          {/* Formulário Principal com Espaçamentos Aumentados */}
+          {/* Formulário Principal */}
           <View style={styles.formContainer}>
-            {/* Empresa / Grupo (Estilo Select Dropdown conforme Anexo 2) */}
+            {/* Empresa / Grupo (Select Dropdown) */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>EMPRESA / GRUPO:</Text>
 
@@ -3435,9 +3464,9 @@ export default function ReportGenerator() {
               </TouchableOpacity>
             )}
 
-            {/* Sucesso do Relatório Gerado (Design Fiel ao Anexo 1) */}
+            {/* Sucesso do Relatório Gerado */}
             {pdfGenerated && (
-              <View style={styles.areaSucessoPdfAnexo1}>
+              <View style={styles.areaSucessoPdf}>
                 <View style={styles.sucessoPillHeader}>
                   <Text style={styles.sucessoPillCheck}>✅</Text>
                   <Text style={styles.sucessoPillTitle}>Relatório gerado com sucesso!</Text>
@@ -3445,26 +3474,26 @@ export default function ReportGenerator() {
 
                 <View style={styles.sucessoActionsRow}>
                   <TouchableOpacity
-                    style={styles.btnCompartilharAnexo1}
+                    style={styles.btnCompartilharPdf}
                     onPress={handleCompartilharWhatsApp}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.btnCompartilharAnexo1Icon}>🔗</Text>
-                    <Text style={styles.btnCompartilharAnexo1Text}>Compartilhar</Text>
+                    <Text style={styles.btnCompartilharPdfIcon}>🔗</Text>
+                    <Text style={styles.btnCompartilharPdfText}>Compartilhar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.btnBaixarAnexo1}
+                    style={styles.btnBaixarPdf}
                     onPress={() => handleExportarPdfOffline('imprimir')}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.btnBaixarAnexo1Icon}>📥</Text>
-                    <Text style={styles.btnBaixarAnexo1Text}>Baixar</Text>
+                    <Text style={styles.btnBaixarPdfIcon}>📥</Text>
+                    <Text style={styles.btnBaixarPdfText}>Baixar</Text>
                   </TouchableOpacity>
                 </View>
 
                 <TouchableOpacity
-                  style={styles.btnEditarAnexo1}
+                  style={styles.btnEditarPdf}
                   onPress={() => {
                     setPdfGenerated(false);
                     if (Platform.OS === 'web') {
@@ -3473,14 +3502,13 @@ export default function ReportGenerator() {
                   }}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.btnEditarAnexo1Icon}>✏️</Text>
-                  <Text style={styles.btnEditarAnexo1Text}>Editar Relatório</Text>
+                  <Text style={styles.btnEditarPdfIcon}>✏️</Text>
+                  <Text style={styles.btnEditarPdfText}>Editar Relatório</Text>
                 </TouchableOpacity>
               </View>
             )}
 
-
-            {/* Footer Personalizável conforme Anexo 2 */}
+            {/* Footer Personalizável */}
             <View style={[styles.appFooterContainer, !isDesktop && styles.appFooterContainerMobile]}>
               {isDesktop && <View style={styles.appFooterSpacer} />}
               <Text style={[styles.appFooterText, !isDesktop && styles.appFooterTextMobile]}>
@@ -3644,7 +3672,7 @@ export default function ReportGenerator() {
               </View>
             </View>
 
-            {/* Footer Corporativo (fixo no rodapé da página - Anexo 1) */}
+            {/* Footer Corporativo (fixo no rodapé da página) */}
             <View style={styles.a4Footer}>
               <Text style={styles.a4FooterText}>
                 Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
@@ -4096,7 +4124,7 @@ const styles = StyleSheet.create({
   },
   navMenuBtnText: {
     color: colors.white,
-    fontWeight: '700', // Removido o negrito extra pesado (900), idêntico ao Anexo 2
+    fontWeight: '700',
     fontSize: 14,
     letterSpacing: 0.5,
     fontFamily: modernFont,
@@ -4108,7 +4136,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#06b6d4', // Ciano idêntico ao Anexo 2
+    backgroundColor: '#06b6d4',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -4532,99 +4560,105 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 11,
   },
-  // ─── ESTILOS ANEXO 4: RELATÓRIOS EM ANDAMENTO (AGRUPAMENTO 2x2) ───
-  anexo4Section: {
+  // ─── ESTILOS: RELATÓRIOS EM ANDAMENTO (ABAS DE RASCUNHO) ───
+  draftTabsSection: {
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  anexo4SectionTitle: {
-    fontSize: 12,
+  draftTabsSectionTitle: {
+    fontSize: 11,
     fontWeight: '900',
-    color: '#64748b',
+    color: '#475569',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    marginBottom: 10,
+    marginBottom: 8,
     fontFamily: modernFont,
   },
-  anexo4GroupCard: {
+  draftTabsGroupCard: {
     backgroundColor: '#f8fafc',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    padding: 10,
-    gap: 8,
+    padding: 8,
+    gap: 6,
   },
-  anexo4Row: {
+  draftTabsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     width: '100%',
   },
-  anexo4Slot: {
+  draftTabSlot: {
     flex: 1,
-    minHeight: 56,
+    minHeight: 46,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     position: 'relative',
     minWidth: 0,
   },
-  anexo4SlotActive: {
+  draftTabSlotActive: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 2,
   },
-  anexo4SlotInactive: {
+  draftTabSlotInactive: {
     backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  anexo4RemoveBtn: {
+  draftTabRemoveBtn: {
     position: 'absolute',
-    top: 6,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    top: 5,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#ffe4e6',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 5,
   },
-  anexo4RemoveText: {
-    color: '#e11d48',
-    fontSize: 11,
+  draftTabRemoveText: {
+    color: '#f43f5e',
+    fontSize: 10,
     fontWeight: '900',
-    lineHeight: 13,
+    lineHeight: 11,
   },
-  anexo4SlotTitle: {
-    fontSize: 11,
-    fontWeight: '700',
+  draftTabSlotTitle: {
+    fontSize: 10,
+    fontWeight: '800',
     textTransform: 'uppercase',
     color: '#64748b',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
     fontFamily: modernFont,
     textAlign: 'center',
   },
-  anexo4SlotTitleActive: {
+  draftTabSlotTitleActive: {
     color: '#2563eb',
     fontWeight: '900',
   },
-  anexo4SlotName: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 2,
+  draftTabSlotName: {
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 1,
     fontFamily: modernFont,
     textAlign: 'center',
   },
-  anexo4SlotNameActive: {
+  draftTabSlotNameActive: {
     color: '#0f172a',
     fontWeight: '900',
   },
-  anexo4SlotNameInactive: {
-    color: '#334155',
+  draftTabSlotNameInactive: {
+    color: '#0f172a',
+    fontWeight: '900',
   },
   formContainer: {
     width: '100%',
@@ -5265,10 +5299,12 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   inputDisabledPreposto: {
-    backgroundColor: '#f1f5f9',
-    borderColor: '#cbd5e1',
-    color: '#475569',
-    fontWeight: '700',
+    backgroundColor: '#e2e8f0',
+    borderColor: '#e2e8f0',
+    borderWidth: 1,
+    color: '#64748b',
+    fontWeight: '600',
+    ...(Platform.OS === 'web' ? { cursor: 'not-allowed' } : {}),
   },
   prepostoLockBadge: {
     backgroundColor: '#e0e7ff',
@@ -5462,7 +5498,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     fontFamily: corporateFont,
   },
-  areaSucessoPdfAnexo1: {
+  areaSucessoPdf: {
     backgroundColor: '#f0fdf4',
     borderWidth: 1.5,
     borderColor: '#86efac',
@@ -5492,7 +5528,7 @@ const styles = StyleSheet.create({
     gap: 12,
     width: '100%',
   },
-  btnCompartilharAnexo1: {
+  btnCompartilharPdf: {
     flex: 1,
     backgroundColor: '#2563eb',
     flexDirection: 'row',
@@ -5507,17 +5543,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  btnCompartilharAnexo1Icon: {
+  btnCompartilharPdfIcon: {
     fontSize: 18,
     color: '#ffffff',
   },
-  btnCompartilharAnexo1Text: {
+  btnCompartilharPdfText: {
     color: '#ffffff',
     fontWeight: '800',
     fontSize: 16,
     fontFamily: corporateFont,
   },
-  btnBaixarAnexo1: {
+  btnBaixarPdf: {
     flex: 1,
     backgroundColor: '#1e293b',
     flexDirection: 'row',
@@ -5532,17 +5568,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  btnBaixarAnexo1Icon: {
+  btnBaixarPdfIcon: {
     fontSize: 18,
     color: '#ffffff',
   },
-  btnBaixarAnexo1Text: {
+  btnBaixarPdfText: {
     color: '#ffffff',
     fontWeight: '800',
     fontSize: 16,
     fontFamily: corporateFont,
   },
-  btnEditarAnexo1: {
+  btnEditarPdf: {
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
     borderColor: '#cbd5e1',
@@ -5558,11 +5594,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
-  btnEditarAnexo1Icon: {
+  btnEditarPdfIcon: {
     fontSize: 18,
     color: '#1e293b',
   },
-  btnEditarAnexo1Text: {
+  btnEditarPdfText: {
     color: '#1e293b',
     fontWeight: '800',
     fontSize: 16,
@@ -5689,6 +5725,7 @@ const styles = StyleSheet.create({
       ? ({
           backdropFilter: 'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
         } as any)
       : {}),
   },
@@ -5704,6 +5741,7 @@ const styles = StyleSheet.create({
       ? ({
           backdropFilter: 'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5)',
         } as any)
       : {}),
   },
@@ -6546,7 +6584,7 @@ const styles = StyleSheet.create({
     fontFamily: modernFont,
   },
 
-  /* Rodapé do Documento / Formulário (Anexo 2) */
+  /* Rodapé do Documento / Formulário */
   appFooterContainer: {
     marginTop: 24,
     paddingTop: 18,
