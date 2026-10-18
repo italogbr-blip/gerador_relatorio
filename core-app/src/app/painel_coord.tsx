@@ -1092,24 +1092,24 @@ export default function PainelCoordScreen() {
 
         {/* Seção de 4 KPIs / Métricas Principais */}
         <View style={styles.kpiCardsGrid}>
-          {/* Card 1: Total Geral */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardTotal]}>
-            <View style={styles.kpiMetricTopRow}>
-              <Text style={[styles.kpiMetricLabel, { color: '#2563eb' }]}>TOTAL GERAL</Text>
-              <Text style={{ fontSize: 14 }}>📊</Text>
-            </View>
-            <Text style={styles.kpiMetricValue}>{totalRelatoriosGeral}</Text>
-            <Text style={styles.kpiMetricFootnote}>Relatórios emitidos</Text>
-          </View>
-
-          {/* Card 2: Neste Mês */}
+          {/* Card 1: Neste Mês */}
           <View style={[styles.kpiMetricCard, styles.kpiMetricCardMes]}>
             <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>NESTE MÊS</Text>
               <Text style={{ fontSize: 14 }}>📅</Text>
             </View>
-            <Text style={[styles.kpiMetricValue, { color: '#0284c7' }]}>{relatoriosMesCount}</Text>
+            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{relatoriosMesCount}</Text>
             <Text style={styles.kpiMetricFootnote}>Atendimentos no mês atual</Text>
+          </View>
+
+          {/* Card 2: Total Geral */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardTotal]}>
+            <View style={styles.kpiMetricTopRow}>
+              <Text style={[styles.kpiMetricLabel, { color: '#2563eb' }]}>TOTAL GERAL</Text>
+              <Text style={{ fontSize: 14 }}>📊</Text>
+            </View>
+            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{totalRelatoriosGeral}</Text>
+            <Text style={styles.kpiMetricFootnote}>Relatórios emitidos</Text>
           </View>
 
           {/* Card 3: Hoje */}
@@ -1118,7 +1118,7 @@ export default function PainelCoordScreen() {
               <Text style={[styles.kpiMetricLabel, { color: '#ea580c' }]}>HOJE</Text>
               <Text style={{ fontSize: 14 }}>⚡</Text>
             </View>
-            <Text style={styles.kpiMetricValue}>{relatoriosHojeCount}</Text>
+            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{relatoriosHojeCount}</Text>
             <Text style={styles.kpiMetricFootnote}>Relatórios gerados hoje</Text>
           </View>
 
@@ -2343,13 +2343,13 @@ export default function PainelCoordScreen() {
         onRequestClose={() => setSelectedReport(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, !isDarkMode && { backgroundColor: '#ffffff' }]}>
-            <View style={styles.modalHeader}>
+          <View style={[styles.modalContent, { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderWidth: 1 }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: '#f1f5f9' }]}>
               <View>
-                <Text style={[styles.modalTitle, !isDarkMode && { color: '#0f172a' }]}>
+                <Text style={[styles.modalTitle, { color: '#0f172a' }]}>
                   RELATÓRIO #{selectedReport?.id}
                 </Text>
-                <Text style={styles.modalSubtitle}>
+                <Text style={[styles.modalSubtitle, { color: '#64748b' }]}>
                   {selectedReport?.empresa} • {selectedReport?.unidade}
                 </Text>
               </View>
@@ -2357,7 +2357,7 @@ export default function PainelCoordScreen() {
                 style={styles.modalCloseBtn}
                 onPress={() => setSelectedReport(null)}
               >
-                <Text style={styles.modalCloseBtnText}>✕</Text>
+                <Text style={[styles.modalCloseBtnText, { color: '#64748b' }]}>✕</Text>
               </TouchableOpacity>
             </View>
 
@@ -2368,60 +2368,68 @@ export default function PainelCoordScreen() {
 
               return (
                 <ScrollView style={styles.detailScrollContent}>
-                  <View style={styles.detailSection}>
+                  {/* Dados Gerais do Atendimento */}
+                  <View style={styles.detailSectionLight}>
                     <Text style={styles.detailSectionTitle}>DADOS GERAIS DO ATENDIMENTO</Text>
                     <View style={styles.detailGrid}>
                       <View style={styles.detailItem}>
                         <Text style={styles.detailLabel}>EMPRESA</Text>
-                        <Text style={[styles.detailValue, !isDarkMode && { color: '#0f172a' }]}>{selectedReport.empresa}</Text>
+                        <Text style={styles.detailValue}>{selectedReport.empresa || 'N/A'}</Text>
                       </View>
                       <View style={styles.detailItem}>
                         <Text style={styles.detailLabel}>UNIDADE</Text>
-                        <Text style={[styles.detailValue, !isDarkMode && { color: '#0f172a' }]}>{selectedReport.unidade}</Text>
+                        <Text style={styles.detailValue}>{selectedReport.unidade || 'N/A'}</Text>
                       </View>
                       <View style={styles.detailItem}>
                         <Text style={styles.detailLabel}>LOCAL</Text>
-                        <Text style={[styles.detailValue, !isDarkMode && { color: '#0f172a' }]}>{selectedReport.local_atendimento}</Text>
+                        <Text style={styles.detailValue}>{selectedReport.local_atendimento || 'N/A'}</Text>
                       </View>
                       <View style={styles.detailItem}>
                         <Text style={styles.detailLabel}>PREPOSTO</Text>
-                        <Text style={[styles.detailValue, !isDarkMode && { color: '#0f172a' }]}>{data.preposto || 'N/A'}</Text>
+                        <Text style={styles.detailValue}>{data.preposto || 'N/A'}</Text>
                       </View>
                     </View>
                   </View>
 
-                  {/* Passageiros */}
-                  <View style={styles.detailSection}>
-                    <Text style={[styles.detailSectionTitle, { color: '#10b981' }]}>
-                      EMBARCANDO ({embList.length})
-                    </Text>
+                  {/* Passageiros Embarcando */}
+                  <View style={styles.detailSectionLight}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981' }} />
+                      <Text style={[styles.detailSectionTitle, { color: '#047857' }]}>
+                        EMBARCANDO ({embList.length})
+                      </Text>
+                    </View>
                     {embList.length === 0 ? (
-                      <Text style={{ color: '#64748b', fontSize: 12 }}>Nenhum passageiro embarcando.</Text>
+                      <Text style={{ color: '#64748b', fontSize: 12, fontStyle: 'italic', marginTop: 4 }}>Nenhum passageiro embarcando.</Text>
                     ) : (
                       embList.map((p: any, idx: number) => (
-                        <View key={idx} style={styles.passengerRow}>
-                          <Text style={[styles.passengerName, !isDarkMode && { color: '#0f172a' }]}>
+                        <View key={idx} style={styles.passengerRowLight}>
+                          <Text style={styles.passengerNameLight}>
                             {idx + 1}. {p.nome}
                           </Text>
-                          <Text style={styles.passengerDoc}>{p.funcao || p.doc || 'N/A'}</Text>
+                          <Text style={styles.passengerDocLight}>{p.funcao || p.doc || 'N/A'}</Text>
                         </View>
                       ))
                     )}
                   </View>
 
-                  <View style={styles.detailSection}>
-                    <Text style={[styles.detailSectionTitle, { color: '#f43f5e' }]}>
-                      DESEMBARCANDO ({desList.length})
-                    </Text>
+                  {/* Passageiros Desembarcando */}
+                  <View style={styles.detailSectionLight}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#f43f5e' }} />
+                      <Text style={[styles.detailSectionTitle, { color: '#be123c' }]}>
+                        DESEMBARCANDO ({desList.length})
+                      </Text>
+                    </View>
                     {desList.length === 0 ? (
-                      <Text style={{ color: '#64748b', fontSize: 12 }}>Nenhum passageiro desembarcando.</Text>
+                      <Text style={{ color: '#64748b', fontSize: 12, fontStyle: 'italic', marginTop: 4 }}>Nenhum passageiro desembarcando.</Text>
                     ) : (
                       desList.map((p: any, idx: number) => (
-                        <View key={idx} style={styles.passengerRow}>
-                          <Text style={[styles.passengerName, !isDarkMode && { color: '#0f172a' }]}>
+                        <View key={idx} style={styles.passengerRowLight}>
+                          <Text style={styles.passengerNameLight}>
                             {idx + 1}. {p.nome}
                           </Text>
-                          <Text style={styles.passengerDoc}>{p.funcao || p.doc || 'N/A'}</Text>
+                          <Text style={styles.passengerDocLight}>{p.funcao || p.doc || 'N/A'}</Text>
                         </View>
                       ))
                     )}
@@ -2434,6 +2442,17 @@ export default function PainelCoordScreen() {
                       onPress={() => openReportPdf(selectedReport)}
                     >
                       <Text style={styles.modalDownloadPdfBtnText}>📥 BAIXAR PDF</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.modalEditarBtn}
+                      onPress={() => {
+                        const id = selectedReport.id;
+                        setSelectedReport(null);
+                        router.push(`/?editId=${id}`);
+                      }}
+                    >
+                      <Text style={styles.modalEditarBtnText}>✏️ EDITAR</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -3747,6 +3766,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
+  modalEditarBtn: {
+    flex: 1,
+    backgroundColor: '#d97706',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalEditarBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  detailSectionLight: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+  },
+  passengerRowLight: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  passengerNameLight: {
+    fontSize: 12,
+    color: '#0f172a',
+    fontWeight: '700',
+    fontFamily: modernFont,
+  },
+  passengerDocLight: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+    fontFamily: modernFont,
+  },
 
   // Modal Novo Popup
   novoPopupContent: {
@@ -4389,7 +4448,16 @@ const styles = StyleSheet.create({
   },
   coordDropdownOptionsListLight: {
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
+    borderColor: '#cbd5e1',
+    borderWidth: 1,
+    borderRadius: 10,
+    marginTop: 6,
+    overflow: 'hidden',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
   },
   coordDropdownOptionItem: {
     flexDirection: 'row',
@@ -4398,28 +4466,28 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#f1f5f9',
   },
   coordDropdownOptionItemLight: {
     borderBottomColor: '#f1f5f9',
   },
   coordDropdownOptionItemActive: {
-    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+    backgroundColor: '#eff6ff',
   },
   coordDropdownOptionText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#cbd5e1',
+    fontWeight: '700',
+    color: '#0f172a',
     fontFamily: modernFont,
   },
   coordDropdownOptionTextActive: {
-    color: '#38bdf8',
+    color: '#2563eb',
     fontWeight: '900',
   },
   coordDropdownOptionCheck: {
     fontSize: 14,
     fontWeight: '900',
-    color: '#38bdf8',
+    color: '#2563eb',
   },
   versionRefreshBtn: {
     backgroundColor: '#0284c7',
@@ -5051,18 +5119,24 @@ const styles = StyleSheet.create({
   },
   reportsDropdownBtn: {
     justifyContent: 'space-between',
-    minWidth: 130,
+    minWidth: 140,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
   },
   reportsDropdownBtnText: {
     fontSize: 12,
-    color: '#334155',
-    fontWeight: '600',
+    color: '#0f172a',
+    fontWeight: '800',
     fontFamily: modernFont,
   },
   reportsDropdownChevron: {
     fontSize: 10,
-    color: '#64748b',
-    marginLeft: 4,
+    fontWeight: '900',
+    color: '#475569',
+    marginLeft: 6,
   },
   btnReportsFiltrar: {
     backgroundColor: '#334155',

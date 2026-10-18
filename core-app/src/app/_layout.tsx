@@ -124,6 +124,45 @@ export default function Layout() {
             background: #f1f5f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2364748b'><polygon points='50,80 20,20 80,20'/></svg>") no-repeat center center;
             background-size: 8px 8px;
           }
+
+          /* Animação suave e gradativa de backdrop blur para todos os modais e pop-ups */
+          @keyframes mmsBackdropFadeIn {
+            0% {
+              opacity: 0;
+              backdrop-filter: blur(0px);
+              -webkit-backdrop-filter: blur(0px);
+            }
+            100% {
+              opacity: 1;
+              backdrop-filter: blur(4px);
+              -webkit-backdrop-filter: blur(4px);
+            }
+          }
+
+          @keyframes mmsModalCardZoomIn {
+            0% {
+              opacity: 0;
+              transform: scale(0.96) translateY(8px);
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+            }
+          }
+
+          /* Aplica transição gradativa no backdrop dos modais */
+          div[role="dialog"],
+          div[aria-modal="true"],
+          div[data-modal-overlay="true"],
+          .mms-modal-backdrop {
+            animation: mmsBackdropFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+          }
+
+          div[role="dialog"] > div,
+          div[aria-modal="true"] > div,
+          .mms-modal-card {
+            animation: mmsModalCardZoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
         `;
         document.head.appendChild(style);
       }

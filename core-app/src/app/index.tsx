@@ -879,6 +879,19 @@ export default function ReportGenerator() {
     fetchLatestAppVersion().then((v) => {
       if (v) setAppVersao(v);
     });
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const handleVersionUpdated = (e: any) => {
+        const novaVersao = e.detail?.versao || localStorage.getItem('mms_cached_app_version');
+        if (novaVersao) setAppVersao(novaVersao);
+      };
+      window.addEventListener('mms_app_version_updated', handleVersionUpdated);
+      window.addEventListener('storage', handleVersionUpdated);
+      return () => {
+        window.removeEventListener('mms_app_version_updated', handleVersionUpdated);
+        window.removeEventListener('storage', handleVersionUpdated);
+      };
+    }
   }, []);
 
   // Escala Responsiva do Documento A4 (Proporcional para Mobiles e Telas Menores)
@@ -2469,12 +2482,6 @@ export default function ReportGenerator() {
     // SOMENTE O SLOT 1 NÃO PODE SER EXCLUÍDO
     if (slotId === 1) return;
 
-    const tabData = tabStore[slotId];
-    const hasData = Boolean(
-      tabData &&
-      (tabData.unidade || (tabData.listaSaidas && tabData.listaSaidas.length > 0) || tabData.info)
-    );
-
     const executeClose = () => {
       if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         try {
@@ -2507,74 +2514,42 @@ export default function ReportGenerator() {
       });
     };
 
-    if (hasData) {
-      showCustomConfirm(
-        'EXCLUIR RELATÓRIO',
-        `Deseja realmente excluir o Relatório ${slotId}? Todos os dados deste formulário serão perdidos e o slot será esvaziado.`,
-        executeClose,
-        'Excluir',
-        'Cancelar'
-      );
-    } else {
-      executeClose();
-    }
+    showCustomConfirm(
+      'EXCLUIR RELATÓRIO',
+      `Deseja realmente remover este relatório em andamento? Todos os dados dele serão perdidos.`,
+      executeClose,
+      'Excluir',
+      'Cancelar'
+    );
   };
 
-  // Renderizador dos Slots do Agrupamento de Relatórios em Andamento
+  // Renderizador dos Slots de Relatórios em Andamento (Idêntico ao index.php)
   const renderDraftTabSlot = (slotId: number) => {
-    const isSlotOccupied = tabs.includes(slotId);
     const isActive = activeTab === slotId;
     const tabData = tabStore[slotId];
-    const tabName = isSlotOccupied
-      ? (tabData?.unidade ? tabData.unidade.toUpperCase() : 'Vazio')
-      : 'Vazio';
+    const tabName = tabData?.unidade ? tabData.unidade.toUpperCase() : 'Vazio';
 
     // Somente slots 2, 3 e 4 ocupados podem ser excluídos pelo X; slot 1 NUNCA pode ser excluído
-    const showRemoveBtn = slotId !== 1 && isSlotOccupied;
+    const showRemoveBtn = slotId !== 1;
 
     return (
       <TouchableOpacity
         key={slotId}
         style={[
           styles.draftTabSlot,
-          !isSlotOccupied
-            ? styles.draftTabSlotEmpty
-            : isActive
-            ? styles.draftTabSlotActive
-            : styles.draftTabSlotInactive,
+          isActive ? styles.draftTabSlotActive : styles.draftTabSlotInactive,
         ]}
         onPress={() => {
-          if (!isSlotOccupied) {
-            // Se clicar em um slot esvaziado, cria e ativa o relatório se tabs.length < 4
-            if (tabs.length < 4) {
-              const userName =
-                userSession?.user?.user_metadata?.name ||
-                userSession?.user?.email?.split('@')[0] ||
-                '';
-              const newTabState = tabStore[slotId] || createDefaultTab(userName);
-              const newTabs = [...tabs, slotId].sort((a, b) => a - b);
-              setTabs(newTabs);
-              setTabStore((prev) => ({ ...prev, [slotId]: newTabState }));
-              setActiveTab(slotId);
-              if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-                try {
-                  localStorage.setItem('mms_tab_' + slotId, JSON.stringify(newTabState));
-                  localStorage.setItem('mms_active_tab', String(slotId));
-                } catch (e) {}
-              }
-            }
-          } else {
-            setActiveTab(slotId);
-            if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-              try {
-                localStorage.setItem('mms_active_tab', String(slotId));
-              } catch (e) {}
-            }
+          setActiveTab(slotId);
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem('mms_active_tab', String(slotId));
+            } catch (e) {}
           }
         }}
         activeOpacity={0.85}
       >
-        {/* Botão de Fechar / Excluir (✕) - Somente slots 2, 3 e 4 ocupados */}
+        {/* Botão de Fechar / Excluir (✕) - Somente slots 2, 3 e 4 */}
         {showRemoveBtn && (
           <TouchableOpacity
             style={styles.draftTabRemoveBtn}
@@ -2583,7 +2558,7 @@ export default function ReportGenerator() {
               fecharAba(slotId);
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel={`Excluir e esvaziar Relatório ${slotId}`}
+            accessibilityLabel={`Excluir Relatório ${slotId}`}
           >
             <Text style={styles.draftTabRemoveText}>✕</Text>
           </TouchableOpacity>
@@ -2592,11 +2567,7 @@ export default function ReportGenerator() {
         <Text
           style={[
             styles.draftTabSlotTitle,
-            !isSlotOccupied
-              ? styles.draftTabSlotTitleEmpty
-              : isActive
-              ? styles.draftTabSlotTitleActive
-              : styles.draftTabSlotTitleInactive,
+            isActive ? styles.draftTabSlotTitleActive : styles.draftTabSlotTitleInactive,
           ]}
         >
           RELATÓRIO {slotId}
@@ -2604,11 +2575,7 @@ export default function ReportGenerator() {
         <Text
           style={[
             styles.draftTabSlotName,
-            !isSlotOccupied
-              ? styles.draftTabSlotNameEmpty
-              : isActive
-              ? styles.draftTabSlotNameActive
-              : styles.draftTabSlotNameInactive,
+            isActive ? styles.draftTabSlotNameActive : styles.draftTabSlotNameInactive,
           ]}
           numberOfLines={1}
         >
@@ -2617,6 +2584,7 @@ export default function ReportGenerator() {
       </TouchableOpacity>
     );
   };
+
 
   return (
     <SafeAreaView style={[styles.body, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
@@ -2904,18 +2872,8 @@ export default function ReportGenerator() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.draftTabsGroupCard}>
-              {/* Linha Superior: Relatório 1 e Relatório 2 */}
-              <View style={styles.draftTabsRow}>
-                {renderDraftTabSlot(1)}
-                {renderDraftTabSlot(2)}
-              </View>
-
-              {/* Linha Inferior: Relatório 3 e Relatório 4 */}
-              <View style={styles.draftTabsRow}>
-                {renderDraftTabSlot(3)}
-                {renderDraftTabSlot(4)}
-              </View>
+            <View style={styles.draftTabsContainer}>
+              {tabs.map((slotId) => renderDraftTabSlot(slotId))}
             </View>
           </View>
 
@@ -4661,9 +4619,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   btnAddDraftReportDisabled: {
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#f1f5f9',
     borderColor: '#cbd5e1',
-    opacity: 0.6,
+    opacity: 0.5,
   },
   btnAddDraftReportText: {
     color: '#2563eb',
@@ -4674,69 +4632,60 @@ const styles = StyleSheet.create({
     fontFamily: modernFont,
   },
   btnAddDraftReportTextDisabled: {
-    color: '#64748b',
+    color: '#94a3b8',
   },
-  draftTabsGroupCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 16,
+  draftTabsContainer: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    padding: 8,
-    gap: 6,
-  },
-  draftTabsRow: {
+    padding: 6,
     flexDirection: 'row',
-    gap: 6,
+    flexWrap: 'wrap',
+    gap: 8,
     width: '100%',
+    alignItems: 'stretch',
   },
   draftTabSlot: {
     flex: 1,
-    minHeight: 46,
-    height: 48,
+    minWidth: 120,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 10,
     position: 'relative',
-    minWidth: 0,
   },
   draftTabSlotActive: {
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: 'rgba(226, 232, 240, 0.9)',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   draftTabSlotInactive: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: 'transparent',
   },
-  draftTabSlotEmpty: {
-    backgroundColor: 'rgba(241, 245, 249, 0.45)',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#cbd5e1',
-    opacity: 0.7,
-  },
   draftTabRemoveBtn: {
     position: 'absolute',
-    top: 5,
-    right: 6,
+    top: 4,
+    right: 4,
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#ffe4e6',
+    backgroundColor: 'rgba(244, 63, 94, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 5,
   },
   draftTabRemoveText: {
-    color: '#f43f5e',
+    color: '#e11d48',
     fontSize: 10,
     fontWeight: '900',
     lineHeight: 11,
