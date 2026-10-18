@@ -2711,6 +2711,7 @@ export default function ReportGenerator() {
     return (
       <TouchableOpacity
         key={slotId}
+        className={`mms-draft-tab-slot ${isActive ? 'mms-draft-tab-slot--active' : ''}`}
         style={[
           styles.draftTabSlot,
           isActive ? styles.draftTabSlotActive : styles.draftTabSlotInactive,
@@ -2763,13 +2764,13 @@ export default function ReportGenerator() {
 
 
   return (
-    <SafeAreaView style={styles.body}>
+    <SafeAreaView style={styles.body} className="mms-app-layout">
       <StatusBar style="light" />
 
       {/* Navbar Superior 100% Idêntica ao index.php:269-358 */}
-      <View style={styles.navbar}>
+      <View style={styles.navbar} className="mms-navbar">
         {/* Esquerda: Ícone Gradiente com Documento */}
-        <View style={styles.navLeftGradientBox}>
+        <View style={styles.navLeftGradientBox} className="mms-navbar__brand">
           {Platform.OS === 'web' ? (
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="#ffffff">
               <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
@@ -2780,10 +2781,11 @@ export default function ReportGenerator() {
         </View>
 
         {/* Direita: Notificações e Menu */}
-        <View style={styles.navRightGroup}>
+        <View style={styles.navRightGroup} className="mms-navbar__actions">
           {/* Botão de Notificações com Badge e Ação Real */}
           <TouchableOpacity
             style={styles.navNotifBtn}
+            className="mms-navbar__notif-btn"
             activeOpacity={0.7}
             onPress={() => {
               setIsNotifDropdownOpen(!isNotifDropdownOpen);
@@ -2798,7 +2800,7 @@ export default function ReportGenerator() {
               <Text style={{ fontSize: 18 }}>🔔</Text>
             )}
             {unreadCount > 0 && (
-              <View style={styles.notifBadgeCircle}>
+              <View style={styles.notifBadgeCircle} className="mms-navbar__notif-badge">
                 <Text style={styles.notifBadgeCircleText}>{unreadCount}</Text>
               </View>
             )}
@@ -2808,6 +2810,7 @@ export default function ReportGenerator() {
           <TouchableOpacity
             onPress={toggleMenu}
             style={[styles.navMenuBtn, showMenu && styles.navMenuBtnActive]}
+            className="mms-navbar__menu-btn"
             activeOpacity={0.8}
           >
             <Text style={styles.navMenuBtnText}>MENU</Text>
@@ -3099,21 +3102,21 @@ export default function ReportGenerator() {
         )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} className="mms-main-scroll">
         {/* Cartão Principal de Preenchimento (Independente e Separado do Preview) */}
-        <View style={styles.card}>
+        <View style={styles.card} className="mms-card mms-form-card">
           {/* Header do Card com Botão Iniciar Novo Relatório à direita */}
-          <View style={styles.cardHeader}>
-            <TouchableOpacity onPress={limparTudo} style={styles.btnNovoRelatorio} activeOpacity={0.75}>
+          <View style={styles.cardHeader} className="mms-card__header">
+            <TouchableOpacity onPress={limparTudo} style={styles.btnNovoRelatorio} className="mms-btn-novo-relatorio" activeOpacity={0.75}>
               <Text style={styles.btnNovoRelatorioIcon}>+</Text>
               <Text style={styles.btnNovoRelatorioText}>Iniciar Novo Relatório</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={[styles.mainTitle, isDesktop && styles.mainTitleDesktop]}>Preenchimento de Relatório</Text>
+          <Text style={[styles.mainTitle, isDesktop && styles.mainTitleDesktop]} className="mms-main-title">Preenchimento de Relatório</Text>
           {/* Banner de Modo Edição Ativo */}
           {editingReportId && (
-            <View style={styles.editingBannerCard}>
+            <View style={styles.editingBannerCard} className="mms-editing-banner">
               <View style={styles.editingBannerLeft}>
                 <View style={styles.editingBannerBadge}>
                   <Text style={styles.editingBannerBadgeText}>✏️ MODO EDIÇÃO ATIVO</Text>
@@ -3136,7 +3139,7 @@ export default function ReportGenerator() {
           )}
 
           {/* Controle de Abas Simultâneas: Relatórios em Andamento */}
-          <View style={styles.draftTabsSection}>
+          <View style={styles.draftTabsSection} className="mms-draft-tabs-section">
             <View style={styles.draftTabsHeaderRow}>
               <Text style={styles.draftTabsSectionTitle}>RELATÓRIOS EM ANDAMENTO</Text>
 
@@ -3161,13 +3164,13 @@ export default function ReportGenerator() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.draftTabsContainer}>
+            <View style={styles.draftTabsContainer} className="mms-draft-tabs-container">
               {tabs.map((slotId) => renderDraftTabSlot(slotId))}
             </View>
           </View>
 
           {/* Formulário Principal */}
-          <View style={styles.formContainer}>
+          <View style={styles.formContainer} className="mms-form-container">
             {/* Empresa / Grupo (Select Dropdown) */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>EMPRESA / GRUPO:</Text>
@@ -3847,7 +3850,7 @@ export default function ReportGenerator() {
             </View>
 
             {/* Footer Personalizável */}
-            <View style={[styles.appFooterContainer, !isDesktop && styles.appFooterContainerMobile]}>
+            <View style={[styles.appFooterContainer, !isDesktop && styles.appFooterContainerMobile]} className="mms-app-footer">
               {isDesktop && <View style={styles.appFooterSpacer} />}
               <Text style={[styles.appFooterText, !isDesktop && styles.appFooterTextMobile]}>
                 {footerConfig.prefixo}
@@ -3872,7 +3875,7 @@ export default function ReportGenerator() {
                 </Text>
               </Text>
               <View style={[styles.appFooterVersionWrapper, !isDesktop && styles.appFooterVersionWrapperMobile]}>
-                <View style={styles.appFooterVersionBadge}>
+                <View style={styles.appFooterVersionBadge} className="mms-app-footer__badge">
                   <Text style={styles.appFooterVersionIcon}>⬡</Text>
                   <Text style={styles.appFooterVersionText}>{appVersao || footerConfig.versao || 'V1.2.4'}</Text>
                 </View>
@@ -3882,9 +3885,10 @@ export default function ReportGenerator() {
         </View>
 
         {/* PREVIEW COMPLETO DO DOCUMENTO (RESPONSIVO COM ESCALA VETORIAL PARA MOBILES) */}
-        <Text style={styles.previewTitleMain}>PREVIEW DO DOCUMENTO</Text>
+        <Text style={styles.previewTitleMain} className="mms-preview-title-main">PREVIEW DO DOCUMENTO</Text>
 
         <View
+          className="mms-preview-wrap"
           style={[
             styles.previewWrap,
             previewScale < 1 && {
@@ -3900,6 +3904,7 @@ export default function ReportGenerator() {
           ]}
         >
           <View
+            className="mms-preview-document"
             style={[
               styles.previewScaleContainer,
               previewScale < 1 && {
@@ -3908,7 +3913,7 @@ export default function ReportGenerator() {
               },
             ]}
           >
-            <View style={styles.pageA4}>
+            <View style={styles.pageA4} className="mms-preview-page">
             {/* Imagem de Fundo Geométrico / Marca D'água */}
             <Image
               source={require('../../assets/images/background.png')}

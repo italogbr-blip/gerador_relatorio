@@ -1,0 +1,600 @@
+/* ==========================================================================
+   MMS GERADOR DE RELATÓRIOS - ESTILOS PRINCIPAIS (estilo.css)
+   Padrão: BEM (Block Element Modifier) & Modern CSS Design Tokens
+   Arquitetura de Front-End Limpa, Semântica e 100% Responsiva
+   ========================================================================== */
+
+/* ─── 1. DESIGN TOKENS (VARIÁVEIS GLOBAIS DO SISTEMA) ─── */
+:root {
+  /* Cores Principais - Tema Claro & Offshore */
+  --mms-primary: #0284c7;
+  --mms-primary-hover: #0369a1;
+  --mms-primary-light: #e0f2fe;
+  --mms-primary-glow: rgba(2, 132, 199, 0.2);
+
+  --mms-navy-900: #0f172a;
+  --mms-navy-800: #1e293b;
+  --mms-navy-700: #334155;
+  --mms-slate-600: #475569;
+  --mms-slate-500: #64748b;
+  --mms-slate-400: #94a3b8;
+  --mms-slate-300: #cbd5e1;
+  --mms-slate-200: #e2e8f0;
+  --mms-slate-100: #f1f5f9;
+  --mms-slate-50: #f8fafc;
+  --mms-white: #ffffff;
+
+  /* Cores de Status e Acentuação */
+  --mms-success: #16a34a;
+  --mms-success-light: #dcfce7;
+  --mms-warning: #ea580c;
+  --mms-warning-light: #ffedd5;
+  --mms-danger: #e11d48;
+  --mms-danger-light: #fee2e2;
+  --mms-purple: #7c3aed;
+  --mms-purple-light: #f3e8ff;
+
+  /* Tipografia */
+  --mms-font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mms-font-serif: 'Times New Roman', Times, Georgia, serif;
+  --mms-font-mono: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+
+  /* Sombras */
+  --mms-shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --mms-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.08);
+  --mms-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+  --mms-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --mms-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --mms-shadow-card: 0 2px 8px -1px rgba(15, 23, 42, 0.06), 0 1px 3px -1px rgba(15, 23, 42, 0.04);
+
+  /* Raios de Borda */
+  --mms-radius-sm: 6px;
+  --mms-radius-md: 10px;
+  --mms-radius-lg: 14px;
+  --mms-radius-xl: 20px;
+  --mms-radius-full: 9999px;
+
+  /* Transições Suaves */
+  --mms-transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --mms-transition-normal: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── 2. RESET E BASE DO LAYOUT ─── */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--mms-font-sans);
+  background-color: var(--mms-slate-100);
+  color: var(--mms-navy-900);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+/* ─── 3. ESTRUTURA PRINCIPAL (LAYOUT WRAPPER) ─── */
+.mms-app-layout {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100vh !important;
+  background-color: var(--mms-slate-100) !important;
+}
+
+.mms-main-scroll {
+  width: 100% !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.mms-main-container {
+  max-width: 1380px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding: 16px !important;
+  padding-bottom: 96px !important;
+}
+
+/* ─── 4. NAVBAR SUPERIOR (MMS NAVBAR) ─── */
+.mms-navbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  height: 64px !important;
+  background-color: var(--mms-navy-900) !important;
+  border-bottom: 1px solid var(--mms-navy-800) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 20px !important;
+  box-shadow: var(--mms-shadow-md) !important;
+}
+
+.mms-navbar__brand {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.mms-navbar__logo-box {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: var(--mms-radius-md) !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35) !important;
+}
+
+.mms-navbar__actions {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.mms-navbar__notif-btn {
+  position: relative !important;
+  padding: 8px !important;
+  border-radius: var(--mms-radius-full) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  cursor: pointer !important;
+  transition: background-color var(--mms-transition-fast) !important;
+}
+
+.mms-navbar__notif-btn:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.mms-navbar__notif-badge {
+  position: absolute !important;
+  top: 2px !important;
+  right: 2px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  border-radius: var(--mms-radius-full) !important;
+  background-color: var(--mms-danger) !important;
+  color: var(--mms-white) !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 2px solid var(--mms-navy-900) !important;
+}
+
+.mms-navbar__menu-btn {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 12px !important;
+  border-radius: var(--mms-radius-sm) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  cursor: pointer !important;
+  transition: all var(--mms-transition-fast) !important;
+}
+
+.mms-navbar__menu-btn:hover {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.mms-navbar__avatar-circle {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: var(--mms-radius-full) !important;
+  background-color: #10b981 !important;
+  color: var(--mms-white) !important;
+  font-weight: 800 !important;
+  font-size: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ─── 5. CARTÃO PRINCIPAL DE FORMULÁRIO (MMS CARD) ─── */
+/* Esse é o elemento destacado pelo usuário no DevTools */
+.mms-card,
+.mms-form-card {
+  background-color: var(--mms-white) !important;
+  border-radius: var(--mms-radius-xl) !important;
+  border: 1px solid var(--mms-slate-200) !important;
+  box-shadow: var(--mms-shadow-card) !important;
+  padding: 24px !important;
+  margin-bottom: 24px !important;
+  position: relative !important;
+  width: 100% !important;
+  transition: box-shadow var(--mms-transition-normal) !important;
+}
+
+.mms-card:hover,
+.mms-form-card:hover {
+  box-shadow: var(--mms-shadow-md) !important;
+}
+
+.mms-card__header {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  margin-bottom: 8px !important;
+}
+
+.mms-btn-novo-relatorio {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background-color: var(--mms-primary-light) !important;
+  color: var(--mms-primary) !important;
+  border: 1px solid rgba(2, 132, 199, 0.25) !important;
+  padding: 6px 12px !important;
+  border-radius: var(--mms-radius-md) !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  transition: all var(--mms-transition-fast) !important;
+}
+
+.mms-btn-novo-relatorio:hover {
+  background-color: #bae6fd !important;
+  transform: translateY(-1px) !important;
+}
+
+.mms-main-title {
+  font-size: 22px !important;
+  font-weight: 900 !important;
+  color: var(--mms-navy-900) !important;
+  letter-spacing: -0.3px !important;
+  margin-bottom: 16px !important;
+  font-family: var(--mms-font-sans) !important;
+}
+
+/* ─── 6. BARRA DE SESSÃO DO PREPOSTO & COORDENAÇÃO ─── */
+.mms-session-banner {
+  background-color: var(--mms-slate-50) !important;
+  border: 1px solid var(--mms-slate-200) !important;
+  border-radius: var(--mms-radius-md) !important;
+  padding: 10px 14px !important;
+  margin-bottom: 16px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+.mms-session-banner__user {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: var(--mms-navy-900) !important;
+}
+
+.mms-session-banner__badge-coord {
+  background-color: #eff6ff !important;
+  color: #2563eb !important;
+  border: 1px solid #bfdbfe !important;
+  padding: 3px 8px !important;
+  border-radius: var(--mms-radius-sm) !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+}
+
+/* ─── 7. ABAS DE RASCUNHOS / SLOTS DE RELATÓRIO ─── */
+.mms-draft-tabs-container {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 8px !important;
+  margin-bottom: 18px !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding-bottom: 4px !important;
+}
+
+.mms-draft-tab-slot {
+  flex: 1 !important;
+  min-width: 140px !important;
+  padding: 10px 12px !important;
+  border-radius: var(--mms-radius-md) !important;
+  border: 1.5px solid var(--mms-slate-200) !important;
+  background-color: var(--mms-slate-50) !important;
+  cursor: pointer !important;
+  transition: all var(--mms-transition-fast) !important;
+  position: relative !important;
+}
+
+.mms-draft-tab-slot--active {
+  background-color: var(--mms-white) !important;
+  border-color: var(--mms-primary) !important;
+  box-shadow: 0 0 0 3px var(--mms-primary-glow) !important;
+}
+
+.mms-draft-tab-slot__title {
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  color: var(--mms-navy-900) !important;
+  margin-bottom: 2px !important;
+}
+
+.mms-draft-tab-slot__subtitle {
+  font-size: 10px !important;
+  color: var(--mms-slate-500) !important;
+}
+
+/* ─── 8. CAMPOS DE ENTRADA, FORMULÁRIO E LABELS ─── */
+.mms-form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+  gap: 16px !important;
+  margin-bottom: 16px !important;
+}
+
+.mms-field-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  width: 100% !important;
+}
+
+.mms-field-label {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: var(--mms-navy-700) !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+}
+
+.mms-field-label--required::after {
+  content: ' *' !important;
+  color: var(--mms-danger) !important;
+}
+
+.mms-input-control {
+  width: 100% !important;
+  height: 42px !important;
+  background-color: var(--mms-white) !important;
+  border: 1.5px solid var(--mms-slate-300) !important;
+  border-radius: var(--mms-radius-md) !important;
+  padding: 0 14px !important;
+  font-size: 13px !important;
+  color: var(--mms-navy-900) !important;
+  font-family: var(--mms-font-sans) !important;
+  transition: border-color var(--mms-transition-fast), box-shadow var(--mms-transition-fast) !important;
+}
+
+.mms-input-control:focus {
+  outline: none !important;
+  border-color: var(--mms-primary) !important;
+  box-shadow: 0 0 0 3px var(--mms-primary-glow) !important;
+}
+
+.mms-textarea-control {
+  width: 100% !important;
+  min-height: 90px !important;
+  background-color: var(--mms-white) !important;
+  border: 1.5px solid var(--mms-slate-300) !important;
+  border-radius: var(--mms-radius-md) !important;
+  padding: 10px 14px !important;
+  font-size: 13px !important;
+  color: var(--mms-navy-900) !important;
+  font-family: var(--mms-font-sans) !important;
+  line-height: 1.5 !important;
+  resize: vertical !important;
+}
+
+.mms-textarea-control:focus {
+  outline: none !important;
+  border-color: var(--mms-primary) !important;
+  box-shadow: 0 0 0 3px var(--mms-primary-glow) !important;
+}
+
+/* ─── 9. SEÇÃO DE PREVIEW DO DOCUMENTO ─── */
+.mms-preview-title-main {
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  color: var(--mms-navy-900) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  margin: 32px 0 16px 0 !important;
+  text-align: center !important;
+  font-family: var(--mms-font-sans) !important;
+}
+
+.mms-preview-wrap {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin-bottom: 48px !important;
+  overflow: visible !important;
+}
+
+.mms-preview-document {
+  background-color: var(--mms-white) !important;
+  box-shadow: var(--mms-shadow-xl), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  border-radius: 4px !important;
+  margin-bottom: 24px !important;
+  transition: transform var(--mms-transition-normal) !important;
+}
+
+/* ─── 10. BARRA FLUTUANTE DE AÇÕES (BOTTOM FLOATING BAR) ─── */
+.mms-floating-action-bar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 99 !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-top: 1px solid var(--mms-slate-200) !important;
+  padding: 12px 20px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 12px !important;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06) !important;
+}
+
+.mms-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 44px !important;
+  padding: 0 20px !important;
+  border-radius: var(--mms-radius-md) !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  cursor: pointer !important;
+  border: none !important;
+  transition: all var(--mms-transition-fast) !important;
+}
+
+.mms-btn--primary {
+  background-color: var(--mms-primary) !important;
+  color: var(--mms-white) !important;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3) !important;
+}
+
+.mms-btn--primary:hover {
+  background-color: var(--mms-primary-hover) !important;
+  transform: translateY(-1px) !important;
+}
+
+.mms-btn--success {
+  background-color: var(--mms-success) !important;
+  color: var(--mms-white) !important;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3) !important;
+}
+
+.mms-btn--success:hover {
+  background-color: #15803d !important;
+  transform: translateY(-1px) !important;
+}
+
+.mms-btn--secondary {
+  background-color: var(--mms-slate-100) !important;
+  color: var(--mms-navy-700) !important;
+  border: 1px solid var(--mms-slate-300) !important;
+}
+
+.mms-btn--secondary:hover {
+  background-color: var(--mms-slate-200) !important;
+}
+
+/* ─── 11. MODAIS & BACKDROP BLUR ─── */
+.mms-modal-backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 1000 !important;
+  background-color: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+}
+
+.mms-modal-card {
+  width: 100% !important;
+  max-width: 480px !important;
+  background-color: var(--mms-white) !important;
+  border-radius: var(--mms-radius-xl) !important;
+  padding: 24px !important;
+  box-shadow: var(--mms-shadow-xl) !important;
+  border: 1px solid var(--mms-slate-200) !important;
+  animation: mmsModalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes mmsModalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ─── 12. RODAPÉ DE CRÉDITOS & VERSÃO ─── */
+.mms-app-footer {
+  margin-top: 24px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid var(--mms-slate-200) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+}
+
+.mms-app-footer__text {
+  font-size: 11px !important;
+  color: var(--mms-slate-500) !important;
+  font-weight: 500 !important;
+}
+
+.mms-app-footer__badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background-color: var(--mms-slate-100) !important;
+  border: 1px solid var(--mms-slate-300) !important;
+  padding: 4px 10px !important;
+  border-radius: var(--mms-radius-sm) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  color: var(--mms-navy-700) !important;
+}
+
+/* ─── 13. RESPONSIVIDADE & MEDIA QUERIES ─── */
+@media (max-width: 768px) {
+  .mms-main-container {
+    padding: 10px !important;
+    padding-bottom: 84px !important;
+  }
+
+  .mms-card,
+  .mms-form-card {
+    padding: 16px !important;
+    border-radius: var(--mms-radius-lg) !important;
+  }
+
+  .mms-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .mms-navbar {
+    padding: 0 12px !important;
+  }
+
+  .mms-floating-action-bar {
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+
+  .mms-btn {
+    flex: 1 !important;
+    font-size: 11px !important;
+    padding: 0 10px !important;
+  }
+}
