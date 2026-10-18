@@ -1635,7 +1635,7 @@ const styles = StyleSheet.create({
           backgroundColor: 'transparent',
         }
       : {
-          backgroundColor: 'rgba(15, 23, 42, 0.4)',
+          backgroundColor: 'transparent',
         }),
   },
   detailCard: {

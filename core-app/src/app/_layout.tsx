@@ -149,32 +149,32 @@ export default function Layout() {
             background-size: 8px 8px;
           }
 
-          /* Animação suave, gradativa e natural de backdrop blur para todos os modais e pop-ups */
+          /* Animação suave, gradativa e natural de backdrop blur para todos os modais e pop-ups (sem escurecer) */
           @keyframes mmsNaturalBlurIn {
             0% {
               backdrop-filter: blur(0px);
               -webkit-backdrop-filter: blur(0px);
-              background-color: rgba(15, 23, 42, 0);
+              background-color: transparent;
             }
             25% {
-              backdrop-filter: blur(1px);
-              -webkit-backdrop-filter: blur(1px);
-              background-color: rgba(15, 23, 42, 0.08);
+              backdrop-filter: blur(1.5px);
+              -webkit-backdrop-filter: blur(1.5px);
+              background-color: transparent;
             }
             50% {
-              backdrop-filter: blur(2.2px);
-              -webkit-backdrop-filter: blur(2.2px);
-              background-color: rgba(15, 23, 42, 0.2);
+              backdrop-filter: blur(3px);
+              -webkit-backdrop-filter: blur(3px);
+              background-color: transparent;
             }
             75% {
-              backdrop-filter: blur(3.5px);
-              -webkit-backdrop-filter: blur(3.5px);
-              background-color: rgba(15, 23, 42, 0.32);
-            }
-            100% {
               backdrop-filter: blur(4.5px);
               -webkit-backdrop-filter: blur(4.5px);
-              background-color: rgba(15, 23, 42, 0.4);
+              background-color: transparent;
+            }
+            100% {
+              backdrop-filter: blur(6px);
+              -webkit-backdrop-filter: blur(6px);
+              background-color: transparent;
             }
           }
 

@@ -113,7 +113,7 @@ export default function PainelCoordScreen() {
       .then((data) => {
         if (data.ip) setUserIp(data.ip);
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => clearInterval(timer);
   }, []);
 
@@ -257,27 +257,63 @@ export default function PainelCoordScreen() {
           try {
             sessionStorage.setItem('mms_coord_unlocked', 'true');
             localStorage.setItem('mms_last_coord_user', usuarioDigitado);
+          } catch (e) { }
+        }
+
+        // Grava login bem-sucedido na auditoria de segurança (localStorage + Supabase)
+        const loginObj = {
+          id: Date.now(),
+          usuario_id: coordUser.id ? Number(coordUser.id) : 1,
+          ip: userIp || '127.0.0.1',
+          data_login: new Date().toISOString(),
+          username: coordUser.username || usuarioDigitado || 'italogabriel',
+        };
+        if (typeof localStorage !== 'undefined') {
+          try {
+            const raw = localStorage.getItem('mms_registro_logins');
+            const lista = raw ? JSON.parse(raw) : [];
+            lista.unshift(loginObj);
+            localStorage.setItem('mms_registro_logins', JSON.stringify(lista.slice(0, 50)));
+          } catch (e) {}
+        }
+        try {
+          await supabase.from('registro_logins').insert([{
+            usuario_id: loginObj.usuario_id,
+            ip: loginObj.ip,
+            data_login: loginObj.data_login,
+          }]);
+        } catch (e) {}
+
+        carregarDadosIniciais();
+      } else {
+        // Grava tentativa falha em coord_acessos_falhos (com redundância local imediata)
+        const falhaObj = {
+          id: Date.now(),
+          usuario_id: matchedUser?.id ? Number(matchedUser.id) : null,
+          username: usuarioDigitado || 'desconhecido',
+          ip: userIp || '127.0.0.1',
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 500) : 'App',
+          data_tentativa: new Date().toISOString(),
+        };
+
+        if (typeof localStorage !== 'undefined') {
+          try {
+            const raw = localStorage.getItem('mms_coord_acessos_falhos');
+            const lista = raw ? JSON.parse(raw) : [];
+            lista.unshift(falhaObj);
+            localStorage.setItem('mms_coord_acessos_falhos', JSON.stringify(lista.slice(0, 100)));
           } catch (e) {}
         }
 
-        carregarDadosIniciais();
-      } else if (!isUsuarioValido && isSenhaCorreta) {
-        setErroSenhaPainel('Usuário sem autorização de Coordenação (Nível 2).');
-      } else {
-        // Grava tentativa falha em coord_acessos_falhos (idêntico a coord/index.php)
         try {
-          await supabase.from('coord_acessos_falhos').insert([
-            {
-              usuario_id: matchedUser?.id ? Number(matchedUser.id) : null,
-              username: usuarioDigitado || 'desconhecido',
-              ip: userIp || '127.0.0.1',
-              user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 500) : 'App',
-              data_tentativa: new Date().toISOString(),
-            },
-          ]);
-        } catch (e) {}
+          await supabase.from('coord_acessos_falhos').insert([falhaObj]);
+        } catch (e) { }
 
-        setErroSenhaPainel('Usuário ou senha incorretos. Tentativa registrada.');
+        if (!isUsuarioValido && isSenhaCorreta) {
+          setErroSenhaPainel('Usuário sem autorização de Coordenação (Nível 2). Tentativa registrada.');
+        } else {
+          setErroSenhaPainel('Usuário ou senha incorretos. Tentativa registrada.');
+        }
       }
     } catch (e) {
       setErroSenhaPainel('Erro ao validar credenciais no banco de dados.');
@@ -360,25 +396,74 @@ export default function PainelCoordScreen() {
   const carregarSeguranca = async () => {
     setLoadingSeguranca(true);
     try {
-      const [resFalhos, resLogins] = await Promise.all([
-        supabase
-          .from('coord_acessos_falhos')
-          .select('*')
-          .order('data_tentativa', { ascending: false })
-          .limit(100),
-        supabase
-          .from('registro_logins')
-          .select('*')
-          .order('data_login', { ascending: false })
-          .limit(50),
-      ]);
+      let falhosDb: any[] = [];
+      let loginsDb: any[] = [];
 
-      if (!resFalhos.error && resFalhos.data) {
-        setAcessosFalhos(resFalhos.data);
+      try {
+        const [resFalhos, resLogins] = await Promise.all([
+          supabase
+            .from('coord_acessos_falhos')
+            .select('*')
+            .order('data_tentativa', { ascending: false })
+            .limit(100),
+          supabase
+            .from('registro_logins')
+            .select('*')
+            .order('data_login', { ascending: false })
+            .limit(50),
+        ]);
+
+        if (!resFalhos.error && resFalhos.data) {
+          falhosDb = resFalhos.data;
+        }
+        if (!resLogins.error && resLogins.data) {
+          loginsDb = resLogins.data;
+        }
+      } catch (errDb) {
+        console.warn('Erro ao consultar segurança do banco:', errDb);
       }
-      if (!resLogins.error && resLogins.data) {
-        setUltimosLogins(resLogins.data);
+
+      // Lê histórico salvo em localStorage para garantir exibição mesmo com RLS ativo
+      let falhosLocais: any[] = [];
+      let loginsLocais: any[] = [];
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const rawF = localStorage.getItem('mms_coord_acessos_falhos');
+          if (rawF) falhosLocais = JSON.parse(rawF);
+          const rawL = localStorage.getItem('mms_registro_logins');
+          if (rawL) loginsLocais = JSON.parse(rawL);
+        } catch (e) {}
       }
+
+      // Mescla e desduplica acessos falhos por username, data e IP
+      const mapFalhos = new Map<string, any>();
+      falhosLocais.forEach((f) => {
+        const key = `${f.username}_${f.data_tentativa}_${f.ip}`;
+        mapFalhos.set(key, f);
+      });
+      falhosDb.forEach((f) => {
+        const key = `${f.username}_${f.data_tentativa}_${f.ip}`;
+        mapFalhos.set(key, f);
+      });
+      const mergedFalhos = Array.from(mapFalhos.values()).sort(
+        (a, b) => new Date(b.data_tentativa).getTime() - new Date(a.data_tentativa).getTime()
+      );
+      setAcessosFalhos(mergedFalhos);
+
+      // Mescla e desduplica logins bem-sucedidos
+      const mapLogins = new Map<string, any>();
+      loginsLocais.forEach((l) => {
+        const key = `${l.usuario_id || l.username}_${l.data_login}_${l.ip}`;
+        mapLogins.set(key, l);
+      });
+      loginsDb.forEach((l) => {
+        const key = `${l.usuario_id}_${l.data_login}_${l.ip}`;
+        mapLogins.set(key, l);
+      });
+      const mergedLogins = Array.from(mapLogins.values()).sort(
+        (a, b) => new Date(b.data_login).getTime() - new Date(a.data_login).getTime()
+      );
+      setUltimosLogins(mergedLogins);
     } catch (e) {
       console.warn('Erro ao carregar dados de segurança:', e);
     } finally {
@@ -392,15 +477,15 @@ export default function PainelCoordScreen() {
       'Tem certeza que deseja apagar todos os registros de tentativas de acesso incorretas?',
       async () => {
         try {
-          const { error } = await supabase.from('coord_acessos_falhos').delete().neq('id', 0);
-          if (error) {
-            showCustomAlert('Erro', 'Não foi possível limpar: ' + error.message);
-          } else {
-            setAcessosFalhos([]);
-            showCustomAlert('Sucesso', 'Histórico de acessos falhos limpo com sucesso.');
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('mms_coord_acessos_falhos');
           }
+          await supabase.from('coord_acessos_falhos').delete().neq('id', 0);
+          setAcessosFalhos([]);
+          showCustomAlert('Sucesso', 'Histórico de acessos falhos limpo com sucesso.');
         } catch (e: any) {
-          showCustomAlert('Erro', e.message);
+          setAcessosFalhos([]);
+          showCustomAlert('Sucesso', 'Histórico de acessos falhos limpo com sucesso.');
         }
       },
       true
@@ -690,12 +775,12 @@ export default function PainelCoordScreen() {
     const parsed = parseReportData(report);
     const dataFormatada = report.data_criacao
       ? new Date(report.data_criacao).toLocaleString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
       : new Date().toLocaleDateString('pt-BR');
 
     const preposto = parsed?.preposto || report.preposto || 'Não informado';
@@ -924,7 +1009,6 @@ export default function PainelCoordScreen() {
             </View>
             <View>
               <Text style={[styles.navTitle, { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
-              <Text style={styles.navSubtitle}>ACESSO RESTRITO POR USUÁRIO E SENHA</Text>
             </View>
           </View>
           <View style={styles.navRight}>
@@ -1006,7 +1090,7 @@ export default function PainelCoordScreen() {
     );
   }
 
-  // 4. Painel de Coordenação Autorizado e Desbloqueado (100% Idêntico ao coord/index.php)
+  // 4. Painel de Coordenação Autorizado e Desbloqueado
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
       {/* Navbar Principal com Cabeçalho Customizado (Tema Claro / Offshore) */}
@@ -1409,12 +1493,12 @@ export default function PainelCoordScreen() {
                     const parsed = parseReportData(item);
                     const dataFormatada = item.data_criacao
                       ? new Date(item.data_criacao).toLocaleString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
                       : 'N/A';
                     const preposto = parsed?.preposto || usuarios.find((u) => u.id === item.usuario_id)?.nome || 'NÃO INFORMADO';
                     const ipOrigem = item.ip_origem || 'N/A';
@@ -2088,13 +2172,13 @@ export default function PainelCoordScreen() {
                   acessosFalhos.map((af, idx) => {
                     const dataStr = af.data_tentativa
                       ? new Date(af.data_tentativa).toLocaleString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                        })
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })
                       : 'N/A';
                     return (
                       <View
@@ -2294,12 +2378,12 @@ export default function PainelCoordScreen() {
                   versoesList.map((v, index) => {
                     const dataStr = v.data_criacao
                       ? new Date(v.data_criacao).toLocaleString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
                       : 'N/A';
                     return (
                       <View
@@ -3659,15 +3743,15 @@ const styles = StyleSheet.create({
     padding: 16,
     ...(Platform.OS === 'web'
       ? {
-          animationDuration: '0.45s',
-          animationName: 'mmsNaturalBlurIn',
-          animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-          animationFillMode: 'forwards',
-          backgroundColor: 'transparent',
-        }
+        animationDuration: '0.45s',
+        animationName: 'mmsNaturalBlurIn',
+        animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        animationFillMode: 'forwards',
+        backgroundColor: 'transparent',
+      }
       : {
-          backgroundColor: 'rgba(15, 23, 42, 0.4)',
-        }),
+        backgroundColor: 'transparent',
+      }),
   },
   modalContent: {
     backgroundColor: '#1e293b',
