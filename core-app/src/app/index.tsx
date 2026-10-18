@@ -142,12 +142,12 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
         border: 2px solid #f43f5e !important;
         box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
       }
-      /* Efeito Blur Suave para Pop-ups e Modais */
+      /* Efeito Blur Suave para Pop-ups e Modais (sem escurecer) */
       .modal-blur-overlay,
       div[data-modal-blur="true"] {
-        backdrop-filter: blur(4px) !important;
-        -webkit-backdrop-filter: blur(4px) !important;
-        background-color: rgba(15, 23, 42, 0.35) !important;
+        backdrop-filter: blur(6px) !important;
+        -webkit-backdrop-filter: blur(6px) !important;
+        background-color: transparent !important;
       }
     `;
     document.head.appendChild(style);
@@ -1550,6 +1550,54 @@ export default function ReportGenerator() {
     );
   };
 
+  // Funções de Registro de Tentativas para o Painel de Coordenação
+  const recordFailedAttempt = async (userIdent: string) => {
+    const attempt = {
+      id: Date.now(),
+      usuario_id: null,
+      username: userIdent || 'desconhecido',
+      ip: '127.0.0.1',
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 500) : 'Web App',
+      data_tentativa: new Date().toISOString(),
+    };
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('mms_coord_acessos_falhos');
+        const list = raw ? JSON.parse(raw) : [];
+        list.unshift(attempt);
+        localStorage.setItem('mms_coord_acessos_falhos', JSON.stringify(list.slice(0, 100)));
+      } catch (e) {}
+    }
+    try {
+      await supabase.from('coord_acessos_falhos').insert([attempt]);
+    } catch (e) {}
+  };
+
+  const recordSuccessfulLogin = async (userId: any, username: string) => {
+    const logItem = {
+      id: Date.now(),
+      usuario_id: userId ? Number(userId) : 1,
+      ip: '127.0.0.1',
+      data_login: new Date().toISOString(),
+      username: username || 'usuario',
+    };
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('mms_registro_logins');
+        const list = raw ? JSON.parse(raw) : [];
+        list.unshift(logItem);
+        localStorage.setItem('mms_registro_logins', JSON.stringify(list.slice(0, 50)));
+      } catch (e) {}
+    }
+    try {
+      await supabase.from('registro_logins').insert([{
+        usuario_id: logItem.usuario_id,
+        ip: logItem.ip,
+        data_login: logItem.data_login,
+      }]);
+    } catch (e) {}
+  };
+
   // Auth Functions
   const handleAuthSubmit = async () => {
     setAuthMsg(null);
@@ -1607,6 +1655,8 @@ export default function ReportGenerator() {
           const userName = dbUser.nome || dbUser.username;
           updateCurrentTab({ preposto: userName });
 
+          recordSuccessfulLogin(dbUser.id, userName);
+
           setAuthMsg({ type: 'sucesso', text: 'Login realizado com sucesso!' });
           setTimeout(() => setIsAuthModalVisible(false), 600);
           setAuthLoading(false);
@@ -1615,6 +1665,7 @@ export default function ReportGenerator() {
 
         // 2. Se o usuário digitado não é e-mail, evita chamar Supabase Auth para prevenir o erro HTTP 400 no console
         if (!inputStr.includes('@')) {
+          recordFailedAttempt(inputStr);
           setAuthMsg({ type: 'erro', text: 'Usuário não encontrado ou senha incorreta.' });
           setAuthLoading(false);
           return;
@@ -1627,6 +1678,7 @@ export default function ReportGenerator() {
         });
 
         if (authErr) {
+          recordFailedAttempt(inputStr);
           setAuthMsg({
             type: 'erro',
             text: authErr.message === 'Invalid login credentials'
@@ -1659,6 +1711,8 @@ export default function ReportGenerator() {
           saveSessionLocal(enrichedSession);
           setUserSession(enrichedSession);
           updateCurrentTab({ preposto: userName });
+
+          recordSuccessfulLogin(dbUser?.id || authData.session.user.id, userName);
 
           setAuthMsg({ type: 'sucesso', text: 'Login realizado com sucesso!' });
           setTimeout(() => setIsAuthModalVisible(false), 600);
@@ -2834,68 +2888,10 @@ export default function ReportGenerator() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Banner Inline Salvar na Nuvem (Exato do index.php:361-392) */}
-        {!userSession && !isBannerDismissed && (
-          <View style={styles.cloudBannerWrapper}>
-            <View style={styles.cloudBannerCard}>
-              <View style={styles.cloudBannerLeft}>
-                <View style={styles.cloudBannerIconCircle}>
-                  <Text style={{ fontSize: 20 }}>☁️</Text>
-                </View>
-                <View style={styles.cloudBannerTextCol}>
-                  <Text style={styles.cloudBannerTitle}>Salvar na Nuvem</Text>
-                  <Text style={styles.cloudBannerSubtitle}>
-                    Crie uma conta para organizar e acessar facilmente todos os seus relatórios.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.cloudBannerActions}>
-                <TouchableOpacity
-                  style={styles.cloudBannerBtnEntrar}
-                  onPress={() => {
-                    setAuthMode('login');
-                    setIsAuthModalVisible(true);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.cloudBannerBtnEntrarText}>ENTRAR</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.cloudBannerBtnCadastrar}
-                  onPress={() => {
-                    setAuthMode('cadastro');
-                    setIsAuthModalVisible(true);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.cloudBannerBtnCadastrarText}>CRIAR CONTA</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Botão Fechar (✕) */}
-              <TouchableOpacity
-                style={styles.cloudBannerCloseBtn}
-                onPress={() => setIsBannerDismissed(true)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cloudBannerCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
         {/* Cartão Principal de Preenchimento (Independente e Separado do Preview) */}
         <View style={styles.card}>
-          {/* Header do Card com Logo MMS à esquerda e Botão Iniciar Novo Relatório à direita */}
+          {/* Header do Card com Botão Iniciar Novo Relatório à direita */}
           <View style={styles.cardHeader}>
-            <Image
-              source={require('../../assets/images/logo.png')}
-              style={styles.headerLogoImage}
-              resizeMode="contain"
-            />
             <TouchableOpacity onPress={limparTudo} style={styles.btnNovoRelatorio} activeOpacity={0.75}>
               <Text style={styles.btnNovoRelatorioIcon}>+</Text>
               <Text style={styles.btnNovoRelatorioText}>Iniciar Novo Relatório</Text>
@@ -4239,7 +4235,7 @@ const styles = StyleSheet.create({
   },
   dropdownModalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
     paddingTop: 64,
@@ -4526,7 +4522,7 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 24,
   },
@@ -6137,7 +6133,7 @@ const styles = StyleSheet.create({
           backgroundColor: 'transparent',
         }
       : {
-          backgroundColor: 'rgba(15, 23, 42, 0.4)',
+          backgroundColor: 'transparent',
         }),
   },
   authCard: {
