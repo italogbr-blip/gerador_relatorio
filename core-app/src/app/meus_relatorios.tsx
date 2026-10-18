@@ -916,8 +916,12 @@ export default function MeusRelatoriosScreen() {
       </ScrollView>
 
       {/* Modal de Detalhes do Relatório Formatado */}
-      <Modal visible={!!selectedReport} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+      <Modal visible={!!selectedReport} transparent animationType="none">
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
           <View style={styles.detailCard}>
             <TouchableOpacity
               style={styles.detailCloseBtn}
@@ -1111,8 +1115,12 @@ export default function MeusRelatoriosScreen() {
       </Modal>
 
       {/* Custom Confirm Dialog */}
-      <Modal visible={customDialog.visible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+      <Modal visible={customDialog.visible} transparent animationType="none">
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
           <View style={styles.confirmCard}>
             <Text style={styles.confirmTitle}>{customDialog.title}</Text>
             <Text style={styles.confirmMsg}>{customDialog.message}</Text>
@@ -1615,12 +1623,20 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
-    backdropFilter: 'blur(4px)',
-    WebkitBackdropFilter: 'blur(4px)',
+    ...(Platform.OS === 'web'
+      ? {
+          animationDuration: '0.45s',
+          animationName: 'mmsNaturalBlurIn',
+          animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          animationFillMode: 'forwards',
+          backgroundColor: 'transparent',
+        }
+      : {
+          backgroundColor: 'rgba(15, 23, 42, 0.4)',
+        }),
   },
   detailCard: {
     backgroundColor: '#ffffff',

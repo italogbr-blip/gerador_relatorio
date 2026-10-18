@@ -3737,8 +3737,12 @@ export default function ReportGenerator() {
       </ScrollView>
 
       {/* Modal Autenticação Central da Plataforma */}
-      <Modal visible={isAuthModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+      <Modal visible={isAuthModalVisible} transparent animationType="none">
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
           <View style={styles.authCard}>
             <TouchableOpacity
               style={styles.authCloseBtn}
@@ -3841,8 +3845,12 @@ export default function ReportGenerator() {
       </Modal>
 
       {/* Modal de Edição e Rotação de Imagem ("CONFIRMAR E ANEXAR") */}
-      <Modal visible={imageEditorModal.visible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+      <Modal visible={imageEditorModal.visible} transparent animationType="none">
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
           <View style={styles.cropEditorCard}>
             <TouchableOpacity
               style={styles.authCloseBtn}
@@ -3905,8 +3913,12 @@ export default function ReportGenerator() {
       </Modal>
 
       {/* Pop-up Alert: Banner "Salvar na Nuvem" (Aviso em Modal para Visitantes não logados) */}
-      <Modal visible={!userSession && !isBannerDismissed} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+      <Modal visible={!userSession && !isBannerDismissed} transparent animationType="none">
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
           <View style={styles.cloudBannerPopUpCard}>
             <TouchableOpacity
               style={styles.authCloseBtn}
@@ -3968,8 +3980,12 @@ export default function ReportGenerator() {
       </Modal>
 
       {/* Pop-up Flat & Elegante para Navegador de URL */}
-      <Modal visible={isUrlModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+      <Modal visible={isUrlModalVisible} transparent animationType="none">
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
           <View style={styles.flatUrlCard}>
             <View style={styles.flatUrlIconWrapper}>
               <MaterialFlatIcon name="link" size={28} color="#0284c7" />
@@ -4025,8 +4041,12 @@ export default function ReportGenerator() {
       </Modal>
 
       {/* Pop-up Flat e Elegante (Substitui Alerts Nativos com Design Moderno) */}
-      <Modal visible={customDialog.visible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+      <Modal visible={customDialog.visible} transparent animationType="none">
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
           <View style={styles.flatAlertCard}>
             <View
               style={[
@@ -6042,12 +6062,20 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
-    backdropFilter: 'blur(4px)',
-    WebkitBackdropFilter: 'blur(4px)',
+    ...(Platform.OS === 'web'
+      ? {
+          animationDuration: '0.45s',
+          animationName: 'mmsNaturalBlurIn',
+          animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          animationFillMode: 'forwards',
+          backgroundColor: 'transparent',
+        }
+      : {
+          backgroundColor: 'rgba(15, 23, 42, 0.4)',
+        }),
   },
   authCard: {
     backgroundColor: colors.white,

@@ -125,24 +125,39 @@ export default function Layout() {
             background-size: 8px 8px;
           }
 
-          /* Animação suave e gradativa de backdrop blur para todos os modais e pop-ups */
-          @keyframes mmsBackdropFadeIn {
+          /* Animação suave, gradativa e natural de backdrop blur para todos os modais e pop-ups */
+          @keyframes mmsNaturalBlurIn {
             0% {
-              opacity: 0;
               backdrop-filter: blur(0px);
               -webkit-backdrop-filter: blur(0px);
+              background-color: rgba(15, 23, 42, 0);
+            }
+            25% {
+              backdrop-filter: blur(1px);
+              -webkit-backdrop-filter: blur(1px);
+              background-color: rgba(15, 23, 42, 0.08);
+            }
+            50% {
+              backdrop-filter: blur(2.2px);
+              -webkit-backdrop-filter: blur(2.2px);
+              background-color: rgba(15, 23, 42, 0.2);
+            }
+            75% {
+              backdrop-filter: blur(3.5px);
+              -webkit-backdrop-filter: blur(3.5px);
+              background-color: rgba(15, 23, 42, 0.32);
             }
             100% {
-              opacity: 1;
-              backdrop-filter: blur(4px);
-              -webkit-backdrop-filter: blur(4px);
+              backdrop-filter: blur(4.5px);
+              -webkit-backdrop-filter: blur(4.5px);
+              background-color: rgba(15, 23, 42, 0.4);
             }
           }
 
-          @keyframes mmsModalCardZoomIn {
+          @keyframes mmsModalCardRise {
             0% {
               opacity: 0;
-              transform: scale(0.96) translateY(8px);
+              transform: scale(0.96) translateY(14px);
             }
             100% {
               opacity: 1;
@@ -150,18 +165,17 @@ export default function Layout() {
             }
           }
 
-          /* Aplica transição gradativa no backdrop dos modais */
-          div[role="dialog"],
-          div[aria-modal="true"],
-          div[data-modal-overlay="true"],
-          .mms-modal-backdrop {
-            animation: mmsBackdropFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+          /* Aplica transição gradativa e natural no backdrop dos modais */
+          [data-modal-overlay="true"],
+          .mms-modal-overlay {
+            animation: mmsNaturalBlurIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+            will-change: backdrop-filter, background-color !important;
           }
 
-          div[role="dialog"] > div,
-          div[aria-modal="true"] > div,
-          .mms-modal-card {
-            animation: mmsModalCardZoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          [data-modal-overlay="true"] > div,
+          .mms-modal-overlay > div {
+            animation: mmsModalCardRise 0.36s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+            will-change: transform, opacity !important;
           }
         `;
         document.head.appendChild(style);
