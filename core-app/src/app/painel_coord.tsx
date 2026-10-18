@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
-import { verifyCoordinatorAccess, logoutUserSession, saveSessionLocal, AppUserSession } from '../lib/auth';
+import { verifyCoordinatorAccess, logoutUserSession, saveSessionLocal, getSavedSessionSync, AppUserSession } from '../lib/auth';
 import {
   fetchFooterConfig,
   saveFooterConfig,
@@ -35,20 +35,20 @@ const corporateFont = Platform.OS === 'web'
   ? '"Times New Roman", Times, serif'
   : undefined;
 
-const EMPRESAS = ['TODAS', 'ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
+const EMPRESAS = ['TODAS', 'ALPHA OFFSHORE', 'NEXUS LOGÃSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÃTIMA', 'OUTROS'];
 
 export default function PainelCoordScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
 
-  // Sessão do Usuário e Controle Estrito de Autoridade Nível 2
+  // SessÃ£o do UsuÃ¡rio e Controle Estrito de Autoridade NÃ­vel 2
   const [userSession, setUserSession] = useState<AppUserSession | null>(null);
   const [authChecked, setAuthChecked] = useState<boolean>(false);
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [unauthReason, setUnauthReason] = useState<'unauthenticated' | 'forbidden' | null>(null);
 
-  // Tema da Coordenação: 100% Tema Claro Exclusivo
+  // Tema da CoordenaÃ§Ã£o: 100% Tema Claro Exclusivo
   const isDarkMode = false;
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export default function PainelCoordScreen() {
   // Abas do Painel: 'relatorios' | 'ranking' | 'popups' | 'mensagens' | 'seguranca' | 'sistema' | 'version'
   const [activeTab, setActiveTab] = useState<'relatorios' | 'ranking' | 'popups' | 'mensagens' | 'seguranca' | 'sistema' | 'version'>('relatorios');
 
-  // Estados de Controle de Versões (Central mms_versao_app)
+  // Estados de Controle de VersÃµes (Central mms_versao_app)
   const [versoesList, setVersoesList] = useState<AppVersionRecord[]>([]);
   const [loadingVersoes, setLoadingVersoes] = useState<boolean>(false);
   const [inputVersaoNumero, setInputVersaoNumero] = useState<string>('');
@@ -69,7 +69,7 @@ export default function PainelCoordScreen() {
   const [salvandoVersao, setSalvandoVersao] = useState<boolean>(false);
   const [msgSucessoVersao, setMsgSucessoVersao] = useState<string>('');
 
-  // Estados de Segurança / Auditoria e Acessos Falhos (Logins mal sucedidos)
+  // Estados de SeguranÃ§a / Auditoria e Acessos Falhos (Logins mal sucedidos)
   const [acessosFalhos, setAcessosFalhos] = useState<any[]>([]);
   const [ultimosLogins, setUltimosLogins] = useState<any[]>([]);
   const [loadingSeguranca, setLoadingSeguranca] = useState<boolean>(false);
@@ -83,7 +83,7 @@ export default function PainelCoordScreen() {
   const [relatoriosHojeCount, setRelatoriosHojeCount] = useState<number>(0);
   const [relatoriosMesCount, setRelatoriosMesCount] = useState<number>(0);
 
-  // Filtros de Relatórios
+  // Filtros de RelatÃ³rios
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('TODAS');
   const [filtroBusca, setFiltroBusca] = useState<string>('');
   const [filtroDataInicio, setFiltroDataInicio] = useState<string>('');
@@ -91,7 +91,7 @@ export default function PainelCoordScreen() {
   const [paginaRelatorios, setPaginaRelatorios] = useState<number>(1);
   const porPagina = 15;
 
-  // Filtro de Usuários
+  // Filtro de UsuÃ¡rios
   const [filtroBuscaUsuario, setFiltroBuscaUsuario] = useState<string>('');
   const [filtroUsuarioId, setFiltroUsuarioId] = useState<number | null>(null);
   const [isUsuarioDropdownOpen, setIsUsuarioDropdownOpen] = useState<boolean>(false);
@@ -119,7 +119,7 @@ export default function PainelCoordScreen() {
 
   const nomeMesAtual = useMemo(() => {
     const meses = [
-      'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+      'janeiro', 'fevereiro', 'marÃ§o', 'abril', 'maio', 'junho',
       'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
     ];
     const d = new Date();
@@ -132,17 +132,17 @@ export default function PainelCoordScreen() {
     return `em ${m}/${d.getFullYear()}`;
   }, []);
 
-  // Modal de Detalhes do Relatório
+  // Modal de Detalhes do RelatÃ³rio
   const [selectedReport, setSelectedReport] = useState<any>(null);
 
-  // Modal de Criação de Popup/Notificação
+  // Modal de CriaÃ§Ã£o de Popup/NotificaÃ§Ã£o
   const [isNovoPopupModalVisible, setIsNovoPopupModalVisible] = useState<boolean>(false);
   const [novoPopupTitulo, setNovoPopupTitulo] = useState<string>('');
   const [novoPopupMensagem, setNovoPopupMensagem] = useState<string>('');
   const [novoPopupTipo, setNovoPopupTipo] = useState<'aviso' | 'urgente' | 'feedback'>('aviso');
   const [salvandoPopup, setSalvandoPopup] = useState<boolean>(false);
 
-  // Personalização do Rodapé / Versão
+  // PersonalizaÃ§Ã£o do RodapÃ© / VersÃ£o
   const [footerDraft, setFooterDraft] = useState<FooterConfig>(defaultFooterConfig);
   const [salvandoFooter, setSalvandoFooter] = useState<boolean>(false);
 
@@ -157,13 +157,13 @@ export default function PainelCoordScreen() {
     const success = await saveFooterConfig(footerDraft);
     setSalvandoFooter(false);
     if (success) {
-      showCustomAlert('RODAPÉ ATUALIZADO', 'A nova personalização do rodapé foi salva com sucesso e já está ativa no gerador de relatórios.');
+      showCustomAlert('RODAPÃ‰ ATUALIZADO', 'A nova personalizaÃ§Ã£o do rodapÃ© foi salva com sucesso e jÃ¡ estÃ¡ ativa no gerador de relatÃ³rios.');
     } else {
-      showCustomAlert('ERRO AO SALVAR', 'Não foi possível gravar a configuração do rodapé.');
+      showCustomAlert('ERRO AO SALVAR', 'NÃ£o foi possÃ­vel gravar a configuraÃ§Ã£o do rodapÃ©.');
     }
   };
 
-  // Controle de Usuário e Senha do Painel de Coordenação (italogabriel / 253095)
+  // Controle de UsuÃ¡rio e Senha do Painel de CoordenaÃ§Ã£o (italogabriel / 253095)
   const [isPanelUnlocked, setIsPanelUnlocked] = useState<boolean>(() => {
     if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
       return sessionStorage.getItem('mms_coord_unlocked') === 'true';
@@ -171,9 +171,20 @@ export default function PainelCoordScreen() {
     return false;
   });
   const [inputUsuarioPainel, setInputUsuarioPainel] = useState<string>(() => {
-    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('mms_last_coord_user');
-      if (saved) return saved;
+    if (Platform.OS === 'web') {
+      try {
+        const savedSession = getSavedSessionSync();
+        if (savedSession?.user?.user_metadata?.username) {
+          return savedSession.user.user_metadata.username;
+        }
+        if (savedSession?.user?.email) {
+          return savedSession.user.email.split('@')[0];
+        }
+      } catch (e) {}
+      if (typeof localStorage !== 'undefined') {
+        const saved = localStorage.getItem('mms_last_coord_user');
+        if (saved) return saved;
+      }
     }
     return 'italogabriel';
   });
@@ -182,12 +193,22 @@ export default function PainelCoordScreen() {
   const [validandoSenhaPainel, setValidandoSenhaPainel] = useState<boolean>(false);
   const [isEmpresaDropdownOpen, setIsEmpresaDropdownOpen] = useState<boolean>(false);
 
+  // Estados do Sistema de Mensagens In-App (mms_mensagens)
+  const [mensagensList, setMensagensList] = useState<any[]>([]);
+  const [loadingMensagens, setLoadingMensagens] = useState<boolean>(false);
+  const [isNovaMensagemModalVisible, setIsNovaMensagemModalVisible] = useState<boolean>(false);
+  const [novaMsgTitulo, setNovaMsgTitulo] = useState<string>('');
+  const [novaMsgConteudo, setNovaMsgConteudo] = useState<string>('');
+  const [novaMsgTipo, setNovaMsgTipo] = useState<'info' | 'aviso' | 'urgente'>('info');
+  const [novaMsgDestinatarioId, setNovaMsgDestinatarioId] = useState<number | null>(null);
+  const [salvandoMensagem, setSalvandoMensagem] = useState<boolean>(false);
+
   const handleDesbloquearPainel = async () => {
     const usuarioDigitado = inputUsuarioPainel.trim().toLowerCase();
     const senhaDigitada = inputSenhaPainel.trim();
 
     if (!usuarioDigitado) {
-      setErroSenhaPainel('Por favor, digite o nome de usuário.');
+      setErroSenhaPainel('Por favor, digite o nome de usuÃ¡rio.');
       return;
     }
     if (!senhaDigitada) {
@@ -199,7 +220,7 @@ export default function PainelCoordScreen() {
     setErroSenhaPainel(null);
 
     try {
-      // 1. Consulta o usuário na tabela usuarios do Supabase
+      // 1. Consulta o usuÃ¡rio na tabela usuarios do Supabase
       const { data: userRows } = await supabase
         .from('usuarios')
         .select('*')
@@ -218,7 +239,7 @@ export default function PainelCoordScreen() {
         senhaHashDb = rows[0].senha_hash;
       }
 
-      // Senhas aceitas: 253095 (solicitada), a senha do banco, ou senhas padrão
+      // Senhas aceitas: 253095 (solicitada), a senha do banco, ou senhas padrÃ£o
       const isSenhaCorreta =
         senhaDigitada === '253095' ||
         senhaDigitada === senhaHashDb ||
@@ -227,7 +248,7 @@ export default function PainelCoordScreen() {
         senhaDigitada === 'coord2024' ||
         senhaDigitada === 'admin2024';
 
-      // Validação de Usuário (italogabriel ou qualquer usuário Nível 2)
+      // ValidaÃ§Ã£o de UsuÃ¡rio (italogabriel ou qualquer usuÃ¡rio NÃ­vel 2)
       const isUsuarioValido =
         usuarioDigitado === 'italogabriel' ||
         (matchedUser && (matchedUser.nivel_autoridade >= 2 || matchedUser.nivel_autoridade === '2'));
@@ -236,7 +257,7 @@ export default function PainelCoordScreen() {
         const coordUser = matchedUser || {
           id: 1,
           username: 'italogabriel',
-          nome: 'Ítalo Gabriel',
+          nome: 'Ãtalo Gabriel',
           email: 'italogabriel1503@gmail.com',
           nivel_autoridade: 2,
         };
@@ -260,7 +281,7 @@ export default function PainelCoordScreen() {
           } catch (e) { }
         }
 
-        // Grava login bem-sucedido na auditoria de segurança (localStorage + Supabase)
+        // Grava login bem-sucedido na auditoria de seguranÃ§a (localStorage + Supabase)
         const loginObj = {
           id: Date.now(),
           usuario_id: coordUser.id ? Number(coordUser.id) : 1,
@@ -286,7 +307,7 @@ export default function PainelCoordScreen() {
 
         carregarDadosIniciais();
       } else {
-        // Grava tentativa falha em coord_acessos_falhos (com redundância local imediata)
+        // Grava tentativa falha em coord_acessos_falhos (com redundÃ¢ncia local imediata)
         const falhaObj = {
           id: Date.now(),
           usuario_id: matchedUser?.id ? Number(matchedUser.id) : null,
@@ -310,9 +331,9 @@ export default function PainelCoordScreen() {
         } catch (e) { }
 
         if (!isUsuarioValido && isSenhaCorreta) {
-          setErroSenhaPainel('Usuário sem autorização de Coordenação (Nível 2). Tentativa registrada.');
+          setErroSenhaPainel('UsuÃ¡rio sem autorizaÃ§Ã£o de CoordenaÃ§Ã£o (NÃ­vel 2). Tentativa registrada.');
         } else {
-          setErroSenhaPainel('Usuário ou senha incorretos. Tentativa registrada.');
+          setErroSenhaPainel('UsuÃ¡rio ou senha incorretos. Tentativa registrada.');
         }
       }
     } catch (e) {
@@ -329,7 +350,7 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // Alerta / Confirmação Customizado
+  // Alerta / ConfirmaÃ§Ã£o Customizado
   const [customDialog, setCustomDialog] = useState<{
     visible: boolean;
     title: string;
@@ -357,7 +378,7 @@ export default function PainelCoordScreen() {
     });
   };
 
-  // Carregar e Verificar Autorização de Acesso (Exclusivo Nível 2)
+  // Carregar e Verificar AutorizaÃ§Ã£o de Acesso (Exclusivo NÃ­vel 2)
   useEffect(() => {
     verifyCoordinatorAccess().then((res) => {
       setUserSession(res.session);
@@ -365,18 +386,25 @@ export default function PainelCoordScreen() {
       setUnauthReason(res.reason);
       setAuthChecked(true);
 
+      // Preenche o campo de usuÃ¡rio com o usuÃ¡rio logado com sessÃ£o ativa
+      if (res.session?.user?.user_metadata?.username) {
+        setInputUsuarioPainel(res.session.user.user_metadata.username);
+      } else if (res.session?.user?.email) {
+        setInputUsuarioPainel(res.session.user.email.split('@')[0]);
+      }
+
       if (res.authorized) {
         carregarDadosIniciais();
       }
     }).catch((err) => {
-      console.warn('Erro na verificação de acesso à coordenação:', err);
+      console.warn('Erro na verificaÃ§Ã£o de acesso Ã  coordenaÃ§Ã£o:', err);
       setIsAuthorized(false);
       setUnauthReason('unauthenticated');
       setAuthChecked(true);
     });
   }, []);
 
-  // Carregamento de Métricas e Dados Iniciais
+  // Carregamento de MÃ©tricas e Dados Iniciais
   const carregarDadosIniciais = async () => {
     setLoading(true);
     try {
@@ -385,12 +413,118 @@ export default function PainelCoordScreen() {
         carregarRelatorios(),
         carregarUsuarios(),
         carregarPopups(),
+        carregarMensagens(),
         carregarVersoes(),
         carregarSeguranca(),
       ]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const carregarMensagens = async () => {
+    setLoadingMensagens(true);
+    try {
+      let dbMsgs: any[] = [];
+      try {
+        const { data, error } = await supabase
+          .from('mms_mensagens')
+          .select('*')
+          .order('id', { ascending: false });
+        if (!error && data) {
+          dbMsgs = data;
+        }
+      } catch (errDb) {}
+
+      let localMsgs: any[] = [];
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('mms_mensagens_store');
+          if (raw) localMsgs = JSON.parse(raw);
+        } catch (e) {}
+      }
+
+      const map = new Map<any, any>();
+      localMsgs.forEach((m) => map.set(m.id, m));
+      dbMsgs.forEach((m) => map.set(m.id, m));
+      const combined = Array.from(map.values()).sort(
+        (a, b) => new Date(b.data_envio || b.created_at || Date.now()).getTime() - new Date(a.data_envio || a.created_at || Date.now()).getTime()
+      );
+      setMensagensList(combined);
+    } catch (e) {
+      console.warn('Erro ao carregar mensagens:', e);
+    } finally {
+      setLoadingMensagens(false);
+    }
+  };
+
+  const handleEnviarMensagem = async () => {
+    if (!novaMsgTitulo.trim() || !novaMsgConteudo.trim()) {
+      showCustomAlert('AtenÃ§Ã£o', 'Preencha o tÃ­tulo e o conteÃºdo da mensagem.');
+      return;
+    }
+
+    setSalvandoMensagem(true);
+    const autorId = userSession?.user?.id ? Number(userSession.user.id) : 1;
+    const novaMsg = {
+      id: Date.now(),
+      titulo: novaMsgTitulo.trim(),
+      mensagem: novaMsgConteudo.trim(),
+      tipo: novaMsgTipo,
+      autor_id: autorId,
+      destinatario_id: novaMsgDestinatarioId,
+      data_envio: new Date().toISOString(),
+    };
+
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('mms_mensagens_store');
+        const list = raw ? JSON.parse(raw) : [];
+        list.unshift(novaMsg);
+        localStorage.setItem('mms_mensagens_store', JSON.stringify(list.slice(0, 50)));
+      } catch (e) {}
+    }
+
+    try {
+      await supabase.from('mms_mensagens').insert([{
+        titulo: novaMsg.titulo,
+        mensagem: novaMsg.mensagem,
+        tipo: novaMsg.tipo,
+        autor_id: novaMsg.autor_id,
+        destinatario_id: novaMsg.destinatario_id,
+        data_envio: novaMsg.data_envio,
+      }]);
+    } catch (e) {}
+
+    setNovaMsgTitulo('');
+    setNovaMsgConteudo('');
+    setNovaMsgTipo('info');
+    setNovaMsgDestinatarioId(null);
+    setIsNovaMensagemModalVisible(false);
+    setSalvandoMensagem(false);
+    carregarMensagens();
+    showCustomAlert('Sucesso', 'Mensagem enviada com sucesso para os usuÃ¡rios!');
+  };
+
+  const handleExcluirMensagem = async (msgId: number) => {
+    showCustomAlert('EXCLUIR MENSAGEM', 'Tem certeza que deseja apagar esta mensagem?', async () => {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          try {
+            const raw = localStorage.getItem('mms_mensagens_store');
+            if (raw) {
+              const list = JSON.parse(raw).filter((m: any) => m.id !== msgId);
+              localStorage.setItem('mms_mensagens_store', JSON.stringify(list));
+            }
+          } catch (e) {}
+        }
+        await supabase.from('mms_mensagens').delete().eq('id', msgId);
+        setMensagensList((prev) => prev.filter((m) => m.id !== msgId));
+        showCustomAlert('Sucesso', 'Mensagem removida.');
+      } catch (e: any) {
+        showCustomAlert('Erro', e.message);
+      }
+    }, true);
   };
 
   const carregarSeguranca = async () => {
@@ -420,10 +554,10 @@ export default function PainelCoordScreen() {
           loginsDb = resLogins.data;
         }
       } catch (errDb) {
-        console.warn('Erro ao consultar segurança do banco:', errDb);
+        console.warn('Erro ao consultar seguranÃ§a do banco:', errDb);
       }
 
-      // Lê histórico salvo em localStorage para garantir exibição mesmo com RLS ativo
+      // LÃª histÃ³rico salvo em localStorage para garantir exibiÃ§Ã£o mesmo com RLS ativo
       let falhosLocais: any[] = [];
       let loginsLocais: any[] = [];
       if (typeof localStorage !== 'undefined') {
@@ -465,7 +599,7 @@ export default function PainelCoordScreen() {
       );
       setUltimosLogins(mergedLogins);
     } catch (e) {
-      console.warn('Erro ao carregar dados de segurança:', e);
+      console.warn('Erro ao carregar dados de seguranÃ§a:', e);
     } finally {
       setLoadingSeguranca(false);
     }
@@ -473,7 +607,7 @@ export default function PainelCoordScreen() {
 
   const handleLimparAcessosFalhos = async () => {
     showCustomAlert(
-      'LIMPAR HISTÓRICO DE ACESSOS FALHOS',
+      'LIMPAR HISTÃ“RICO DE ACESSOS FALHOS',
       'Tem certeza que deseja apagar todos os registros de tentativas de acesso incorretas?',
       async () => {
         try {
@@ -482,10 +616,10 @@ export default function PainelCoordScreen() {
           }
           await supabase.from('coord_acessos_falhos').delete().neq('id', 0);
           setAcessosFalhos([]);
-          showCustomAlert('Sucesso', 'Histórico de acessos falhos limpo com sucesso.');
+          showCustomAlert('Sucesso', 'HistÃ³rico de acessos falhos limpo com sucesso.');
         } catch (e: any) {
           setAcessosFalhos([]);
-          showCustomAlert('Sucesso', 'Histórico de acessos falhos limpo com sucesso.');
+          showCustomAlert('Sucesso', 'HistÃ³rico de acessos falhos limpo com sucesso.');
         }
       },
       true
@@ -505,7 +639,7 @@ export default function PainelCoordScreen() {
   const handleSalvarVersao = async () => {
     const v = inputVersaoNumero.trim();
     if (!v) {
-      showCustomAlert('CAMPO OBRIGATÓRIO', 'Por favor, informe a versão a ser registrada (Ex: V1.2.5).');
+      showCustomAlert('CAMPO OBRIGATÃ“RIO', 'Por favor, informe a versÃ£o a ser registrada (Ex: V1.2.5).');
       return;
     }
     setSalvandoVersao(true);
@@ -513,13 +647,13 @@ export default function PainelCoordScreen() {
     try {
       const ok = await insertAppVersion(v, inputVersaoDescricao);
       if (ok) {
-        setMsgSucessoVersao(`Nova versão (${v.toUpperCase()}) registrada com sucesso!`);
+        setMsgSucessoVersao(`Nova versÃ£o (${v.toUpperCase()}) registrada com sucesso!`);
         setInputVersaoNumero('');
         setInputVersaoDescricao('');
         await carregarVersoes();
-        showCustomAlert('VERSÃO REGISTRADA', `A versão ${v.toUpperCase()} foi registrada e agora é a versão padrão ativa no sistema!`);
+        showCustomAlert('VERSÃƒO REGISTRADA', `A versÃ£o ${v.toUpperCase()} foi registrada e agora Ã© a versÃ£o padrÃ£o ativa no sistema!`);
       } else {
-        showCustomAlert('ERRO AO SALVAR', 'Não foi possível gravar a nova versão no banco de dados.');
+        showCustomAlert('ERRO AO SALVAR', 'NÃ£o foi possÃ­vel gravar a nova versÃ£o no banco de dados.');
       }
     } finally {
       setSalvandoVersao(false);
@@ -549,7 +683,7 @@ export default function PainelCoordScreen() {
         setRelatoriosMesCount(resMes.count);
       }
     } catch (e) {
-      console.warn('Erro ao carregar métricas:', e);
+      console.warn('Erro ao carregar mÃ©tricas:', e);
     }
   };
 
@@ -578,7 +712,7 @@ export default function PainelCoordScreen() {
     }, 50);
   };
 
-  // Carregamento Confiável e 100% Funcional dos Relatórios com select('*')
+  // Carregamento ConfiÃ¡vel e 100% Funcional dos RelatÃ³rios com select('*')
   const carregarRelatorios = async () => {
     setLoading(true);
     try {
@@ -616,9 +750,9 @@ export default function PainelCoordScreen() {
 
       const { data, count, error } = await query;
       if (error) {
-        console.warn('Erro ao carregar relatórios do painel:', error.message);
+        console.warn('Erro ao carregar relatÃ³rios do painel:', error.message);
       } else if (data) {
-        // Se houver busca por usuário por texto, filtra também localmente
+        // Se houver busca por usuÃ¡rio por texto, filtra tambÃ©m localmente
         let resultado = data;
         if (filtroBuscaUsuario.trim()) {
           const uTerm = filtroBuscaUsuario.toLowerCase().trim();
@@ -635,13 +769,13 @@ export default function PainelCoordScreen() {
         if (count !== null && count !== undefined) setTotalRelatoriosGeral(count);
       }
     } catch (e) {
-      console.warn('Erro ao carregar relatórios do painel:', e);
+      console.warn('Erro ao carregar relatÃ³rios do painel:', e);
     } finally {
       setLoading(false);
     }
   };
 
-  // Carregamento sob demanda dos dados completos do relatório (apenas ao visualizar)
+  // Carregamento sob demanda dos dados completos do relatÃ³rio (apenas ao visualizar)
   const handleVisualizarRelatorio = async (item: any) => {
     if (item.dados_json) {
       setSelectedReport(item);
@@ -677,7 +811,7 @@ export default function PainelCoordScreen() {
         setUsuarios(data);
       }
     } catch (e) {
-      console.warn('Erro ao carregar usuários:', e);
+      console.warn('Erro ao carregar usuÃ¡rios:', e);
     }
   };
 
@@ -702,14 +836,14 @@ export default function PainelCoordScreen() {
     }
   }, [filtroEmpresa, paginaRelatorios, filtroDataInicio, filtroDataFim]);
 
-  // Alterar Nível de Acesso de Usuário (Promover/Rebaixar)
+  // Alterar NÃ­vel de Acesso de UsuÃ¡rio (Promover/Rebaixar)
   const handleAlterarNivelUsuario = async (userId: number, nivelAtual: number) => {
     const novoNivel = nivelAtual === 2 ? 1 : 2;
-    const acaoNome = novoNivel === 2 ? 'promover a Nível 2 (Coordenação)' : 'rebaixar a Nível 1 (Básico)';
+    const acaoNome = novoNivel === 2 ? 'promover a NÃ­vel 2 (CoordenaÃ§Ã£o)' : 'rebaixar a NÃ­vel 1 (BÃ¡sico)';
 
     showCustomAlert(
-      'ALTERAR NÍVEL DE AUTORIDADE',
-      `Tem certeza que deseja ${acaoNome} este usuário?`,
+      'ALTERAR NÃVEL DE AUTORIDADE',
+      `Tem certeza que deseja ${acaoNome} este usuÃ¡rio?`,
       async () => {
         try {
           const { error } = await supabase
@@ -718,12 +852,12 @@ export default function PainelCoordScreen() {
             .eq('id', userId);
 
           if (error) {
-            showCustomAlert('Erro', 'Não foi possível alterar a autoridade: ' + error.message);
+            showCustomAlert('Erro', 'NÃ£o foi possÃ­vel alterar a autoridade: ' + error.message);
           } else {
             setUsuarios((prev) =>
               prev.map((u) => (u.id === userId ? { ...u, nivel_autoridade: novoNivel } : u))
             );
-            showCustomAlert('Sucesso', 'Nível de autoridade atualizado com sucesso!');
+            showCustomAlert('Sucesso', 'NÃ­vel de autoridade atualizado com sucesso!');
           }
         } catch (e: any) {
           showCustomAlert('Erro', e.message);
@@ -732,11 +866,11 @@ export default function PainelCoordScreen() {
     );
   };
 
-  // Excluir Relatório (Ação de Coordenação)
+  // Excluir RelatÃ³rio (AÃ§Ã£o de CoordenaÃ§Ã£o)
   const handleExcluirRelatorio = (id: number) => {
     showCustomAlert(
-      'EXCLUIR RELATÓRIO DEFINITIVAMENTE',
-      `Atenção: Você está prestes a excluir o relatório #${id} de forma permanente do sistema de demonstração. Deseja prosseguir?`,
+      'EXCLUIR RELATÃ“RIO DEFINITIVAMENTE',
+      `AtenÃ§Ã£o: VocÃª estÃ¡ prestes a excluir o relatÃ³rio #${id} de forma permanente do sistema de demonstraÃ§Ã£o. Deseja prosseguir?`,
       async () => {
         setLoading(true);
         const { error } = await supabase.from('relatorios').delete().eq('id', id);
@@ -745,7 +879,7 @@ export default function PainelCoordScreen() {
         } else {
           setRelatorios((prev) => prev.filter((r) => r.id !== id));
           carregarMetricas();
-          showCustomAlert('Sucesso', `Relatório #${id} excluído com sucesso.`);
+          showCustomAlert('Sucesso', `RelatÃ³rio #${id} excluÃ­do com sucesso.`);
         }
         setLoading(false);
       },
@@ -769,7 +903,7 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // Compartilhar Resumo do Relatório via WhatsApp
+  // Compartilhar Resumo do RelatÃ³rio via WhatsApp
   const shareWhatsApp = (report: any) => {
     if (!report) return;
     const parsed = parseReportData(report);
@@ -783,7 +917,7 @@ export default function PainelCoordScreen() {
       })
       : new Date().toLocaleDateString('pt-BR');
 
-    const preposto = parsed?.preposto || report.preposto || 'Não informado';
+    const preposto = parsed?.preposto || report.preposto || 'NÃ£o informado';
     const empresa = (report.empresa || 'N/A').toUpperCase();
     const unidade = report.unidade || 'N/A';
     const local = report.local_atendimento || 'N/A';
@@ -800,27 +934,27 @@ export default function PainelCoordScreen() {
     const rawPdf = report.pdf_url || report.caminho_pdf;
     const pdfUrl = formatReportPdfUrl(rawPdf) || `${PHP_SERVER_URL}/download_pdf.php?id=${report.id}`;
 
-    let msg = `📋 *RESUMO DO ATENDIMENTO OPERACIONAL*\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `🏢 *Empresa:* ${empresa}\n`;
-    msg += `⚓ *Unidade:* ${unidade}\n`;
-    msg += `📍 *Local:* ${local}\n`;
-    msg += `👤 *Preposto:* ${preposto}\n`;
-    msg += `📅 *Data/Hora:* ${dataFormatada}\n`;
+    let msg = `ðŸ“‹ *RESUMO DO ATENDIMENTO OPERACIONAL*\n`;
+    msg += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n`;
+    msg += `ðŸ¢ *Empresa:* ${empresa}\n`;
+    msg += `âš“ *Unidade:* ${unidade}\n`;
+    msg += `ðŸ“ *Local:* ${local}\n`;
+    msg += `ðŸ‘¤ *Preposto:* ${preposto}\n`;
+    msg += `ðŸ“… *Data/Hora:* ${dataFormatada}\n`;
 
     if (embCount > 0 || desCount > 0) {
-      msg += `👥 *Passageiros (PAX):* 🟢 ${embCount} Emb. | 🔴 ${desCount} Des.\n`;
+      msg += `ðŸ‘¥ *Passageiros (PAX):* ðŸŸ¢ ${embCount} Emb. | ðŸ”´ ${desCount} Des.\n`;
     }
 
     if (parsed?.info_troca) {
-      msg += `📝 *Observação:* ${parsed.info_troca}\n`;
+      msg += `ðŸ“ *ObservaÃ§Ã£o:* ${parsed.info_troca}\n`;
     }
 
-    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n`;
     if (pdfUrl) {
-      msg += `📄 *Acessar PDF:* ${pdfUrl}\n`;
+      msg += `ðŸ“„ *Acessar PDF:* ${pdfUrl}\n`;
     }
-    msg += `🌐 *Portal:* https://relatorios.atmai.com.br`;
+    msg += `ðŸŒ *Portal:* https://relatorios.atmai.com.br`;
 
     const encoded = encodeURIComponent(msg);
     const waUrl = `https://api.whatsapp.com/send?text=${encoded}`;
@@ -842,7 +976,7 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // Cores de Badge de Empresa idênticas ao coord/index.php
+  // Cores de Badge de Empresa idÃªnticas ao coord/index.php
   const getCompanyBadgeStyle = (empresa?: string) => {
     const emp = (empresa || '').toUpperCase().trim();
     if (emp.includes('TECHNIP/DOF')) return { bg: '#fce7f3', text: '#be185d' };
@@ -899,7 +1033,7 @@ export default function PainelCoordScreen() {
   // Salvar Novo Pop-up
   const handleSalvarNovoPopup = async () => {
     if (!novoPopupTitulo.trim() || !novoPopupMensagem.trim()) {
-      showCustomAlert('Atenção', 'Preencha o título e a mensagem do comunicado.');
+      showCustomAlert('AtenÃ§Ã£o', 'Preencha o tÃ­tulo e a mensagem do comunicado.');
       return;
     }
 
@@ -932,7 +1066,7 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // Cálculo de Ranking (Top Geradores)
+  // CÃ¡lculo de Ranking (Top Geradores)
   const rankingGeradores = useMemo(() => {
     const mapa: { [key: string]: { nome: string; total: number; empresa: string } } = {};
 
@@ -950,7 +1084,7 @@ export default function PainelCoordScreen() {
     return Object.values(mapa).sort((a, b) => b.total - a.total);
   }, [relatorios]);
 
-  // Lista de Usuários Filtrados
+  // Lista de UsuÃ¡rios Filtrados
   const usuariosFiltrados = useMemo(() => {
     if (!filtroBuscaUsuario.trim()) return usuarios;
     const term = filtroBuscaUsuario.toLowerCase().trim();
@@ -981,71 +1115,73 @@ export default function PainelCoordScreen() {
     );
   };
 
-  // 1. Tela de Carregamento da Autorização
+  // 1. Tela de Carregamento da AutorizaÃ§Ã£o
   if (!authChecked) {
     return (
       <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }, { justifyContent: 'center', alignItems: 'center' }]}>
         <View style={{ alignItems: 'center', padding: 24 }}>
           <ActivityIndicator size="large" color="#06b6d4" />
           <Text style={{ marginTop: 16, fontSize: 15, fontWeight: '700', color: isDarkMode ? '#f8fafc' : '#0f172a', fontFamily: modernFont }}>
-            VERIFICANDO AUTORIZAÇÃO DE COORDENAÇÃO...
+            VERIFICANDO AUTORIZAÃ‡ÃƒO DE COORDENAÃ‡ÃƒO...
           </Text>
           <Text style={{ marginTop: 6, fontSize: 13, color: '#94a3b8', fontFamily: modernFont }}>
-            Checando credenciais e nível de autoridade no banco de dados.
+            Checando credenciais e nÃ­vel de autoridade no banco de dados.
           </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // 2. Verificação de Acesso / Senha do Painel (Usuário italogabriel e Senha 253095)
+  // 2. VerificaÃ§Ã£o de Acesso / Senha do Painel (UsuÃ¡rio italogabriel e Senha 253095)
   if (!isAuthorized || !isPanelUnlocked) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
         <View style={[styles.navbar, { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
           <View style={styles.navLeft}>
             <View style={styles.coordBadgeIcon}>
-              <Text style={{ fontSize: 16 }}>🛡️</Text>
+              <Text style={{ fontSize: 16 }}>ðŸ›¡ï¸</Text>
             </View>
             <View>
-              <Text style={[styles.navTitle, { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
+              <Text style={[styles.navTitle, { color: '#0f172a' }]}>PAINEL DE COORDENAÃ‡ÃƒO</Text>
             </View>
           </View>
           <View style={styles.navRight}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
-              <Text style={styles.backButtonText}>← VOLTAR</Text>
+              <Text style={styles.backButtonText}>â† VOLTAR</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.restrictedContainer}>
+        <ScrollView contentContainerStyle={styles.restrictedContainer} showsVerticalScrollIndicator={false}>
           <View style={[styles.coordLockCard, { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
             <View style={[styles.coordLockIconCircle, { backgroundColor: '#eff6ff', borderColor: '#dbeafe' }]}>
-              <Text style={{ fontSize: 36 }}>🔐</Text>
+              <Text style={{ fontSize: 36 }}>ðŸ”</Text>
             </View>
 
             <Text style={[styles.coordLockTitle, { color: '#0f172a' }]}>
-              Painel de Coordenação
+              Painel de CoordenaÃ§Ã£o
             </Text>
             <Text style={[styles.coordLockSubtitle, { color: '#64748b' }]}>
-              Insira usuário e senha autorizados para acessar o painel
+              Insira usuÃ¡rio e senha autorizados para acessar o painel
             </Text>
 
             {erroSenhaPainel && (
               <View style={styles.coordLockErrorBox}>
-                <Text style={styles.coordLockErrorText}>❌ {erroSenhaPainel}</Text>
+                <Text style={styles.coordLockErrorText}>âŒ {erroSenhaPainel}</Text>
               </View>
             )}
 
             <View style={styles.coordLockInputGroup}>
               <Text style={[styles.coordLockInputLabel, { color: '#475569' }]}>
-                USUÁRIO
+                USUÃRIO
               </Text>
               <TextInput
-                style={styles.coordLockInputDisabled}
-                value="italogabriel"
-                editable={false}
-                selectTextOnFocus={false}
+                style={[styles.coordLockInput, styles.coordLockInputLight]}
+                value={inputUsuarioPainel}
+                onChangeText={setInputUsuarioPainel}
+                placeholder="UsuÃ¡rio da sessÃ£o..."
+                placeholderTextColor="#94a3b8"
+                autoCapitalize="none"
               />
             </View>
 
@@ -1073,7 +1209,7 @@ export default function PainelCoordScreen() {
               {validandoSenhaPainel ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Text style={styles.btnDesbloquearPainelText}>🔓 ACESSAR PAINEL</Text>
+                <Text style={styles.btnDesbloquearPainelText}>ðŸ”“ ACESSAR PAINEL</Text>
               )}
             </TouchableOpacity>
 
@@ -1082,233 +1218,254 @@ export default function PainelCoordScreen() {
               onPress={() => router.push('/')}
               activeOpacity={0.7}
             >
-              <Text style={styles.btnVoltarGeradorLockText}>← Voltar ao Gerador de Relatórios</Text>
+              <Text style={styles.btnVoltarGeradorLockText}>â† Voltar ao Gerador de RelatÃ³rios</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
-  // 4. Painel de Coordenação Autorizado e Desbloqueado
+  // 4. Painel de CoordenaÃ§Ã£o Autorizado e Desbloqueado
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
-      {/* Navbar Principal com Cabeçalho Customizado (Tema Claro / Offshore) */}
+      {/* Navbar Principal com CabeÃ§alho Customizado (Tema Claro / Sticky e Responsivo) */}
       <View style={styles.coordNavbar}>
         <View style={styles.coordNavbarInner}>
-          {/* Lado Esquerdo: Ícone + Título COORDENAÇÃO */}
+          {/* Lado Esquerdo: Ãcone + TÃ­tulo COORDENAÃ‡ÃƒO */}
           <View style={styles.coordNavLeft}>
             <View style={styles.coordNavLogoIcon}>
-              <Text style={styles.coordNavLogoRay}>⚡</Text>
+              <Text style={styles.coordNavLogoRay}>âš¡</Text>
             </View>
-            <Text style={styles.coordNavLogoText}>COORDENAÇÃO</Text>
+            <View>
+              <Text style={styles.coordNavLogoText}>COORDENAÃ‡ÃƒO</Text>
+              {isMobile && (
+                <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '600' }} numberOfLines={1}>
+                  {userSession?.user?.user_metadata?.name || 'Ãtalo Gabriel'}
+                </Text>
+              )}
+            </View>
           </View>
 
-          {/* Lado Direito: Data/Hora, IP, Usuário, Notificação, Voltar e Sair */}
+          {/* Lado Direito: Data/Hora, IP, UsuÃ¡rio, NotificaÃ§Ã£o, Voltar e Sair */}
           <View style={styles.coordNavRight}>
-            <View style={styles.coordNavDateTimeGroup}>
-              <Text style={styles.coordNavDateTimeText}>{dataHoraAtual}</Text>
-              <Text style={styles.coordNavIpText}>IP Conectado: {userIp}</Text>
-            </View>
+            {!isMobile && (
+              <>
+                <View style={styles.coordNavDateTimeGroup}>
+                  <Text style={styles.coordNavDateTimeText}>{dataHoraAtual}</Text>
+                  <Text style={styles.coordNavIpText}>IP: {userIp}</Text>
+                </View>
 
-            <View style={styles.coordNavUserGroup}>
-              <Text style={styles.coordNavUserGreeting}>
-                Olá, <Text style={styles.coordNavUserName}>{userSession?.user?.user_metadata?.name || 'italogabriel'}</Text>
-              </Text>
+                <View style={styles.coordNavUserGroup}>
+                  <Text style={styles.coordNavUserGreeting}>
+                    OlÃ¡, <Text style={styles.coordNavUserName}>{userSession?.user?.user_metadata?.name || 'italogabriel'}</Text>
+                  </Text>
+                </View>
+              </>
+            )}
 
-              <View style={styles.coordNavButtonsGroup}>
-                <TouchableOpacity
-                  style={styles.coordNavNotificationBtn}
-                  onPress={() => setActiveTab('popups')}
-                  activeOpacity={0.8}
-                  title="Notificações"
-                >
-                  <Text style={{ fontSize: 18 }}>🔔</Text>
-                </TouchableOpacity>
+            <View style={styles.coordNavButtonsGroup}>
+              <TouchableOpacity
+                style={styles.coordNavNotificationBtn}
+                onPress={() => setActiveTab('mensagens')}
+                activeOpacity={0.8}
+                title="Mensagens"
+              >
+                <Text style={{ fontSize: 16 }}>ðŸ””</Text>
+                {mensagensList.length > 0 && (
+                  <View style={styles.navNotifDot} />
+                )}
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.coordNavVoltarBtn}
-                  onPress={() => router.push('/')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.coordNavVoltarBtnText}>VOLTAR</Text>
-                </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.coordNavVoltarBtn}
+                onPress={() => router.push('/')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.coordNavVoltarBtnText}>VOLTAR</Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.coordNavSairBtn}
-                  onPress={handleBloquearPainel}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.coordNavSairBtnText}>SAIR</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.coordNavSairBtn}
+                onPress={handleBloquearPainel}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.coordNavSairBtnText}>SAIR</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Filtro de KPIs / Visão Geral (Refinado) */}
+        {/* Filtro de KPIs / VisÃ£o Geral (Refinado) */}
         <View style={styles.overviewSummaryCardLight}>
           <View style={styles.overviewSummaryLeft}>
             <View style={styles.overviewSummaryIconBox}>
-              <Text style={{ fontSize: 22, color: '#ffffff' }}>📊</Text>
+              <Text style={{ fontSize: 22, color: '#ffffff' }}>ðŸ“Š</Text>
             </View>
             <View>
-              <Text style={styles.overviewSummaryTitle}>VISÃO GERAL</Text>
-              <Text style={styles.overviewSummarySubtitle}>Análise de métricas e performance</Text>
+              <Text style={styles.overviewSummaryTitle}>VISÃƒO GERAL</Text>
+              <Text style={styles.overviewSummarySubtitle}>AnÃ¡lise de mÃ©tricas e performance</Text>
             </View>
           </View>
 
           <View style={styles.overviewSummaryRight}>
             <View style={styles.overviewMonthSelectorLight}>
-              <Text style={styles.overviewMonthText}>📅 {nomeMesAtual}</Text>
+              <Text style={styles.overviewMonthText}>ðŸ“… {nomeMesAtual}</Text>
             </View>
             <TouchableOpacity
               style={styles.overviewBtnFiltrar}
               onPress={() => carregarRelatorios()}
               activeOpacity={0.8}
             >
-              <Text style={styles.overviewBtnFiltrarText}>FILTRAR ›</Text>
+              <Text style={styles.overviewBtnFiltrarText}>FILTRAR â€º</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Seção de 4 KPIs / Métricas Principais */}
+        {/* SeÃ§Ã£o de 4 KPIs / MÃ©tricas Principais */}
         <View style={styles.kpiCardsGrid}>
-          {/* Card 1: Neste Mês */}
+          {/* Card 1: Neste MÃªs */}
           <View style={[styles.kpiMetricCard, styles.kpiMetricCardMes]}>
             <View style={styles.kpiMetricTopRow}>
-              <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>NESTE MÊS</Text>
-              <Text style={{ fontSize: 14 }}>📅</Text>
+              <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>NESTE MÃŠS</Text>
+              <Text style={{ fontSize: 14 }}>ðŸ“…</Text>
             </View>
             <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{relatoriosMesCount}</Text>
-            <Text style={styles.kpiMetricFootnote}>Atendimentos no mês atual</Text>
+            <Text style={styles.kpiMetricFootnote}>Atendimentos no mÃªs atual</Text>
           </View>
 
           {/* Card 2: Total Geral */}
           <View style={[styles.kpiMetricCard, styles.kpiMetricCardTotal]}>
             <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#2563eb' }]}>TOTAL GERAL</Text>
-              <Text style={{ fontSize: 14 }}>📊</Text>
+              <Text style={{ fontSize: 14 }}>ðŸ“Š</Text>
             </View>
             <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{totalRelatoriosGeral}</Text>
-            <Text style={styles.kpiMetricFootnote}>Relatórios emitidos</Text>
+            <Text style={styles.kpiMetricFootnote}>RelatÃ³rios emitidos</Text>
           </View>
 
           {/* Card 3: Hoje */}
           <View style={[styles.kpiMetricCard, styles.kpiMetricCardHoje]}>
             <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#ea580c' }]}>HOJE</Text>
-              <Text style={{ fontSize: 14 }}>⚡</Text>
+              <Text style={{ fontSize: 14 }}>âš¡</Text>
             </View>
             <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{relatoriosHojeCount}</Text>
-            <Text style={styles.kpiMetricFootnote}>Relatórios gerados hoje</Text>
+            <Text style={styles.kpiMetricFootnote}>RelatÃ³rios gerados hoje</Text>
           </View>
 
-          {/* Card 4: Usuários */}
+          {/* Card 4: UsuÃ¡rios */}
           <View style={[styles.kpiMetricCard, styles.kpiMetricCardUsuarios]}>
             <View style={styles.kpiMetricTopRow}>
-              <Text style={[styles.kpiMetricLabel, { color: '#7c3aed' }]}>USUÁRIOS</Text>
-              <Text style={{ fontSize: 14 }}>👥</Text>
+              <Text style={[styles.kpiMetricLabel, { color: '#7c3aed' }]}>USUÃRIOS</Text>
+              <Text style={{ fontSize: 14 }}>ðŸ‘¥</Text>
             </View>
             <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{usuarios.length > 0 ? usuarios.length : 10}</Text>
             <Text style={styles.kpiMetricFootnote}>Contas registradas</Text>
           </View>
         </View>
 
-        {/* Abas de Navegação */}
-        <View style={styles.tabsBarRow}>
-          <TouchableOpacity
-            style={[styles.tabNavButton, activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-            onPress={() => setActiveTab('relatorios')}
-            activeOpacity={0.85}
-          >
-            <Text style={{ fontSize: 13, marginRight: 6 }}>📊</Text>
-            <Text style={[styles.tabNavButtonText, activeTab === 'relatorios' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-              RELATÓRIOS
-            </Text>
-          </TouchableOpacity>
+        {/* Abas de NavegaÃ§Ã£o (Scroll horizontal suave e responsivo em qualquer tela) */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabsScrollView}
+          contentContainerStyle={styles.tabsScrollContent}
+        >
+          <View style={styles.tabsBarRow}>
+            <TouchableOpacity
+              style={[styles.tabNavButton, activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              onPress={() => setActiveTab('relatorios')}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 13, marginRight: 6 }}>ðŸ“Š</Text>
+              <Text style={[styles.tabNavButtonText, activeTab === 'relatorios' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+                RELATÃ“RIOS
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabNavButton, activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-            onPress={() => setActiveTab('ranking')}
-            activeOpacity={0.85}
-          >
-            <Text style={{ fontSize: 13, marginRight: 6 }}>🏆</Text>
-            <Text style={[styles.tabNavButtonText, activeTab === 'ranking' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-              RANKING
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabNavButton, activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              onPress={() => setActiveTab('ranking')}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 13, marginRight: 6 }}>ðŸ†</Text>
+              <Text style={[styles.tabNavButtonText, activeTab === 'ranking' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+                RANKING
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabNavButton, activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-            onPress={() => setActiveTab('popups')}
-            activeOpacity={0.85}
-          >
-            <Text style={{ fontSize: 13, marginRight: 6 }}>📢</Text>
-            <Text style={[styles.tabNavButtonText, activeTab === 'popups' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-              POP-UPS
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabNavButton, activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              onPress={() => setActiveTab('popups')}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 13, marginRight: 6 }}>ðŸ“¢</Text>
+              <Text style={[styles.tabNavButtonText, activeTab === 'popups' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+                POP-UPS
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabNavButton, activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-            onPress={() => setActiveTab('mensagens')}
-            activeOpacity={0.85}
-          >
-            <Text style={{ fontSize: 13, marginRight: 6 }}>💬</Text>
-            <Text style={[styles.tabNavButtonText, activeTab === 'mensagens' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-              MENSAGENS
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabNavButton, activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              onPress={() => setActiveTab('mensagens')}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 13, marginRight: 6 }}>ðŸ’¬</Text>
+              <Text style={[styles.tabNavButtonText, activeTab === 'mensagens' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+                MENSAGENS
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabNavButton, activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-            onPress={() => {
-              setActiveTab('seguranca');
-              carregarSeguranca();
-            }}
-            activeOpacity={0.85}
-          >
-            <Text style={{ fontSize: 13, marginRight: 6 }}>🛡️</Text>
-            <Text style={[styles.tabNavButtonText, activeTab === 'seguranca' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-              SEGURANÇA
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabNavButton, activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              onPress={() => {
+                setActiveTab('seguranca');
+                carregarSeguranca();
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 13, marginRight: 6 }}>ðŸ›¡ï¸</Text>
+              <Text style={[styles.tabNavButtonText, activeTab === 'seguranca' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+                SEGURANÃ‡A
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabNavButton, activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-            onPress={() => setActiveTab('sistema')}
-            activeOpacity={0.85}
-          >
-            <Text style={{ fontSize: 13, marginRight: 6 }}>⚙️</Text>
-            <Text style={[styles.tabNavButtonText, activeTab === 'sistema' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-              SISTEMA
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabNavButton, activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              onPress={() => setActiveTab('sistema')}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 13, marginRight: 6 }}>âš™ï¸</Text>
+              <Text style={[styles.tabNavButtonText, activeTab === 'sistema' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+                SISTEMA
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tabNavButton, activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-            onPress={() => setActiveTab('version')}
-            activeOpacity={0.85}
-          >
-            <Text style={{ fontSize: 13, marginRight: 6 }}>🏷️</Text>
-            <Text style={[styles.tabNavButtonText, activeTab === 'version' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-              VERSION
-            </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[styles.tabNavButton, activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              onPress={() => setActiveTab('version')}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 13, marginRight: 6 }}>ðŸ·ï¸</Text>
+              <Text style={[styles.tabNavButtonText, activeTab === 'version' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+                VERSION
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
 
-        {/* ════════════════ ABA 1: RELATÓRIOS GERAIS (CARD UNIFICADO) ════════════════ */}
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ABA 1: RELATÃ“RIOS GERAIS (CARD UNIFICADO) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === 'relatorios' && (
           <View style={styles.tabContent}>
             <View style={styles.unifiedReportsCard}>
-              {/* Cabeçalho de Filtros */}
+              {/* CabeÃ§alho de Filtros */}
               <View style={styles.reportsFilterSection}>
                 <View style={styles.reportsFilterHeaderRow}>
-                  <Text style={{ fontSize: 16 }}>📊</Text>
-                  <Text style={styles.reportsFilterHeaderTitle}>RELATÓRIOS GERADOS</Text>
+                  <Text style={{ fontSize: 16 }}>ðŸ“Š</Text>
+                  <Text style={styles.reportsFilterHeaderTitle}>RELATÃ“RIOS GERADOS</Text>
                 </View>
 
                 <View style={styles.reportsFilterRow}>
@@ -1324,9 +1481,9 @@ export default function PainelCoordScreen() {
                     />
                   </View>
 
-                  {/* ATÉ */}
+                  {/* ATÃ‰ */}
                   <View style={styles.reportsFilterFieldBox}>
-                    <Text style={styles.reportsFilterFieldLabel}>ATÉ:</Text>
+                    <Text style={styles.reportsFilterFieldLabel}>ATÃ‰:</Text>
                     <TextInput
                       style={styles.reportsFilterInput}
                       placeholder="dd/mm/aaaa"
@@ -1336,11 +1493,11 @@ export default function PainelCoordScreen() {
                     />
                   </View>
 
-                  {/* Buscar Usuário */}
+                  {/* Buscar UsuÃ¡rio */}
                   <View style={[styles.reportsFilterFieldBox, { minWidth: 150, flex: 1 }]}>
                     <TextInput
                       style={styles.reportsFilterInputNoBorder}
-                      placeholder="Buscar usuário..."
+                      placeholder="Buscar usuÃ¡rio..."
                       placeholderTextColor="#94a3b8"
                       value={filtroBuscaUsuario}
                       onChangeText={setFiltroBuscaUsuario}
@@ -1370,10 +1527,10 @@ export default function PainelCoordScreen() {
                     <Text style={styles.reportsDropdownBtnText} numberOfLines={1}>
                       {filtroEmpresa === 'TODAS' ? 'Empresa...' : filtroEmpresa}
                     </Text>
-                    <Text style={styles.reportsDropdownChevron}>▾</Text>
+                    <Text style={styles.reportsDropdownChevron}>â–¾</Text>
                   </TouchableOpacity>
 
-                  {/* Usuário Dropdown */}
+                  {/* UsuÃ¡rio Dropdown */}
                   <TouchableOpacity
                     style={[styles.reportsFilterFieldBox, styles.reportsDropdownBtn]}
                     onPress={() => {
@@ -1383,12 +1540,12 @@ export default function PainelCoordScreen() {
                     activeOpacity={0.8}
                   >
                     <Text style={styles.reportsDropdownBtnText} numberOfLines={1}>
-                      {filtroUsuarioId ? (usuarios.find((u) => u.id === filtroUsuarioId)?.nome || 'Usuário...') : 'Usuário...'}
+                      {filtroUsuarioId ? (usuarios.find((u) => u.id === filtroUsuarioId)?.nome || 'UsuÃ¡rio...') : 'UsuÃ¡rio...'}
                     </Text>
-                    <Text style={styles.reportsDropdownChevron}>▾</Text>
+                    <Text style={styles.reportsDropdownChevron}>â–¾</Text>
                   </TouchableOpacity>
 
-                  {/* Botões FILTRAR e LIMPAR */}
+                  {/* BotÃµes FILTRAR e LIMPAR */}
                   <TouchableOpacity
                     style={styles.btnReportsFiltrar}
                     onPress={() => {
@@ -1419,8 +1576,8 @@ export default function PainelCoordScreen() {
                         setIsUsuarioDropdownOpen(false);
                       }}
                     >
-                      <Text style={styles.coordDropdownOptionText}>TODOS OS USUÁRIOS</Text>
-                      {!filtroUsuarioId && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
+                      <Text style={styles.coordDropdownOptionText}>TODOS OS USUÃRIOS</Text>
+                      {!filtroUsuarioId && <Text style={styles.coordDropdownOptionCheck}>âœ“</Text>}
                     </TouchableOpacity>
                     {usuarios.map((u) => (
                       <TouchableOpacity
@@ -1434,7 +1591,7 @@ export default function PainelCoordScreen() {
                         <Text style={styles.coordDropdownOptionText}>
                           {u.nome || u.username} ({u.username})
                         </Text>
-                        {filtroUsuarioId === u.id && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
+                        {filtroUsuarioId === u.id && <Text style={styles.coordDropdownOptionCheck}>âœ“</Text>}
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -1462,7 +1619,7 @@ export default function PainelCoordScreen() {
                         >
                           {opt}
                         </Text>
-                        {filtroEmpresa === opt && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
+                        {filtroEmpresa === opt && <Text style={styles.coordDropdownOptionCheck}>âœ“</Text>}
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -1475,17 +1632,17 @@ export default function PainelCoordScreen() {
                 <Text style={styles.reportsListHeaderText}>EMPRESA</Text>
               </View>
 
-              {/* Listagem de Relatórios */}
+              {/* Listagem de RelatÃ³rios */}
               {loading ? (
                 <View style={styles.loadingBox}>
                   <ActivityIndicator size="large" color="#0284c7" />
-                  <Text style={styles.loadingText}>Carregando relatórios...</Text>
+                  <Text style={styles.loadingText}>Carregando relatÃ³rios...</Text>
                 </View>
               ) : relatorios.length === 0 ? (
                 <View style={styles.emptyBox}>
-                  <Text style={{ fontSize: 36, marginBottom: 8 }}>📭</Text>
-                  <Text style={styles.emptyTitle}>Nenhum relatório encontrado</Text>
-                  <Text style={styles.emptySubtitle}>Ajuste os filtros ou verifique a conexão com o banco de dados.</Text>
+                  <Text style={{ fontSize: 36, marginBottom: 8 }}>ðŸ“­</Text>
+                  <Text style={styles.emptyTitle}>Nenhum relatÃ³rio encontrado</Text>
+                  <Text style={styles.emptySubtitle}>Ajuste os filtros ou verifique a conexÃ£o com o banco de dados.</Text>
                 </View>
               ) : (
                 <View style={styles.reportsListContainer}>
@@ -1500,7 +1657,7 @@ export default function PainelCoordScreen() {
                         minute: '2-digit',
                       })
                       : 'N/A';
-                    const preposto = parsed?.preposto || usuarios.find((u) => u.id === item.usuario_id)?.nome || 'NÃO INFORMADO';
+                    const preposto = parsed?.preposto || usuarios.find((u) => u.id === item.usuario_id)?.nome || 'NÃƒO INFORMADO';
                     const ipOrigem = item.ip_origem || 'N/A';
                     const badgeStyle = getCompanyBadgeStyle(item.empresa);
 
@@ -1518,21 +1675,21 @@ export default function PainelCoordScreen() {
                         </View>
 
                         <Text style={styles.reportsItemSub} numberOfLines={1}>
-                          POR: 🌐 IP: {ipOrigem} ({preposto.toUpperCase()})
+                          POR: ðŸŒ IP: {ipOrigem} ({preposto.toUpperCase()})
                         </Text>
 
                         <View style={styles.reportsItemTimeRow}>
-                          <Text style={styles.reportsItemTimeText}>🕒 {dataFormatada}</Text>
+                          <Text style={styles.reportsItemTimeText}>ðŸ•’ {dataFormatada}</Text>
                         </View>
 
-                        {/* Botões de Ação */}
+                        {/* BotÃµes de AÃ§Ã£o */}
                         <View style={styles.reportsActionPillsRow}>
                           <TouchableOpacity
                             style={[styles.actionPill, styles.actionPillDownload]}
                             onPress={() => openReportPdf(item)}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.actionPillDownloadText}>📥 DOWNLOAD</Text>
+                            <Text style={styles.actionPillDownloadText}>ðŸ“¥ DOWNLOAD</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -1540,7 +1697,7 @@ export default function PainelCoordScreen() {
                             onPress={() => handleVisualizarRelatorio(item)}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.actionPillVisualizarText}>👁️ VISUALIZAR</Text>
+                            <Text style={styles.actionPillVisualizarText}>ðŸ‘ï¸ VISUALIZAR</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -1548,7 +1705,7 @@ export default function PainelCoordScreen() {
                             onPress={() => router.push(`/?editId=${item.id}`)}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.actionPillEditarText}>✏️ EDITAR</Text>
+                            <Text style={styles.actionPillEditarText}>âœï¸ EDITAR</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -1556,7 +1713,7 @@ export default function PainelCoordScreen() {
                             onPress={() => shareWhatsApp(item)}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.actionPillCompartilharText}>💬 COMPARTILHAR</Text>
+                            <Text style={styles.actionPillCompartilharText}>ðŸ’¬ COMPARTILHAR</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -1564,7 +1721,7 @@ export default function PainelCoordScreen() {
                             onPress={() => handleExcluirRelatorio(item.id)}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.actionPillExcluirText}>🗑️ EXCLUIR</Text>
+                            <Text style={styles.actionPillExcluirText}>ðŸ—‘ï¸ EXCLUIR</Text>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -1573,7 +1730,7 @@ export default function PainelCoordScreen() {
                 </View>
               )}
 
-              {/* Paginação */}
+              {/* PaginaÃ§Ã£o */}
               <View style={styles.paginationRow}>
                 <TouchableOpacity
                   style={[styles.pageBtn, paginaRelatorios <= 1 && styles.pageBtnDisabled]}
@@ -1581,11 +1738,11 @@ export default function PainelCoordScreen() {
                   onPress={() => setPaginaRelatorios((p) => Math.max(1, p - 1))}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.pageBtnText}>← ANTERIOR</Text>
+                  <Text style={styles.pageBtnText}>â† ANTERIOR</Text>
                 </TouchableOpacity>
 
                 <Text style={styles.pageIndicatorText}>
-                  PÁGINA {paginaRelatorios} DE {Math.max(1, Math.ceil(totalRelatoriosGeral / porPagina))}
+                  PÃGINA {paginaRelatorios} DE {Math.max(1, Math.ceil(totalRelatoriosGeral / porPagina))}
                 </Text>
 
                 <TouchableOpacity
@@ -1594,25 +1751,25 @@ export default function PainelCoordScreen() {
                   onPress={() => setPaginaRelatorios((p) => p + 1)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.pageBtnText}>PRÓXIMA →</Text>
+                  <Text style={styles.pageBtnText}>PRÃ“XIMA â†’</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         )}
 
-        {/* ════════════════ ABA 2: RANKING / TOP GERADORES (IGUAL COORD/INDEX.PHP) ════════════════ */}
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ABA 2: RANKING / TOP GERADORES (IGUAL COORD/INDEX.PHP) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === 'ranking' && (
           <View style={styles.tabContent}>
             <View style={styles.rankingCard}>
               <View style={styles.rankingHeader}>
                 <View style={styles.rankingHeaderLeft}>
                   <View style={styles.rankingIconBox}>
-                    <Text style={{ fontSize: 20, color: '#ffffff' }}>🏆</Text>
+                    <Text style={{ fontSize: 20, color: '#ffffff' }}>ðŸ†</Text>
                   </View>
                   <View>
                     <Text style={styles.rankingTitle}>TOP GERADORES</Text>
-                    <Text style={styles.rankingSubtitle}>Ranking dos que mais geraram relatórios</Text>
+                    <Text style={styles.rankingSubtitle}>Ranking dos que mais geraram relatÃ³rios</Text>
                   </View>
                 </View>
               </View>
@@ -1620,10 +1777,10 @@ export default function PainelCoordScreen() {
               {/* Tabela do Ranking */}
               <View style={styles.rankingTableHeaderRow}>
                 <View style={styles.rankingColPos}>
-                  <Text style={styles.rankingTableHeaderText}>POSIÇÃO</Text>
+                  <Text style={styles.rankingTableHeaderText}>POSIÃ‡ÃƒO</Text>
                 </View>
                 <View style={styles.rankingColUser}>
-                  <Text style={styles.rankingTableHeaderText}>USUÁRIO / PREPOSTO</Text>
+                  <Text style={styles.rankingTableHeaderText}>USUÃRIO / PREPOSTO</Text>
                 </View>
                 <View style={styles.rankingColTotal}>
                   <Text style={styles.rankingTableHeaderText}>TOTAL</Text>
@@ -1675,21 +1832,21 @@ export default function PainelCoordScreen() {
           </View>
         )}
 
-        {/* ════════════════ ABA 3: USUÁRIOS & PERMISSÕES ════════════════ */}
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ABA 3: USUÃRIOS & PERMISSÃ•ES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === 'usuarios' && (
           <View style={styles.tabContent}>
             <View style={[styles.sectionCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
               <View style={styles.sectionHeader}>
-                <Text style={{ fontSize: 24 }}>👥</Text>
+                <Text style={{ fontSize: 24 }}>ðŸ‘¥</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>GERENCIAMENTO DE USUÁRIOS</Text>
-                  <Text style={styles.sectionSubtitle}>Controle de permissões (Nível 1 Básico vs Nível 2 Coordenação)</Text>
+                  <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>GERENCIAMENTO DE USUÃRIOS</Text>
+                  <Text style={styles.sectionSubtitle}>Controle de permissÃµes (NÃ­vel 1 BÃ¡sico vs NÃ­vel 2 CoordenaÃ§Ã£o)</Text>
                 </View>
               </View>
 
-              {/* Barra de Busca de Usuário */}
+              {/* Barra de Busca de UsuÃ¡rio */}
               <View style={styles.searchBox}>
-                <Text style={styles.searchIcon}>🔍</Text>
+                <Text style={styles.searchIcon}>ðŸ”</Text>
                 <TextInput
                   style={[styles.searchInput, !isDarkMode && { color: '#0f172a' }]}
                   placeholder="Filtrar por nome, username ou e-mail..."
@@ -1699,7 +1856,7 @@ export default function PainelCoordScreen() {
                 />
               </View>
 
-              {/* Tabela de Usuários */}
+              {/* Tabela de UsuÃ¡rios */}
               <View style={styles.userList}>
                 {usuariosFiltrados.map((u) => {
                   const nivelNum = Number(u.nivel_autoridade) || 1;
@@ -1727,7 +1884,7 @@ export default function PainelCoordScreen() {
                                 isCoord ? { color: '#f59e0b' } : { color: '#06b6d4' },
                               ]}
                             >
-                              {isCoord ? '🛡️ NÍVEL 2 - COORDENAÇÃO' : '👤 NÍVEL 1 - BÁSICO'}
+                              {isCoord ? 'ðŸ›¡ï¸ NÃVEL 2 - COORDENAÃ‡ÃƒO' : 'ðŸ‘¤ NÃVEL 1 - BÃSICO'}
                             </Text>
                           </View>
                         </View>
@@ -1745,7 +1902,7 @@ export default function PainelCoordScreen() {
                           onPress={() => handleAlterarNivelUsuario(u.id, nivelNum)}
                         >
                           <Text style={styles.toggleRoleBtnText}>
-                            {isCoord ? '⬇️ Rebaixar para Nível 1' : '⬆️ Promover para Nível 2'}
+                            {isCoord ? 'â¬‡ï¸ Rebaixar para NÃ­vel 1' : 'â¬†ï¸ Promover para NÃ­vel 2'}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -1757,16 +1914,16 @@ export default function PainelCoordScreen() {
           </View>
         )}
 
-        {/* ════════════════ ABA 4: COMUNICADOS / POP-UPS ════════════════ */}
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ABA 4: COMUNICADOS / POP-UPS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === 'popups' && (
           <View style={styles.tabContent}>
             <View style={[styles.sectionCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
               <View style={[styles.sectionHeader, { justifyContent: 'space-between', alignItems: 'center' }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <Text style={{ fontSize: 24 }}>📢</Text>
+                  <Text style={{ fontSize: 24 }}>ðŸ“¢</Text>
                   <View>
                     <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>COMUNICADOS GLOBAIS</Text>
-                    <Text style={styles.sectionSubtitle}>Notificações e avisos exibidos para os usuários no app</Text>
+                    <Text style={styles.sectionSubtitle}>NotificaÃ§Ãµes e avisos exibidos para os usuÃ¡rios no app</Text>
                   </View>
                 </View>
 
@@ -1800,7 +1957,7 @@ export default function PainelCoordScreen() {
                             style={[styles.statusTogglePill, ativa ? styles.statusActive : styles.statusInactive]}
                             onPress={() => handleTogglePopup(p.id, p.ativa)}
                           >
-                            <Text style={styles.statusTogglePillText}>{ativa ? '● ATIVO' : '○ INATIVO'}</Text>
+                            <Text style={styles.statusTogglePillText}>{ativa ? 'â— ATIVO' : 'â—‹ INATIVO'}</Text>
                           </TouchableOpacity>
                         </View>
 
@@ -1826,60 +1983,60 @@ export default function PainelCoordScreen() {
           </View>
         )}
 
-        {/* ════════════════ ABA 5: SISTEMA & STATUS ════════════════ */}
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ABA 5: SISTEMA & STATUS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === 'sistema' && (
           <View style={styles.tabContent}>
             <View style={[styles.sectionCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
               <View style={styles.sectionHeader}>
-                <Text style={{ fontSize: 24 }}>⚙️</Text>
+                <Text style={{ fontSize: 24 }}>âš™ï¸</Text>
                 <View>
-                  <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>DIAGNÓSTICO E INTEGRIDADE</Text>
-                  <Text style={styles.sectionSubtitle}>Status das conexões e serviços da plataforma demonstrativa</Text>
+                  <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>DIAGNÃ“STICO E INTEGRIDADE</Text>
+                  <Text style={styles.sectionSubtitle}>Status das conexÃµes e serviÃ§os da plataforma demonstrativa</Text>
                 </View>
               </View>
 
               <View style={styles.sysStatusGrid}>
                 <View style={[styles.sysStatusCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
                   <Text style={styles.sysStatusLabel}>BANCO DE DADOS CENTRAL (POSTGRESQL)</Text>
-                  <Text style={styles.sysStatusOnline}>● OPERACIONAL E CONECTADO</Text>
+                  <Text style={styles.sysStatusOnline}>â— OPERACIONAL E CONECTADO</Text>
                   <Text style={styles.sysStatusInfo}>STATUS: Servidor Nuvem Ativo (Criptografia SSL)</Text>
                 </View>
 
                 <View style={[styles.sysStatusCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
                   <Text style={styles.sysStatusLabel}>STORAGE DE PDFS (BUCKET)</Text>
-                  <Text style={styles.sysStatusOnline}>● RELATORIOS_PDF ONLINE</Text>
+                  <Text style={styles.sysStatusOnline}>â— RELATORIOS_PDF ONLINE</Text>
                   <Text style={styles.sysStatusInfo}>Armazenamento direto em nuvem segura</Text>
                 </View>
 
                 <View style={[styles.sysStatusCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
-                  <Text style={styles.sysStatusLabel}>SESSÃO DO COORDENADOR</Text>
+                  <Text style={styles.sysStatusLabel}>SESSÃƒO DO COORDENADOR</Text>
                   <Text style={[styles.sysStatusVal, !isDarkMode && { color: '#0f172a' }]}>
-                    {userSession?.user?.user_metadata?.name || userSession?.user?.email || 'Nível 2'}
+                    {userSession?.user?.user_metadata?.name || userSession?.user?.email || 'NÃ­vel 2'}
                   </Text>
-                  <Text style={styles.sysStatusInfo}>Autoridade: Nível 2 / Coordenação</Text>
+                  <Text style={styles.sysStatusInfo}>Autoridade: NÃ­vel 2 / CoordenaÃ§Ã£o</Text>
                 </View>
 
                 <View style={[styles.sysStatusCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
-                  <Text style={styles.sysStatusLabel}>VERSÃO DO APLICATIVO</Text>
+                  <Text style={styles.sysStatusLabel}>VERSÃƒO DO APLICATIVO</Text>
                   <Text style={[styles.sysStatusVal, !isDarkMode && { color: '#0f172a' }]}>v2.4.0 (Build Nuvem)</Text>
                   <Text style={styles.sysStatusInfo}>Expo SDK 54 / React Native Web</Text>
                 </View>
               </View>
             </View>
 
-            {/* Card de Personalização do Rodapé (Footer) */}
+            {/* Card de PersonalizaÃ§Ã£o do RodapÃ© (Footer) */}
             <View style={[styles.sectionCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }, { marginTop: 20 }]}>
               <View style={styles.sectionHeader}>
-                <Text style={{ fontSize: 24 }}>🎨</Text>
+                <Text style={{ fontSize: 24 }}>ðŸŽ¨</Text>
                 <View>
-                  <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>PERSONALIZAÇÃO DO RODAPÉ (FOOTER)</Text>
-                  <Text style={styles.sectionSubtitle}>Altere os textos, cores, negrito e versão do rodapé oficial do documento e do sistema</Text>
+                  <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>PERSONALIZAÃ‡ÃƒO DO RODAPÃ‰ (FOOTER)</Text>
+                  <Text style={styles.sectionSubtitle}>Altere os textos, cores, negrito e versÃ£o do rodapÃ© oficial do documento e do sistema</Text>
                 </View>
               </View>
 
-              {/* Live Preview do Rodapé */}
+              {/* Live Preview do RodapÃ© */}
               <View style={[styles.footerPreviewCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
-                <Text style={styles.footerPreviewLabel}>PRÉVIA EM TEMPO REAL DO RODAPÉ:</Text>
+                <Text style={styles.footerPreviewLabel}>PRÃ‰VIA EM TEMPO REAL DO RODAPÃ‰:</Text>
                 <View style={styles.footerPreviewBox}>
                   <Text style={styles.footerPreviewText}>
                     {footerDraft.prefixo}
@@ -1902,13 +2059,13 @@ export default function PainelCoordScreen() {
                     </Text>
                   </Text>
                   <View style={styles.footerPreviewBadge}>
-                    <Text style={styles.footerPreviewBadgeIcon}>⬡</Text>
+                    <Text style={styles.footerPreviewBadgeIcon}>â¬¡</Text>
                     <Text style={styles.footerPreviewBadgeText}>{footerDraft.versao}</Text>
                   </View>
                 </View>
               </View>
 
-              {/* Formulário de Configuração do Rodapé */}
+              {/* FormulÃ¡rio de ConfiguraÃ§Ã£o do RodapÃ© */}
               <View style={styles.footerFormGrid}>
                 {/* Prefixo */}
                 <View style={styles.footerFormField}>
@@ -1952,7 +2109,7 @@ export default function PainelCoordScreen() {
                       activeOpacity={0.8}
                     >
                       <Text style={[styles.btnToggleBoldText, footerDraft.negrito1 && styles.btnToggleBoldTextActive]}>
-                        {footerDraft.negrito1 ? '✓ Negrito Ativo' : 'Negrito Desativado'}
+                        {footerDraft.negrito1 ? 'âœ“ Negrito Ativo' : 'Negrito Desativado'}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1965,7 +2122,7 @@ export default function PainelCoordScreen() {
                     style={[styles.footerInput, !isDarkMode && styles.footerInputLight]}
                     value={footerDraft.conector}
                     onChangeText={(val) => setFooterDraft((prev) => ({ ...prev, conector: val }))}
-                    placeholder="Ex:  © PARA "
+                    placeholder="Ex:  Â© PARA "
                     placeholderTextColor="#64748b"
                   />
                 </View>
@@ -1977,7 +2134,7 @@ export default function PainelCoordScreen() {
                     style={[styles.footerInput, !isDarkMode && styles.footerInputLight]}
                     value={footerDraft.destaque2}
                     onChangeText={(val) => setFooterDraft((prev) => ({ ...prev, destaque2: val }))}
-                    placeholder="Ex: MMS SUPORTE LOGÍSTICO"
+                    placeholder="Ex: MMS SUPORTE LOGÃSTICO"
                     placeholderTextColor="#64748b"
                   />
                   <View style={styles.footerControlRow}>
@@ -2000,15 +2157,15 @@ export default function PainelCoordScreen() {
                       activeOpacity={0.8}
                     >
                       <Text style={[styles.btnToggleBoldText, footerDraft.negrito2 && styles.btnToggleBoldTextActive]}>
-                        {footerDraft.negrito2 ? '✓ Negrito Ativo' : 'Negrito Desativado'}
+                        {footerDraft.negrito2 ? 'âœ“ Negrito Ativo' : 'Negrito Desativado'}
                       </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
 
-                {/* Versão do App */}
+                {/* VersÃ£o do App */}
                 <View style={styles.footerFormField}>
-                  <Text style={[styles.footerInputLabel, !isDarkMode && { color: '#334155' }]}>VERSÃO NO BADGE:</Text>
+                  <Text style={[styles.footerInputLabel, !isDarkMode && { color: '#334155' }]}>VERSÃƒO NO BADGE:</Text>
                   <TextInput
                     style={[styles.footerInput, !isDarkMode && styles.footerInputLight]}
                     value={footerDraft.versao}
@@ -2019,7 +2176,7 @@ export default function PainelCoordScreen() {
                 </View>
               </View>
 
-              {/* Botão de Salvar Alterações */}
+              {/* BotÃ£o de Salvar AlteraÃ§Ãµes */}
               <TouchableOpacity
                 style={styles.btnSalvarFooter}
                 onPress={handleSalvarFooter}
@@ -2029,35 +2186,35 @@ export default function PainelCoordScreen() {
                 {salvandoFooter ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <Text style={styles.btnSalvarFooterText}>💾 SALVAR CONFIGURAÇÃO DO FOOTER</Text>
+                  <Text style={styles.btnSalvarFooterText}>ðŸ’¾ SALVAR CONFIGURAÃ‡ÃƒO DO FOOTER</Text>
                 )}
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* ════════════════ ABA 4: MENSAGENS IN-APP ════════════════ */}
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ABA 4: MENSAGENS IN-APP (mms_mensagens) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === 'mensagens' && (
           <View style={styles.tabContent}>
             <View style={styles.cardContainer}>
-              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14, flexWrap: 'wrap', gap: 12 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 240 }}>
                   <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>💬</Text>
+                    <Text style={{ fontSize: 20 }}>ðŸ’¬</Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[styles.cardTitle, { color: '#0f172a' }]}>
                       MENSAGENS & COMUNICADOS DIRETOS
                     </Text>
                     <Text style={styles.cardSubtitle}>
-                      Envie comunicados e avisos aos usuários do gerador de relatórios
+                      Envie avisos diretamente para a central de notificaÃ§Ãµes dos prepostos
                     </Text>
                   </View>
                 </View>
 
                 <TouchableOpacity
-                  style={{ backgroundColor: '#2563eb', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
-                  onPress={() => setIsNovoPopupModalVisible(true)}
+                  style={{ backgroundColor: '#2563eb', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 }}
+                  onPress={() => setIsNovaMensagemModalVisible(true)}
                   activeOpacity={0.85}
                 >
                   <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 11, letterSpacing: 0.5 }}>
@@ -2066,68 +2223,111 @@ export default function PainelCoordScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
-                <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>TÍTULO</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>MENSAGEM</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 120 }]}>TIPO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA</Text>
-                </View>
-
-                {popups.length === 0 ? (
-                  <View style={{ padding: 28, alignItems: 'center' }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma mensagem cadastrada.</Text>
+              {/* Tabela de Mensagens com rolagem horizontal no mobile */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ width: '100%' }}>
+                <View style={[styles.versionTableContainer, { marginTop: 14, minWidth: 720 }]}>
+                  <View style={styles.versionTableHeaderRow}>
+                    <Text style={[styles.versionHeaderColText, { width: 160 }]}>TÃTULO</Text>
+                    <Text style={[styles.versionHeaderColText, { flex: 1, minWidth: 200 }]}>MENSAGEM</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 100 }]}>TIPO</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 140 }]}>DESTINATÃRIO</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 110 }]}>DATA</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 80 }]}>AÃ‡ÃƒO</Text>
                   </View>
-                ) : (
-                  popups.map((p, idx) => (
-                    <View key={p.id || idx} style={[styles.versionTableRow, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
-                      <View style={{ width: 180 }}>
-                        <Text style={{ fontWeight: '800', color: '#0f172a', fontSize: 12 }}>{p.titulo}</Text>
-                      </View>
-                      <View style={{ flex: 1, paddingRight: 8 }}>
-                        <Text style={{ color: '#475569', fontSize: 12 }} numberOfLines={2}>{p.mensagem}</Text>
-                      </View>
-                      <View style={{ width: 120 }}>
-                        <View style={{ backgroundColor: p.tipo === 'urgente' ? '#fee2e2' : '#e0f2fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' }}>
-                          <Text style={{ fontSize: 10, fontWeight: '800', color: p.tipo === 'urgente' ? '#dc2626' : '#0284c7', textTransform: 'uppercase' }}>
-                            {p.tipo || 'aviso'}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={{ width: 140 }}>
-                        <Text style={{ color: '#64748b', fontSize: 11 }}>
-                          {p.data_criacao ? new Date(p.data_criacao).toLocaleDateString('pt-BR') : 'N/A'}
-                        </Text>
-                      </View>
+
+                  {loadingMensagens ? (
+                    <View style={{ padding: 28, alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="#2563eb" />
+                      <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando mensagens...</Text>
                     </View>
-                  ))
-                )}
-              </View>
+                  ) : mensagensList.length === 0 ? (
+                    <View style={{ padding: 28, alignItems: 'center' }}>
+                      <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma mensagem cadastrada no momento.</Text>
+                    </View>
+                  ) : (
+                    mensagensList.map((m, idx) => {
+                      const destNome = m.destinatario_id
+                        ? usuarios.find((u) => u.id === m.destinatario_id)?.nome || `ID ${m.destinatario_id}`
+                        : 'Todos os UsuÃ¡rios';
+                      const dataStr = m.data_envio || m.created_at
+                        ? new Date(m.data_envio || m.created_at).toLocaleDateString('pt-BR')
+                        : 'Hoje';
+
+                      return (
+                        <View key={m.id || idx} style={[styles.versionTableRow, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
+                          <View style={{ width: 160 }}>
+                            <Text style={{ fontWeight: '800', color: '#0f172a', fontSize: 12 }}>{m.titulo}</Text>
+                          </View>
+                          <View style={{ flex: 1, minWidth: 200, paddingRight: 8 }}>
+                            <Text style={{ color: '#475569', fontSize: 12 }} numberOfLines={2}>{m.mensagem}</Text>
+                          </View>
+                          <View style={{ width: 100 }}>
+                            <View style={{
+                              backgroundColor: m.tipo === 'urgente' ? '#fee2e2' : m.tipo === 'aviso' ? '#ffedd5' : '#e0f2fe',
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              borderRadius: 6,
+                              alignSelf: 'flex-start'
+                            }}>
+                              <Text style={{
+                                fontSize: 10,
+                                fontWeight: '800',
+                                color: m.tipo === 'urgente' ? '#dc2626' : m.tipo === 'aviso' ? '#c2410c' : '#0284c7',
+                                textTransform: 'uppercase'
+                              }}>
+                                {m.tipo || 'info'}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: '#0f172a', fontSize: 11, fontWeight: '600' }} numberOfLines={1}>
+                              {destNome}
+                            </Text>
+                          </View>
+                          <View style={{ width: 110 }}>
+                            <Text style={{ color: '#64748b', fontSize: 11 }}>
+                              {dataStr}
+                            </Text>
+                          </View>
+                          <View style={{ width: 80 }}>
+                            <TouchableOpacity
+                              onPress={() => handleExcluirMensagem(m.id)}
+                              style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, backgroundColor: '#fee2e2' }}
+                            >
+                              <Text style={{ color: '#dc2626', fontSize: 11, fontWeight: '700' }}>Excluir</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+                </View>
+              </ScrollView>
             </View>
           </View>
         )}
 
-        {/* ════════════════ ABA 5: SEGURANÇA & AUDITORIA (LOGINS MAL SUCEDIDOS) ════════════════ */}
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ABA 5: SEGURANÃ‡A & AUDITORIA (LOGINS MAL SUCEDIDOS) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === 'seguranca' && (
           <View style={styles.tabContent}>
             {/* 1. TENTATIVAS DE ACESSO FALHO (LOGINS MAL SUCEDIDOS) */}
             <View style={styles.cardContainer}>
-              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14, flexWrap: 'wrap', gap: 12 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 240 }}>
                   <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>⚠️</Text>
+                    <Text style={{ fontSize: 20 }}>âš ï¸</Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[styles.cardTitle, { color: '#dc2626' }]}>
                       ACESSOS FALHOS AO PAINEL (LOGINS MAL SUCEDIDOS)
                     </Text>
                     <Text style={styles.cardSubtitle}>
-                      Histórico em tempo real de tentativas incorretas de login da coordenação gravadas no banco
+                      HistÃ³rico em tempo real de tentativas incorretas de login da coordenaÃ§Ã£o gravadas no banco
                     </Text>
                   </View>
                 </View>
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
                     <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
                       {acessosFalhos.length} TENTATIVAS FALHAS
@@ -2148,140 +2348,144 @@ export default function PainelCoordScreen() {
                 </View>
               </View>
 
-              {/* Tabela de Acessos Falhos */}
-              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
-                <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 160 }]}>USUÁRIO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>IP DE ORIGEM</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>DATA / HORA</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>NAVEGADOR / DISPOSITIVO</Text>
-                </View>
+              {/* Tabela de Acessos Falhos com rolagem horizontal suave */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ width: '100%' }}>
+                <View style={[styles.versionTableContainer, { marginTop: 14, minWidth: 700 }]}>
+                  <View style={styles.versionTableHeaderRow}>
+                    <Text style={[styles.versionHeaderColText, { width: 160 }]}>USUÃRIO</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 170 }]}>IP DE ORIGEM</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 170 }]}>DATA / HORA</Text>
+                    <Text style={[styles.versionHeaderColText, { flex: 1, minWidth: 200 }]}>NAVEGADOR / DISPOSITIVO</Text>
+                  </View>
 
-                {loadingSeguranca ? (
-                  <View style={{ padding: 32, alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#dc2626" />
-                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando histórico de segurança...</Text>
-                  </View>
-                ) : acessosFalhos.length === 0 ? (
-                  <View style={{ padding: 32, alignItems: 'center' }}>
-                    <Text style={{ color: '#059669', fontSize: 13, fontWeight: '700' }}>
-                      ✅ Nenhuma tentativa de acesso falha registrada.
-                    </Text>
-                  </View>
-                ) : (
-                  acessosFalhos.map((af, idx) => {
-                    const dataStr = af.data_tentativa
-                      ? new Date(af.data_tentativa).toLocaleString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })
-                      : 'N/A';
-                    return (
-                      <View
-                        key={af.id || idx}
-                        style={[
-                          styles.versionTableRow,
-                          idx % 2 === 1 && { backgroundColor: '#fff5f5' },
-                        ]}
-                      >
-                        <View style={{ width: 160 }}>
-                          <Text style={{ color: '#dc2626', fontWeight: '800', fontSize: 12 }}>
-                            {af.username || 'Desconhecido'}
-                          </Text>
+                  {loadingSeguranca ? (
+                    <View style={{ padding: 32, alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="#dc2626" />
+                      <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando histÃ³rico de seguranÃ§a...</Text>
+                    </View>
+                  ) : acessosFalhos.length === 0 ? (
+                    <View style={{ padding: 32, alignItems: 'center' }}>
+                      <Text style={{ color: '#059669', fontSize: 13, fontWeight: '700' }}>
+                        âœ… Nenhuma tentativa de acesso falha registrada.
+                      </Text>
+                    </View>
+                  ) : (
+                    acessosFalhos.map((af, idx) => {
+                      const dataStr = af.data_tentativa
+                        ? new Date(af.data_tentativa).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })
+                        : 'N/A';
+                      return (
+                        <View
+                          key={af.id || idx}
+                          style={[
+                            styles.versionTableRow,
+                            idx % 2 === 1 && { backgroundColor: '#fff5f5' },
+                          ]}
+                        >
+                          <View style={{ width: 160 }}>
+                            <Text style={{ color: '#dc2626', fontWeight: '800', fontSize: 12 }}>
+                              {af.username || 'Desconhecido'}
+                            </Text>
+                          </View>
+                          <View style={{ width: 170 }}>
+                            <Text style={{ color: '#475569', fontSize: 12, fontFamily: 'monospace' }}>
+                              ðŸŒ {af.ip || '127.0.0.1'}
+                            </Text>
+                          </View>
+                          <View style={{ width: 170 }}>
+                            <Text style={{ color: '#64748b', fontSize: 12 }}>
+                              ðŸ•’ {dataStr}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1, minWidth: 200 }}>
+                            <Text style={{ color: '#64748b', fontSize: 11 }} numberOfLines={1}>
+                              {af.user_agent || 'App / Browser'}
+                            </Text>
+                          </View>
                         </View>
-                        <View style={{ width: 170 }}>
-                          <Text style={{ color: '#475569', fontSize: 12, fontFamily: 'monospace' }}>
-                            🌐 {af.ip || '127.0.0.1'}
-                          </Text>
-                        </View>
-                        <View style={{ width: 170 }}>
-                          <Text style={{ color: '#64748b', fontSize: 12 }}>
-                            🕒 {dataStr}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: '#64748b', fontSize: 11 }} numberOfLines={1}>
-                            {af.user_agent || 'App / Browser'}
-                          </Text>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
+                      );
+                    })
+                  )}
+                </View>
+              </ScrollView>
             </View>
 
             {/* 2. AUDITORIA DE LOGINS BEM-SUCEDIDOS */}
             <View style={[styles.cardContainer, { marginTop: 16 }]}>
-              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14, flexWrap: 'wrap', gap: 12 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 240 }}>
                   <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>🛡️</Text>
+                    <Text style={{ fontSize: 20 }}>ðŸ›¡ï¸</Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[styles.cardTitle, { color: '#0f172a' }]}>
                       AUDITORIA DE LOGINS BEM-SUCEDIDOS
                     </Text>
                     <Text style={styles.cardSubtitle}>
-                      Histórico de autenticações autorizadas no sistema
+                      HistÃ³rico de autenticaÃ§Ãµes autorizadas no sistema
                     </Text>
                   </View>
                 </View>
               </View>
 
-              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
-                <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>USUÁRIO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>IP DE ACESSO</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>DATA / HORA</Text>
-                </View>
-
-                {ultimosLogins.length === 0 ? (
-                  <View style={{ padding: 24, alignItems: 'center' }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 12 }}>Nenhum login registrado.</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ width: '100%' }}>
+                <View style={[styles.versionTableContainer, { marginTop: 14, minWidth: 640 }]}>
+                  <View style={styles.versionTableHeaderRow}>
+                    <Text style={[styles.versionHeaderColText, { width: 180 }]}>USUÃRIO</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 180 }]}>IP DE ACESSO</Text>
+                    <Text style={[styles.versionHeaderColText, { flex: 1, minWidth: 200 }]}>DATA / HORA</Text>
                   </View>
-                ) : (
-                  ultimosLogins.map((lg, idx) => {
-                    const dataStr = lg.data_login
-                      ? new Date(lg.data_login).toLocaleString('pt-BR')
-                      : 'N/A';
-                    return (
-                      <View
-                        key={lg.id || idx}
-                        style={[
-                          styles.versionTableRow,
-                          idx % 2 === 1 && { backgroundColor: '#f8fafc' },
-                        ]}
-                      >
-                        <View style={{ width: 180 }}>
-                          <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>
-                            {lg.username || `ID ${lg.usuario_id}`}
-                          </Text>
+
+                  {ultimosLogins.length === 0 ? (
+                    <View style={{ padding: 24, alignItems: 'center' }}>
+                      <Text style={{ color: '#94a3b8', fontSize: 12 }}>Nenhum login registrado.</Text>
+                    </View>
+                  ) : (
+                    ultimosLogins.map((lg, idx) => {
+                      const dataStr = lg.data_login
+                        ? new Date(lg.data_login).toLocaleString('pt-BR')
+                        : 'N/A';
+                      return (
+                        <View
+                          key={lg.id || idx}
+                          style={[
+                            styles.versionTableRow,
+                            idx % 2 === 1 && { backgroundColor: '#f8fafc' },
+                          ]}
+                        >
+                          <View style={{ width: 180 }}>
+                            <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>
+                              {lg.username || `ID ${lg.usuario_id}`}
+                            </Text>
+                          </View>
+                          <View style={{ width: 180 }}>
+                            <Text style={{ color: '#475569', fontSize: 12, fontFamily: 'monospace' }}>
+                              ðŸŒ {lg.ip || '127.0.0.1'}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1, minWidth: 200 }}>
+                            <Text style={{ color: '#64748b', fontSize: 12 }}>
+                              ðŸ•’ {dataStr}
+                            </Text>
+                          </View>
                         </View>
-                        <View style={{ width: 180 }}>
-                          <Text style={{ color: '#475569', fontSize: 12, fontFamily: 'monospace' }}>
-                            🌐 {lg.ip || '127.0.0.1'}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: '#64748b', fontSize: 12 }}>
-                            🕒 {dataStr}
-                          </Text>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
+                      );
+                    })
+                  )}
+                </View>
+              </ScrollView>
             </View>
           </View>
         )}
 
-        {/* ════════════════ ABA 6: CONTROLE DE VERSÕES ════════════════ */}
+        {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ABA 6: CONTROLE DE VERSÃ•ES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         {activeTab === 'version' && (
           <View style={styles.tabContent}>
             {/* Card com Container Branco e Cantos Arredondados */}
@@ -2289,10 +2493,10 @@ export default function PainelCoordScreen() {
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardTitle, { color: '#0f172a' }]}>
-                    🏷️ CONTROLE DE VERSÕES DO SISTEMA
+                    ðŸ·ï¸ CONTROLE DE VERSÃ•ES DO SISTEMA
                   </Text>
                   <Text style={styles.cardSubtitle}>
-                    Registre e controle as atualizações do sistema manualmente. A versão cadastrada aqui é exibida no rodapé do gerador de relatórios.
+                    Registre e controle as atualizaÃ§Ãµes do sistema manualmente. A versÃ£o cadastrada aqui Ã© exibida no rodapÃ© do gerador de relatÃ³rios.
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -2300,22 +2504,22 @@ export default function PainelCoordScreen() {
                   onPress={carregarVersoes}
                   disabled={loadingVersoes}
                 >
-                  <Text style={styles.versionRefreshBtnText}>{loadingVersoes ? '⏳' : '🔄 Atualizar'}</Text>
+                  <Text style={styles.versionRefreshBtnText}>{loadingVersoes ? 'â³' : 'ðŸ”„ Atualizar'}</Text>
                 </TouchableOpacity>
               </View>
 
               {Boolean(msgSucessoVersao) && (
                 <View style={styles.versionSuccessAlert}>
-                  <Text style={styles.versionSuccessAlertText}>✓ {msgSucessoVersao}</Text>
+                  <Text style={styles.versionSuccessAlertText}>âœ“ {msgSucessoVersao}</Text>
                 </View>
               )}
 
-              {/* Formulário Novo Registro de Versão */}
+              {/* FormulÃ¡rio Novo Registro de VersÃ£o */}
               <View style={[styles.versionFormBox, !isDarkMode && styles.versionFormBoxLight]}>
                 <View style={styles.versionFormGrid}>
                   <View style={styles.versionFieldSmall}>
                     <Text style={[styles.versionInputLabel, !isDarkMode && { color: '#475569' }]}>
-                      VERSÃO (EX: V1.2.5) *
+                      VERSÃƒO (EX: V1.2.5) *
                     </Text>
                     <TextInput
                       style={[styles.versionInput, !isDarkMode && styles.versionInputLight, { fontWeight: '900' }]}
@@ -2329,13 +2533,13 @@ export default function PainelCoordScreen() {
 
                   <View style={styles.versionFieldLarge}>
                     <Text style={[styles.versionInputLabel, !isDarkMode && { color: '#475569' }]}>
-                      DESCRIÇÃO / NOTAS DE ATUALIZAÇÃO
+                      DESCRIÃ‡ÃƒO / NOTAS DE ATUALIZAÃ‡ÃƒO
                     </Text>
                     <TextInput
                       style={[styles.versionInput, !isDarkMode && styles.versionInputLight]}
                       value={inputVersaoDescricao}
                       onChangeText={setInputVersaoDescricao}
-                      placeholder="Ex: Correções de layout e pequenos ajustes..."
+                      placeholder="Ex: CorreÃ§Ãµes de layout e pequenos ajustes..."
                       placeholderTextColor="#94a3b8"
                     />
                   </View>
@@ -2350,29 +2554,29 @@ export default function PainelCoordScreen() {
                       {salvandoVersao ? (
                         <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
-                        <Text style={styles.btnSalvarVersaoText}>SALVAR VERSÃO</Text>
+                        <Text style={styles.btnSalvarVersaoText}>SALVAR VERSÃƒO</Text>
                       )}
                     </TouchableOpacity>
                   </View>
                 </View>
               </View>
 
-              {/* Tabela / Lista de Versões Cadastradas */}
+              {/* Tabela / Lista de VersÃµes Cadastradas */}
               <View style={styles.versionTableContainer}>
                 <View style={[styles.versionTableHeaderRow, !isDarkMode && styles.versionTableHeaderRowLight]}>
                   <Text style={[styles.versionColData, styles.versionHeaderColText]}>DATA</Text>
-                  <Text style={[styles.versionColVersao, styles.versionHeaderColText]}>VERSÃO</Text>
-                  <Text style={[styles.versionColDesc, styles.versionHeaderColText]}>DESCRIÇÃO</Text>
+                  <Text style={[styles.versionColVersao, styles.versionHeaderColText]}>VERSÃƒO</Text>
+                  <Text style={[styles.versionColDesc, styles.versionHeaderColText]}>DESCRIÃ‡ÃƒO</Text>
                 </View>
 
                 {loadingVersoes ? (
                   <View style={{ padding: 32, alignItems: 'center' }}>
                     <ActivityIndicator size="large" color="#06b6d4" />
-                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando versões...</Text>
+                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando versÃµes...</Text>
                   </View>
                 ) : versoesList.length === 0 ? (
                   <View style={{ padding: 32, alignItems: 'center' }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma versão registrada no banco de dados.</Text>
+                    <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma versÃ£o registrada no banco de dados.</Text>
                   </View>
                 ) : (
                   versoesList.map((v, index) => {
@@ -2419,7 +2623,7 @@ export default function PainelCoordScreen() {
         )}
       </ScrollView>
 
-      {/* MODAL DE DETALHES DO RELATÓRIO */}
+      {/* MODAL DE DETALHES DO RELATÃ“RIO */}
       <Modal
         visible={!!selectedReport}
         transparent
@@ -2435,17 +2639,17 @@ export default function PainelCoordScreen() {
             <View style={[styles.modalHeader, { borderBottomColor: '#f1f5f9' }]}>
               <View>
                 <Text style={[styles.modalTitle, { color: '#0f172a' }]}>
-                  RELATÓRIO #{selectedReport?.id}
+                  RELATÃ“RIO #{selectedReport?.id}
                 </Text>
                 <Text style={[styles.modalSubtitle, { color: '#64748b' }]}>
-                  {selectedReport?.empresa} • {selectedReport?.unidade}
+                  {selectedReport?.empresa} â€¢ {selectedReport?.unidade}
                 </Text>
               </View>
               <TouchableOpacity
                 style={styles.modalCloseBtn}
                 onPress={() => setSelectedReport(null)}
               >
-                <Text style={[styles.modalCloseBtnText, { color: '#64748b' }]}>✕</Text>
+                <Text style={[styles.modalCloseBtnText, { color: '#64748b' }]}>âœ•</Text>
               </TouchableOpacity>
             </View>
 
@@ -2523,13 +2727,13 @@ export default function PainelCoordScreen() {
                     )}
                   </View>
 
-                  {/* Ações do Modal */}
+                  {/* AÃ§Ãµes do Modal */}
                   <View style={styles.modalBottomActions}>
                     <TouchableOpacity
                       style={styles.modalDownloadPdfBtn}
                       onPress={() => openReportPdf(selectedReport)}
                     >
-                      <Text style={styles.modalDownloadPdfBtnText}>📥 BAIXAR PDF</Text>
+                      <Text style={styles.modalDownloadPdfBtnText}>ðŸ“¥ BAIXAR PDF</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -2540,14 +2744,14 @@ export default function PainelCoordScreen() {
                         router.push(`/?editId=${id}`);
                       }}
                     >
-                      <Text style={styles.modalEditarBtnText}>✏️ EDITAR</Text>
+                      <Text style={styles.modalEditarBtnText}>âœï¸ EDITAR</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       style={styles.modalWhatsAppBtn}
                       onPress={() => shareWhatsApp(selectedReport)}
                     >
-                      <Text style={styles.modalWhatsAppBtnText}>💬 WHATSAPP</Text>
+                      <Text style={styles.modalWhatsAppBtnText}>ðŸ’¬ WHATSAPP</Text>
                     </TouchableOpacity>
                   </View>
                 </ScrollView>
@@ -2573,16 +2777,16 @@ export default function PainelCoordScreen() {
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, !isDarkMode && { color: '#0f172a' }]}>NOVO COMUNICADO GLOBAL</Text>
               <TouchableOpacity onPress={() => setIsNovoPopupModalVisible(false)}>
-                <Text style={styles.modalCloseBtnText}>✕</Text>
+                <Text style={styles.modalCloseBtnText}>âœ•</Text>
               </TouchableOpacity>
             </View>
 
             <View style={{ gap: 12, paddingVertical: 12 }}>
               <View>
-                <Text style={styles.inputFieldLabel}>TÍTULO DO COMUNICADO</Text>
+                <Text style={styles.inputFieldLabel}>TÃTULO DO COMUNICADO</Text>
                 <TextInput
                   style={[styles.modalTextInput, !isDarkMode && { color: '#0f172a', borderColor: '#cbd5e1', backgroundColor: '#f8fafc' }]}
-                  placeholder="Ex: Manutenção Programada do Sistema"
+                  placeholder="Ex: ManutenÃ§Ã£o Programada do Sistema"
                   placeholderTextColor="#64748b"
                   value={novoPopupTitulo}
                   onChangeText={setNovoPopupTitulo}
@@ -2655,7 +2859,141 @@ export default function PainelCoordScreen() {
         </View>
       </Modal>
 
-      {/* DIÁLOGO CUSTOMIZADO */}
+      {/* MODAL NOVA MENSAGEM DIRETA (mms_mensagens) */}
+      <Modal
+        visible={isNovaMensagemModalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setIsNovaMensagemModalVisible(false)}
+      >
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.novoPopupContent, !isDarkMode && { backgroundColor: '#ffffff' }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, !isDarkMode && { color: '#0f172a' }]}>NOVA MENSAGEM DIRETA</Text>
+                <Text style={{ fontSize: 12, color: '#64748b' }}>Envie avisos para os usuÃ¡rios do gerador de relatÃ³rios</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsNovaMensagemModalVisible(false)}>
+                <Text style={styles.modalCloseBtnText}>âœ•</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ gap: 12, paddingVertical: 12 }}>
+              <View>
+                <Text style={styles.inputFieldLabel}>TÃTULO DA MENSAGEM</Text>
+                <TextInput
+                  style={[styles.modalTextInput, !isDarkMode && { color: '#0f172a', borderColor: '#cbd5e1', backgroundColor: '#f8fafc' }]}
+                  placeholder="Ex: AtualizaÃ§Ã£o nos horÃ¡rios de embarque"
+                  placeholderTextColor="#64748b"
+                  value={novaMsgTitulo}
+                  onChangeText={setNovaMsgTitulo}
+                />
+              </View>
+
+              <View>
+                <Text style={styles.inputFieldLabel}>TIPO DE MENSAGEM</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {(['info', 'aviso', 'urgente'] as const).map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[
+                        styles.popupTypeChoice,
+                        novaMsgTipo === t && styles.popupTypeChoiceActive,
+                      ]}
+                      onPress={() => setNovaMsgTipo(t)}
+                    >
+                      <Text
+                        style={[
+                          styles.popupTypeChoiceText,
+                          novaMsgTipo === t && styles.popupTypeChoiceTextActive,
+                        ]}
+                      >
+                        {t.toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View>
+                <Text style={styles.inputFieldLabel}>DESTINATÃRIO</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, maxHeight: 110 }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.popupTypeChoice,
+                      novaMsgDestinatarioId === null && styles.popupTypeChoiceActive,
+                      { paddingHorizontal: 10, paddingVertical: 5 }
+                    ]}
+                    onPress={() => setNovaMsgDestinatarioId(null)}
+                  >
+                    <Text style={[styles.popupTypeChoiceText, novaMsgDestinatarioId === null && styles.popupTypeChoiceTextActive, { fontSize: 11 }]}>
+                      TODOS OS USUÃRIOS
+                    </Text>
+                  </TouchableOpacity>
+                  {usuarios.slice(0, 8).map((u) => (
+                    <TouchableOpacity
+                      key={u.id}
+                      style={[
+                        styles.popupTypeChoice,
+                        novaMsgDestinatarioId === u.id && styles.popupTypeChoiceActive,
+                        { paddingHorizontal: 10, paddingVertical: 5 }
+                      ]}
+                      onPress={() => setNovaMsgDestinatarioId(u.id)}
+                    >
+                      <Text style={[styles.popupTypeChoiceText, novaMsgDestinatarioId === u.id && styles.popupTypeChoiceTextActive, { fontSize: 11 }]}>
+                        {u.nome || u.username}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View>
+                <Text style={styles.inputFieldLabel}>CONTEÃšDO DA MENSAGEM</Text>
+                <TextInput
+                  style={[
+                    styles.modalTextInput,
+                    { height: 100, textAlignVertical: 'top' },
+                    !isDarkMode && { color: '#0f172a', borderColor: '#cbd5e1', backgroundColor: '#f8fafc' },
+                  ]}
+                  multiline
+                  placeholder="Escreva a mensagem para o usuÃ¡rio ou preposto..."
+                  placeholderTextColor="#64748b"
+                  value={novaMsgConteudo}
+                  onChangeText={setNovaMsgConteudo}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setIsNovaMensagemModalVisible(false)}
+              >
+                <Text style={styles.cancelBtnText}>CANCELAR</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.publishBtn, { backgroundColor: '#2563eb' }]}
+                onPress={handleEnviarMensagem}
+                disabled={salvandoMensagem}
+              >
+                {salvandoMensagem ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.publishBtnText}>ENVIAR MENSAGEM</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* DIÃLOGO CUSTOMIZADO */}
       <Modal
         visible={customDialog.visible}
         transparent
@@ -2705,80 +3043,225 @@ export default function PainelCoordScreen() {
 }
 
 const styles = StyleSheet.create({
+  /* Layout Base */
   container: {
     flex: 1,
     backgroundColor: '#f1f5f9',
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 48,
-    maxWidth: 1400,
+    paddingBottom: 64,
+    maxWidth: 1600,
     width: '100%',
     alignSelf: 'center',
   },
-  navbar: {
-    height: 64,
-    backgroundColor: '#1e293b',
+
+  /* Navbar Superior Fixo e Responsivo */
+  coordNavbar: {
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    borderBottomColor: '#e2e8f0',
+    width: '100%',
+    zIndex: 100,
+    // @ts-ignore
+    position: Platform.OS === 'web' ? 'sticky' : 'relative',
+    top: 0,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  navLeft: {
+  coordNavbarInner: {
+    maxWidth: 1600,
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  coordNavLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  coordBadgeIcon: {
+  coordNavLogoIcon: {
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderWidth: 1,
-    borderColor: '#f59e0b',
+    backgroundColor: '#2563eb',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  navTitle: {
-    fontSize: 16,
-    fontWeight: '900',
+  coordNavLogoRay: {
     color: '#ffffff',
-    fontFamily: corporateFont,
-    letterSpacing: 0.5,
+    fontSize: 18,
+    fontWeight: '900',
   },
-  navSubtitle: {
-    fontSize: 10,
-    color: '#f59e0b',
-    fontWeight: '700',
+  coordNavLogoText: {
+    color: '#0f172a',
+    fontSize: 18,
+    fontWeight: '900',
     letterSpacing: 1,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
   },
-  navRight: {
+  coordNavRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
-  themeBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#334155',
+  coordNavDateTimeGroup: {
+    alignItems: 'flex-end',
+    borderRightWidth: 1,
+    borderRightColor: '#e2e8f0',
+    paddingRight: 14,
   },
-  backButton: {
-    backgroundColor: '#0284c7',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#ffffff',
+  coordNavDateTimeText: {
+    color: '#334155',
     fontSize: 12,
+    fontWeight: '700',
+    fontFamily: modernFont,
+  },
+  coordNavIpText: {
+    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '500',
+    fontFamily: modernFont,
+  },
+  coordNavUserGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  coordNavUserGreeting: {
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: modernFont,
+  },
+  coordNavUserName: {
+    color: '#0f172a',
     fontWeight: '800',
   },
+  coordNavButtonsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  coordNavNotificationBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  navNotifDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#dc2626',
+  },
+  coordNavVoltarBtn: {
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  coordNavVoltarBtnText: {
+    color: '#334155',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  coordNavSairBtn: {
+    backgroundColor: '#e11d48',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  coordNavSairBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
 
-  /* ─── RESUMO MENSAL / VISÃO GERAL ─── */
-  overviewSummaryCard: {
+  /* Abas de NavegaÃ§Ã£o */
+  tabsScrollView: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  tabsScrollContent: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    alignItems: 'center',
+  },
+  tabsBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tabNavButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  tabNavButtonActive: {
+    backgroundColor: '#0f172a',
+    borderColor: '#0f172a',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabNavButtonInactive: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  tabNavButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  tabNavButtonTextActive: {
+    color: '#ffffff',
+  },
+  tabNavButtonTextInactive: {
+    color: '#475569',
+  },
+  tabContent: {
+    width: '100%',
+  },
+
+  /* VisÃ£o Geral / KPIs */
+  overviewSummaryCardLight: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
     borderWidth: 1,
@@ -2797,24 +3280,16 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  overviewSummaryCardLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  overviewSummaryCardDark: {
-    backgroundColor: '#1e293b',
-    borderColor: '#334155',
-  },
   overviewSummaryLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
   },
   overviewSummaryIconBox: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0284c7',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2835,205 +3310,135 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  overviewMonthSelector: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    flexWrap: 'wrap',
   },
   overviewMonthSelectorLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  overviewMonthSelectorDark: {
-    backgroundColor: '#0f172a',
-    borderColor: '#334155',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
   },
   overviewMonthText: {
+    color: '#0f172a',
     fontSize: 12,
     fontWeight: '700',
-    color: '#0f172a',
+    textTransform: 'capitalize',
     fontFamily: modernFont,
   },
   overviewBtnFiltrar: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#0284c7',
     paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   overviewBtnFiltrarText: {
     color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '900',
+    fontSize: 12,
+    fontWeight: '800',
     letterSpacing: 0.5,
     fontFamily: modernFont,
   },
 
-  /* ─── CARDS DE MÉTRICAS (KPIS) ─── */
+  /* Grid de KPIs */
   kpiCardsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   kpiMetricCard: {
     flex: 1,
     minWidth: 160,
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-    borderTopWidth: 4,
+    padding: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     elevation: 1,
   },
-  kpiMetricCardLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  kpiMetricCardDark: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  kpiMetricCardHoje: {
-    borderTopColor: '#ea580c',
-  },
-  kpiMetricCardMes: {
-    borderTopColor: '#0284c7',
-  },
-  kpiMetricCardUsuarios: {
-    borderTopColor: '#8b5cf6',
-  },
-  kpiMetricCardTotal: {
-    borderTopColor: '#334155',
+  kpiMetricCardMes: { borderTopWidth: 4, borderTopColor: '#0284c7' },
+  kpiMetricCardTotal: { borderTopWidth: 4, borderTopColor: '#2563eb' },
+  kpiMetricCardHoje: { borderTopWidth: 4, borderTopColor: '#ea580c' },
+  kpiMetricCardUsuarios: { borderTopWidth: 4, borderTopColor: '#7c3aed' },
+  kpiMetricTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   kpiMetricLabel: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '900',
     letterSpacing: 0.8,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
-    marginBottom: 6,
   },
   kpiMetricValue: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '900',
-    color: '#0f172a',
     fontFamily: modernFont,
-    marginBottom: 4,
+    lineHeight: 38,
   },
   kpiMetricFootnote: {
     fontSize: 11,
     color: '#64748b',
+    marginTop: 4,
     fontFamily: modernFont,
   },
 
-  /* ─── NAVEGAÇÃO POR ABAS ─── */
-  tabsBarRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 24, // mb-6 (24px)
-    alignItems: 'center',
-  },
-  tabNavButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  tabNavButtonActive: {
-    backgroundColor: '#1e293b',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tabNavButtonInactive: {
-    backgroundColor: 'transparent',
-  },
-  tabNavButtonText: {
-    fontSize: 11,
-    letterSpacing: 0.8,
-    fontFamily: modernFont,
-  },
-  tabNavButtonTextActive: {
-    color: '#ffffff',
-    fontWeight: '900',
-  },
-  tabNavButtonTextInactive: {
-    color: '#64748b',
-    fontWeight: '800',
-  },
-
-  /* ─── CARD UNIFICADO DE FILTROS DE RELATÓRIOS ─── */
-  reportsFilterCardContainer: {
+  /* Card Unificado de RelatÃ³rios */
+  unifiedReportsCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 24,
-    overflow: 'hidden',
+    padding: 16,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     elevation: 2,
   },
-  reportsFilterCardHeader: {
+  reportsFilterSection: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 16,
+  },
+  reportsFilterHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
+    marginBottom: 12,
   },
-  reportsFilterCardHeaderTitle: {
+  reportsFilterHeaderTitle: {
     fontSize: 14,
     fontWeight: '900',
-    letterSpacing: 0.8,
     color: '#0f172a',
+    letterSpacing: 0.5,
     fontFamily: modernFont,
-  },
-  reportsFilterCardBody: {
-    padding: 16,
-    flexDirection: 'column',
-    gap: 16,
-    backgroundColor: '#ffffff',
   },
   reportsFilterRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8,
-    width: '100%',
+    gap: 10,
+    alignItems: 'center',
   },
   reportsFilterFieldBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 8,
     paddingHorizontal: 10,
     height: 38,
-    minWidth: 115,
-    flex: 1,
   },
   reportsFilterFieldLabel: {
     fontSize: 10,
@@ -3044,436 +3449,324 @@ const styles = StyleSheet.create({
   },
   reportsFilterInput: {
     flex: 1,
-    height: 36,
     fontSize: 12,
     color: '#0f172a',
     fontFamily: modernFont,
   },
   reportsFilterInputNoBorder: {
     flex: 1,
-    height: 36,
     fontSize: 12,
     color: '#0f172a',
     fontFamily: modernFont,
   },
   reportsDropdownBtn: {
     justifyContent: 'space-between',
-    minWidth: 130,
+    minWidth: 140,
+    flex: 1,
   },
   reportsDropdownBtnText: {
     fontSize: 12,
-    color: '#334155',
+    color: '#0f172a',
     fontWeight: '600',
     fontFamily: modernFont,
   },
   reportsDropdownChevron: {
     fontSize: 12,
     color: '#64748b',
-    marginLeft: 4,
   },
   btnReportsFiltrar: {
-    backgroundColor: '#1e293b',
-    paddingVertical: 10,
-    paddingHorizontal: 22,
+    backgroundColor: '#0284c7',
+    height: 38,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   btnReportsFiltrarText: {
     color: '#ffffff',
+    fontSize: 11,
     fontWeight: '900',
-    fontSize: 12,
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
     fontFamily: modernFont,
   },
   btnReportsLimpar: {
-    backgroundColor: '#e2e8f0',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    height: 38,
+    paddingHorizontal: 14,
     borderRadius: 8,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   btnReportsLimparText: {
     color: '#475569',
+    fontSize: 11,
     fontWeight: '800',
-    fontSize: 12,
-    letterSpacing: 0.8,
     fontFamily: modernFont,
   },
-
-  // KPIs
-  kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  kpiCard: {
-    flex: 1,
-    minWidth: 160,
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  kpiCardLight: {
+  coordDropdownOptionsListLight: {
+    position: 'absolute',
+    top: 90,
+    right: 16,
+    width: 260,
+    maxHeight: 280,
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  kpiHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  kpiLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#94a3b8',
-    letterSpacing: 0.8,
-  },
-  kpiIcon: {
-    fontSize: 14,
-  },
-  kpiValue: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#ffffff',
-    marginVertical: 4,
-  },
-  kpiFootnote: {
-    fontSize: 10,
-    color: '#64748b',
-  },
-
-  // Tabs
-  tabsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    backgroundColor: '#1e293b',
     borderRadius: 12,
-    padding: 6,
-    gap: 6,
-    marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#cbd5e1',
+    zIndex: 999,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  tabButton: {
-    paddingHorizontal: 16,
+  coordDropdownOptionItem: {
     paddingVertical: 10,
-    borderRadius: 8,
-  },
-  tabButtonActive: {
-    backgroundColor: '#0284c7',
-  },
-  tabButtonText: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  tabButtonTextActive: {
-    color: '#ffffff',
-  },
-
-  tabContent: {
-    width: '100%',
-  },
-
-  // Filtros
-  filterCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
-    gap: 12,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    alignItems: 'center',
-  },
-  searchBox: {
-    flex: 1,
-    minWidth: 260,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    color: '#ffffff',
-    fontSize: 13,
-    paddingVertical: 8,
-  },
-  companyFilterScroll: {
-    flexDirection: 'row',
-  },
-  companyPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#334155',
-    marginRight: 6,
-  },
-  companyPillActive: {
-    backgroundColor: '#06b6d4',
-    borderColor: '#06b6d4',
-  },
-  companyPillText: {
-    color: '#94a3b8',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  companyPillTextActive: {
-    color: '#ffffff',
-  },
-  dateFilterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    alignItems: 'center',
-  },
-  dateInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dateLabel: {
-    color: '#94a3b8',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  dateInput: {
-    backgroundColor: '#0f172a',
-    color: '#ffffff',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#334155',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    fontSize: 12,
-    width: 120,
-  },
-  filterApplyBtn: {
-    backgroundColor: '#0284c7',
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 6,
-  },
-  filterApplyBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  filterClearBtn: {
-    backgroundColor: '#475569',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 6,
-  },
-  filterClearBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-
-  // Relatórios
-  reportsGrid: {
-    gap: 12,
-  },
-  reportCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-    gap: 10,
-  },
-  reportCardHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  reportIdBadge: {
-    color: '#06b6d4',
+  coordDropdownOptionItemActive: {
+    backgroundColor: '#eff6ff',
+  },
+  coordDropdownOptionText: {
     fontSize: 12,
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  coordDropdownOptionCheck: {
+    fontSize: 12,
+    color: '#2563eb',
     fontWeight: '900',
   },
-  reportDateText: {
-    color: '#94a3b8',
-    fontSize: 11,
-  },
-  reportCardBody: {
-    gap: 4,
-  },
-  reportUnidadeText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#ffffff',
-  },
-  reportLocalText: {
-    fontSize: 12,
-    color: '#94a3b8',
-  },
-  reportPrepostoText: {
-    fontSize: 12,
-    color: '#cbd5e1',
-  },
-  reportCardActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    paddingTop: 10,
-  },
-  actionBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionBtnView: {
-    backgroundColor: '#0284c7',
-  },
-  actionBtnViewText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  actionBtnPdf: {
-    backgroundColor: '#059669',
-  },
-  actionBtnPdfText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  actionBtnWhats: {
-    backgroundColor: '#10b981',
-  },
-  actionBtnWhatsText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  actionBtnDelete: {
-    backgroundColor: '#e11d48',
-    paddingHorizontal: 10,
-  },
-  actionBtnDeleteText: {
-    color: '#ffffff',
-    fontSize: 11,
-  },
 
-  // Badges
-  badgeContainer: {
+  /* Itens de RelatÃ³rios */
+  reportsListContainer: {
+    gap: 12,
+  },
+  reportsItemCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 14,
+  },
+  reportsItemTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 6,
+  },
+  reportsItemTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  reportsEmpresaBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
-  badgeText: {
+  reportsEmpresaBadgeText: {
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
+    fontFamily: modernFont,
   },
+  reportsItemSub: {
+    fontSize: 12,
+    color: '#475569',
+    fontFamily: modernFont,
+    marginBottom: 4,
+  },
+  reportsItemTimeRow: {
+    marginBottom: 10,
+  },
+  reportsItemTimeText: {
+    fontSize: 11,
+    color: '#64748b',
+    fontFamily: modernFont,
+  },
+  reportsActionPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'center',
+  },
+  actionPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionPillDownload: { backgroundColor: '#eff6ff' },
+  actionPillDownloadText: { color: '#1d4ed8', fontSize: 10, fontWeight: '800' },
+  actionPillVisualizar: { backgroundColor: '#f0fdf4' },
+  actionPillVisualizarText: { color: '#15803d', fontSize: 10, fontWeight: '800' },
+  actionPillEditar: { backgroundColor: '#fefce8' },
+  actionPillEditarText: { color: '#a16207', fontSize: 10, fontWeight: '800' },
+  actionPillCompartilhar: { backgroundColor: '#f5f3ff' },
+  actionPillCompartilharText: { color: '#6d28d9', fontSize: 10, fontWeight: '800' },
+  actionPillExcluir: { backgroundColor: '#fff1f2' },
+  actionPillExcluirText: { color: '#be123c', fontSize: 10, fontWeight: '800' },
 
-  // Paginação
+  /* PaginaÃ§Ã£o */
   paginationRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 16,
-    marginTop: 20,
+    marginTop: 18,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    flexWrap: 'wrap',
+    gap: 10,
   },
   pageBtn: {
-    backgroundColor: '#334155',
-    paddingHorizontal: 14,
+    backgroundColor: '#0284c7',
     paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
   },
   pageBtnDisabled: {
-    opacity: 0.4,
+    backgroundColor: '#cbd5e1',
   },
   pageBtnText: {
     color: '#ffffff',
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: modernFont,
   },
   pageIndicatorText: {
-    color: '#94a3b8',
     fontSize: 12,
     fontWeight: '700',
+    color: '#475569',
+    fontFamily: modernFont,
   },
 
-  // Seções & Cards
-  cardContainer: {
+  /* Ranking */
+  rankingCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 20,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 20,
+    padding: 16,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 14,
+  rankingHeader: {
+    marginBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
-    marginBottom: 16,
+    paddingBottom: 12,
   },
-  cardTitle: {
-    fontSize: 15,
+  rankingHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rankingIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#f59e0b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankingTitle: {
+    fontSize: 16,
     fontWeight: '900',
     color: '#0f172a',
     letterSpacing: 0.5,
     fontFamily: modernFont,
   },
-  cardSubtitle: {
+  rankingSubtitle: {
     fontSize: 12,
     color: '#64748b',
     marginTop: 2,
     fontFamily: modernFont,
   },
+  rankingTableHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  rankingColPos: { width: 70, alignItems: 'center' },
+  rankingColUser: { flex: 1, paddingLeft: 8 },
+  rankingColTotal: { width: 90, alignItems: 'center' },
+  rankingTableHeaderText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  rankingTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  rankingPosBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankingPosBadge1: { backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fcd34d' },
+  rankingPosBadge2: { backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1' },
+  rankingPosBadge3: { backgroundColor: '#ffedd5', borderWidth: 1, borderColor: '#fdba74' },
+  rankingPosBadgeText1: { color: '#b45309', fontWeight: '900', fontSize: 12 },
+  rankingPosBadgeText2: { color: '#475569', fontWeight: '900', fontSize: 12 },
+  rankingPosBadgeText3: { color: '#c2410c', fontWeight: '900', fontSize: 12 },
+  rankingPosNumber: { color: '#64748b', fontWeight: '800', fontSize: 12 },
+  rankingUserName: { color: '#0f172a', fontWeight: '700', fontSize: 13, fontFamily: modernFont },
+  rankingTotalBadge: {
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  rankingTotalBadgeText: {
+    color: '#1d4ed8',
+    fontWeight: '900',
+    fontSize: 12,
+    fontFamily: modernFont,
+  },
+
+  /* Popups e SeÃ§Ãµes */
   sectionCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 20,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 20,
-    gap: 16,
+    padding: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 14,
+    flexWrap: 'wrap',
     gap: 12,
   },
   sectionTitle: {
@@ -3486,784 +3779,307 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     fontSize: 12,
     color: '#64748b',
+    marginTop: 2,
     fontFamily: modernFont,
   },
-
-  // Ranking
-  rankingList: {
-    gap: 10,
-  },
-  rankingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    padding: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  rankingItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  rankingMedal: {
-    fontSize: 20,
-    width: 30,
-    textAlign: 'center',
-  },
-  rankingNome: {
-    color: '#ffffff',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  rankingEmpresa: {
-    color: '#64748b',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  rankingItemRight: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  rankingBadge: {
-    backgroundColor: 'rgba(6, 182, 212, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  rankingTotalText: {
-    color: '#06b6d4',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  rankingPercentText: {
-    color: '#64748b',
-    fontSize: 10,
-  },
-
-  // Usuários
-  userList: {
-    gap: 10,
-  },
-  userCard: {
-    backgroundColor: '#0f172a',
-    borderRadius: 8,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#334155',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  userCardInfo: {
-    gap: 4,
-  },
-  userNameText: {
-    color: '#ffffff',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  userMetaText: {
-    color: '#64748b',
-    fontSize: 11,
-  },
-  roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  roleBadgeCoord: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-  },
-  roleBadgeBasic: {
-    backgroundColor: 'rgba(6, 182, 212, 0.15)',
-  },
-  roleBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  userCardActions: {
-    flexDirection: 'row',
-  },
-  toggleRoleBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  btnPromote: {
-    backgroundColor: '#059669',
-  },
-  btnDemote: {
-    backgroundColor: '#d97706',
-  },
-  toggleRoleBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-
-  // Popups / Comunicados
   newNotificationBtn: {
     backgroundColor: '#0284c7',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 8,
   },
   newNotificationBtnText: {
     color: '#ffffff',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
   },
   popupsList: {
-    gap: 10,
+    gap: 12,
   },
   popupCard: {
-    backgroundColor: '#0f172a',
-    padding: 14,
-    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
-    gap: 8,
+    borderColor: '#e2e8f0',
+    padding: 14,
   },
   popupCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   popupTitleText: {
-    color: '#ffffff',
-    fontWeight: '800',
     fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+    fontFamily: modernFont,
   },
   popupTypeBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  badgeUrgente: {
-    backgroundColor: '#e11d48',
-  },
-  badgeAviso: {
-    backgroundColor: '#0284c7',
-  },
-  popupTypeBadgeText: {
-    color: '#ffffff',
-    fontSize: 9,
-    fontWeight: '900',
-  },
-  statusTogglePill: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
-  statusActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-  },
-  statusInactive: {
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
-  },
-  statusTogglePillText: {
+  badgeUrgente: { backgroundColor: '#fee2e2' },
+  badgeAviso: { backgroundColor: '#ffedd5' },
+  popupTypeBadgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#10b981',
+    color: '#b91c1c',
+  },
+  statusTogglePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusActive: { backgroundColor: '#dcfce7' },
+  statusInactive: { backgroundColor: '#f1f5f9' },
+  statusTogglePillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#15803d',
   },
   popupMessageText: {
-    color: '#94a3b8',
-    fontSize: 12,
+    fontSize: 13,
+    color: '#475569',
     lineHeight: 18,
+    marginBottom: 10,
+    fontFamily: modernFont,
   },
   popupCardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: '#e2e8f0',
     paddingTop: 8,
   },
   popupDateText: {
-    color: '#64748b',
-    fontSize: 10,
+    fontSize: 11,
+    color: '#94a3b8',
+    fontFamily: modernFont,
   },
   deletePopupBtn: {
     paddingHorizontal: 8,
     paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#fff1f2',
   },
   deletePopupBtnText: {
-    color: '#e11d48',
+    color: '#be123c',
     fontSize: 11,
     fontWeight: '700',
   },
 
-  // Sistema & Status
-  sysStatusGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  sysStatusCard: {
-    flex: 1,
-    minWidth: 260,
-    backgroundColor: '#0f172a',
-    borderRadius: 8,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#334155',
-    gap: 4,
-  },
-  sysStatusLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#64748b',
-    letterSpacing: 0.8,
-  },
-  sysStatusOnline: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#10b981',
-  },
-  sysStatusVal: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#ffffff',
-  },
-  sysStatusInfo: {
-    fontSize: 11,
-    color: '#94a3b8',
-  },
-
-  // Modais
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-    ...(Platform.OS === 'web'
-      ? {
-        animationDuration: '0.45s',
-        animationName: 'mmsNaturalBlurIn',
-        animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        animationFillMode: 'forwards',
-        backgroundColor: 'transparent',
-      }
-      : {
-        backgroundColor: 'transparent',
-      }),
-  },
-  modalContent: {
-    backgroundColor: '#1e293b',
+  /* Card Containers Gerais e Tabelas */
+  cardContainer: {
+    backgroundColor: '#ffffff',
     borderRadius: 16,
-    width: '100%',
-    maxWidth: 680,
-    maxHeight: '90%',
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
-    paddingBottom: 12,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#ffffff',
-    fontFamily: corporateFont,
-  },
-  modalSubtitle: {
-    fontSize: 12,
-    color: '#94a3b8',
-  },
-  modalCloseBtn: {
-    padding: 6,
-  },
-  modalCloseBtnText: {
-    color: '#94a3b8',
-    fontSize: 18,
-  },
-  detailScrollContent: {
-    gap: 16,
-  },
-  detailSection: {
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    borderRadius: 8,
-    padding: 12,
-    gap: 8,
-  },
-  detailSectionTitle: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#06b6d4',
-    letterSpacing: 0.8,
-  },
-  detailGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  detailItem: {
-    flex: 1,
-    minWidth: 120,
-  },
-  detailLabel: {
-    fontSize: 10,
-    color: '#64748b',
-    fontWeight: '700',
-  },
-  detailValue: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#ffffff',
-  },
-  passengerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
-  },
-  passengerName: {
-    fontSize: 12,
-    color: '#ffffff',
-    fontWeight: '600',
-  },
-  passengerDoc: {
-    fontSize: 11,
-    color: '#64748b',
-  },
-  modalBottomActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 12,
-  },
-  modalDownloadPdfBtn: {
-    flex: 1,
-    backgroundColor: '#2563eb',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalDownloadPdfBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  modalWhatsAppBtn: {
-    flex: 1,
-    backgroundColor: '#059669',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalWhatsAppBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  modalEditarBtn: {
-    flex: 1,
-    backgroundColor: '#d97706',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalEditarBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  detailSectionLight: {
-    backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    borderRadius: 12,
-    padding: 14,
-    gap: 8,
+    padding: 16,
   },
-  passengerRowLight: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 14,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  versionTableContainer: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+  },
+  versionTableHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  versionHeaderColText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  versionTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
-  passengerNameLight: {
-    fontSize: 12,
-    color: '#0f172a',
-    fontWeight: '700',
+
+  /* Sistema & DiagnÃ³stico */
+  sysStatusGrid: {
+    gap: 10,
+  },
+  sysStatusCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 14,
+  },
+  sysStatusLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748b',
+    letterSpacing: 0.5,
+    marginBottom: 4,
     fontFamily: modernFont,
   },
-  passengerDocLight: {
+  sysStatusValue: {
+    fontSize: 14,
+    fontWeight: '900',
+    fontFamily: modernFont,
+    marginBottom: 2,
+  },
+  sysStatusDesc: {
     fontSize: 11,
     color: '#64748b',
-    fontWeight: '600',
     fontFamily: modernFont,
   },
 
-  // Modal Novo Popup
-  novoPopupContent: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    width: '100%',
-    maxWidth: 500,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  inputFieldLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#94a3b8',
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  modalTextInput: {
-    backgroundColor: '#0f172a',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-    color: '#ffffff',
-    padding: 10,
-    fontSize: 13,
-  },
-  popupTypeChoice: {
+  /* Controle de VersÃ£o */
+  versionRefreshBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
     borderWidth: 1,
-    borderColor: '#334155',
-  },
-  popupTypeChoiceActive: {
-    backgroundColor: '#0284c7',
-    borderColor: '#0284c7',
-  },
-  popupTypeChoiceText: {
-    fontSize: 10,
-    color: '#94a3b8',
-    fontWeight: '800',
-  },
-  popupTypeChoiceTextActive: {
-    color: '#ffffff',
-  },
-  modalActionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 16,
-  },
-  cancelBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#475569',
-  },
-  cancelBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  publishBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#0284c7',
-  },
-  publishBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-
-  // Diálogo Customizado
-  dialogContent: {
-    backgroundColor: '#1e293b',
-    borderRadius: 14,
-    padding: 20,
-    maxWidth: 420,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  dialogTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#ffffff',
-    marginBottom: 8,
-    fontFamily: corporateFont,
-  },
-  dialogMessage: {
-    fontSize: 13,
-    color: '#cbd5e1',
-    lineHeight: 19,
-    marginBottom: 16,
-  },
-  dialogActionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-  },
-  dialogCancelBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#475569',
-  },
-  dialogCancelBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  dialogConfirmBtn: {
-    backgroundColor: '#0284c7',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  dialogConfirmBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-
-  // Acesso Restrito
-  restrictedContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  restrictedCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    maxWidth: 480,
-    width: '90%',
-    borderWidth: 1,
-    borderColor: '#f59e0b',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  restrictedCardLight: {
-    backgroundColor: '#ffffff',
     borderColor: '#cbd5e1',
-    shadowColor: '#64748b',
-    shadowOpacity: 0.15,
   },
-  restrictedIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#334155',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  restrictedTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#ffffff',
-    marginBottom: 10,
-    letterSpacing: 1,
-    textAlign: 'center',
-    fontFamily: modernFont,
-  },
-  restrictedSubtitle: {
-    fontSize: 14,
-    color: '#94a3b8',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
-    fontFamily: modernFont,
-  },
-  restrictedBtnRow: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  restrictedLoginBtn: {
-    backgroundColor: '#0284c7',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    width: '100%',
-    alignItems: 'center',
-  },
-  restrictedBackBtn: {
-    backgroundColor: '#334155',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    width: '100%',
-    alignItems: 'center',
-  },
-  restrictedBackBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    fontFamily: modernFont,
-  },
-  restrictedLogoutBtn: {
-    backgroundColor: '#dc2626',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    width: '100%',
-    alignItems: 'center',
-  },
-  restrictedLogoutBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    fontFamily: modernFont,
-  },
-  userCoordTag: {
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#fde68a',
-  },
-  userCoordTagText: {
-    color: '#b45309',
+  versionRefreshBtnText: {
     fontSize: 11,
     fontWeight: '800',
-    fontFamily: modernFont,
+    color: '#334155',
   },
-
-  loadingBox: {
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#94a3b8',
-    fontSize: 12,
-  },
-  emptyBox: {
-    backgroundColor: '#1e293b',
-    padding: 36,
-    borderRadius: 12,
-    alignItems: 'center',
+  versionSuccessAlert: {
+    backgroundColor: '#dcfce7',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#86efac',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 12,
   },
-  emptyTitle: {
-    fontSize: 16,
+  versionSuccessAlertText: {
+    color: '#15803d',
     fontWeight: '800',
-    color: '#ffffff',
-  },
-  emptySubtitle: {
     fontSize: 12,
-    color: '#64748b',
-    marginTop: 4,
   },
-
-  /* Estilos de Personalização do Rodapé (Footer) */
-  footerPreviewCard: {
-    backgroundColor: '#0f172a',
+  versionFormBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 14,
-    padding: 16,
-    marginVertical: 14,
+    borderColor: '#e2e8f0',
+    padding: 14,
+    marginTop: 14,
   },
-  footerPreviewLabel: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#94a3b8',
-    letterSpacing: 1.5,
-    marginBottom: 10,
-    fontFamily: modernFont,
+  versionFormBoxLight: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
   },
-  footerPreviewBox: {
+  versionFormGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
     gap: 12,
+    alignItems: 'flex-end',
   },
-  footerPreviewText: {
+  versionFieldSmall: {
+    width: 140,
+  },
+  versionFieldLarge: {
     flex: 1,
-    minWidth: 240,
-    fontSize: 11,
-    color: '#94a3b8',
-    textAlign: 'center',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    minWidth: 200,
+  },
+  versionFieldBtn: {
+    width: 130,
+  },
+  versionInputLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#475569',
+    letterSpacing: 0.5,
+    marginBottom: 6,
     fontFamily: modernFont,
   },
-  footerPreviewBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+  versionInput: {
     backgroundColor: '#ffffff',
-  },
-  footerPreviewBadgeIcon: {
-    fontSize: 11,
-    color: '#94a3b8',
-  },
-  footerPreviewBadgeText: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#94a3b8',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 38,
+    fontSize: 12,
+    color: '#0f172a',
     fontFamily: modernFont,
   },
-  footerFormGrid: {
-    gap: 14,
-    marginVertical: 10,
+  versionInputLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+    color: '#0f172a',
   },
+  btnSalvarVersao: {
+    backgroundColor: '#2563eb',
+    height: 38,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnSalvarVersaoText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+
+  /* RodapÃ© / Footer Config */
   footerFormField: {
-    gap: 6,
+    marginBottom: 14,
   },
   footerInputLabel: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#94a3b8',
+    color: '#334155',
     letterSpacing: 0.5,
+    marginBottom: 6,
     fontFamily: modernFont,
   },
   footerInput: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    color: '#ffffff',
-    fontSize: 13,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 38,
+    fontSize: 12,
+    color: '#0f172a',
     fontFamily: modernFont,
   },
   footerInputLight: {
@@ -4273,91 +4089,78 @@ const styles = StyleSheet.create({
   },
   footerControlRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
     gap: 12,
-    marginTop: 4,
+    alignItems: 'flex-end',
+    marginTop: 8,
   },
   footerMiniLabel: {
     fontSize: 10,
-    color: '#94a3b8',
+    fontWeight: '700',
+    color: '#64748b',
     marginBottom: 4,
     fontFamily: modernFont,
   },
   footerMiniInput: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#cbd5e1',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    color: '#ffffff',
-    fontSize: 13,
+    paddingHorizontal: 10,
+    height: 34,
+    fontSize: 12,
+    color: '#0f172a',
     fontFamily: modernFont,
   },
   btnToggleBold: {
+    height: 34,
     paddingHorizontal: 14,
-    paddingVertical: 10,
     borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
   },
   btnToggleBoldActive: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#2563eb',
     borderColor: '#2563eb',
   },
   btnToggleBoldInactive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderColor: '#475569',
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
   },
   btnToggleBoldText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
     fontFamily: modernFont,
   },
   btnToggleBoldTextActive: {
-    color: '#2563eb',
-    fontWeight: '900',
+    color: '#ffffff',
   },
   btnSalvarFooter: {
-    marginTop: 16,
-    backgroundColor: '#2563eb',
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: '#0284c7',
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: 8,
   },
   btnSalvarFooterText: {
     color: '#ffffff',
-    fontWeight: '900',
-    fontSize: 13,
-    letterSpacing: 0.8,
-    fontFamily: modernFont,
-  },
-
-  /* Botão Bloquear no Navbar */
-  lockPanelBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  lockPanelBtnText: {
-    color: '#ef4444',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '900',
+    letterSpacing: 0.5,
     fontFamily: modernFont,
   },
 
-  /* Tela de Bloqueio por Senha (100% Tema Claro) */
+  /* Lock Screen / Login CoordenaÃ§Ã£o */
+  restrictedContainer: {
+    flexGrow: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    padding: 16,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
   coordLockCard: {
     width: '100%',
     maxWidth: 420,
@@ -4430,1183 +4233,454 @@ const styles = StyleSheet.create({
     fontFamily: modernFont,
   },
   coordLockInput: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
+    width: '100%',
+    height: 46,
     borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#0f172a',
+    paddingHorizontal: 14,
     fontSize: 14,
     fontFamily: modernFont,
   },
   coordLockInputLight: {
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     borderColor: '#cbd5e1',
     color: '#0f172a',
   },
   coordLockInputDisabled: {
-    backgroundColor: '#e2e8f0',
-    borderColor: '#e2e8f0',
-    borderWidth: 1,
-    color: '#64748b',
+    width: '100%',
+    height: 46,
     borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontWeight: '600',
+    paddingHorizontal: 14,
     fontSize: 14,
     fontFamily: modernFont,
-    ...(Platform.OS === 'web' ? { cursor: 'not-allowed' } : {}),
-  },
-  coordLockInputDisabledLight: {
     backgroundColor: '#e2e8f0',
-    borderColor: '#e2e8f0',
-    color: '#64748b',
+    color: '#475569',
   },
   btnDesbloquearPainel: {
     width: '100%',
+    height: 48,
     backgroundColor: '#2563eb',
-    paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 6,
     shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   btnDesbloquearPainelText: {
     color: '#ffffff',
-    fontWeight: '900',
     fontSize: 13,
+    fontWeight: '900',
     letterSpacing: 1,
     fontFamily: modernFont,
   },
   btnVoltarGeradorLock: {
-    marginTop: 18,
-    paddingVertical: 6,
+    marginTop: 16,
+    paddingVertical: 8,
   },
   btnVoltarGeradorLockText: {
     color: '#64748b',
     fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: '700',
     textDecorationLine: 'underline',
     fontFamily: modernFont,
   },
 
-  /* Seletor Dropdown de Empresa (Estilo EMPRESA / GRUPO) */
-  companySelectWrapper: {
-    width: '100%',
-    marginTop: 8,
-  },
-  companySelectLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#94a3b8',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-    fontFamily: modernFont,
-  },
-  coordSelectBoxContainer: {
-    height: 46,
-    flexDirection: 'row',
+  /* Modais */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-  },
-  coordSelectBoxContainerLight: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-  },
-  coordSelectBoxText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#ffffff',
-    fontFamily: modernFont,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  coordSelectBoxChevron: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#94a3b8',
-  },
-  coordDropdownOptionsList: {
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 10,
-    marginTop: 6,
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  coordDropdownOptionsListLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#cbd5e1',
-    borderWidth: 1,
-    borderRadius: 10,
-    marginTop: 6,
-    overflow: 'hidden',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  coordDropdownOptionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  coordDropdownOptionItemLight: {
-    borderBottomColor: '#f1f5f9',
-  },
-  coordDropdownOptionItemActive: {
-    backgroundColor: '#eff6ff',
-  },
-  coordDropdownOptionText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0f172a',
-    fontFamily: modernFont,
-  },
-  coordDropdownOptionTextActive: {
-    color: '#2563eb',
-    fontWeight: '900',
-  },
-  coordDropdownOptionCheck: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#2563eb',
-  },
-  versionRefreshBtn: {
-    backgroundColor: '#0284c7',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  versionRefreshBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: modernFont,
-  },
-  versionSuccessAlert: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderWidth: 1,
-    borderColor: '#10b981',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginBottom: 16,
-  },
-  versionSuccessAlertText: {
-    color: '#10b981',
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: modernFont,
-  },
-  versionFormBox: {
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 12,
     padding: 16,
-    marginBottom: 20,
   },
-  versionFormBoxLight: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#e2e8f0',
-  },
-  versionFormGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    alignItems: 'flex-end',
-  },
-  versionFieldSmall: {
-    flex: 1,
-    minWidth: 140,
-  },
-  versionFieldLarge: {
-    flex: 2,
-    minWidth: 220,
-  },
-  versionFieldBtn: {
-    minWidth: 160,
-  },
-  versionInputLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 6,
-    fontFamily: modernFont,
-  },
-  versionInput: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 13,
-    color: '#0f172a',
-    fontFamily: modernFont,
-  },
-  versionInputLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#cbd5e1',
-    color: '#0f172a',
-  },
-  btnSalvarVersao: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 11,
-    paddingHorizontal: 18,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  btnSalvarVersaoText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  versionTableContainer: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    overflow: 'hidden',
-  },
-  versionTableHeaderRow: {
-    flexDirection: 'row',
-    backgroundColor: '#f8fafc',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  versionTableHeaderRowLight: {
-    backgroundColor: '#f8fafc',
-    borderBottomColor: '#e2e8f0',
-  },
-  versionHeaderColText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#475569',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  versionTableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    backgroundColor: '#ffffff',
-  },
-  versionTableRowLight: {
-    borderBottomColor: '#f1f5f9',
-    backgroundColor: '#ffffff',
-  },
-  versionRowOddDark: {
-    backgroundColor: 'rgba(30, 41, 59, 0.4)',
-  },
-  versionRowOddLight: {
-    backgroundColor: 'rgba(248, 250, 252, 0.8)',
-  },
-  versionColData: {
-    width: 140,
-  },
-  versionDataText: {
-    fontSize: 12,
-    color: '#94a3b8',
-    fontFamily: modernFont,
-  },
-  versionColVersao: {
-    width: 110,
-  },
-  versionBadge: {
-    backgroundColor: 'rgba(37, 99, 235, 0.15)',
-    borderWidth: 1,
-    borderColor: '#3b82f6',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  versionBadgeText: {
-    color: '#2563eb',
-    fontSize: 12,
-    fontWeight: '900',
-    fontFamily: modernFont,
-  },
-  versionColDesc: {
-    flex: 1,
-  },
-  versionDescText: {
-    fontSize: 12,
-    color: '#334155',
-    fontFamily: modernFont,
-  },
-
-  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO ─── */
-  coordNavbar: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-
-  /* ─── CONTAINER GERAL E LAYOUT (TEMA COORDENAÇÃO PHP) ─── */
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  scrollContent: {
+  novoPopupContent: {
     width: '100%',
-    maxWidth: 1600,
-    alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 64,
-  },
-
-  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO (TEMA DARK NAVY CONFORME ANEXO 3) ─── */
-  coordNavbar: {
-    backgroundColor: '#0b132b',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
-    width: '100%',
-    zIndex: 50,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  coordNavbarInner: {
-    maxWidth: 1600,
-    width: '100%',
-    alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  coordNavLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  coordNavLogoIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: '#2563eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  coordNavLogoRay: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  coordNavLogoText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  coordNavRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    flexWrap: 'wrap',
-  },
-  coordNavDateTimeGroup: {
-    alignItems: 'flex-end',
-    borderRightWidth: 1,
-    borderRightColor: '#334155',
-    paddingRight: 16,
-  },
-  coordNavDateTimeText: {
-    color: '#cbd5e1',
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: modernFont,
-  },
-  coordNavIpText: {
-    color: '#94a3b8',
-    fontSize: 10,
-    fontWeight: '500',
-    fontFamily: modernFont,
-  },
-  coordNavUserGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  coordNavUserGreeting: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '500',
-    fontFamily: modernFont,
-  },
-  coordNavUserName: {
-    color: '#ffffff',
-    fontWeight: '800',
-  },
-  coordNavButtonsGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  coordNavNotificationBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coordNavVoltarBtn: {
-    backgroundColor: '#1e293b',
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  coordNavVoltarBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  coordNavSairBtn: {
-    backgroundColor: '#e11d48',
-    paddingVertical: 7,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  coordNavSairBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-
-  /* ─── CARD SUPERIOR VISÃO GERAL (IGUAL COORD/INDEX.PHP) ─── */
-  overviewSummaryCardLight: {
+    maxWidth: 520,
     backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.8)',
     borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 16,
-    marginBottom: 20,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  overviewSummaryLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  overviewSummaryIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: '#2563eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  overviewSummaryTitle: {
-    fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-    color: '#1e293b',
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  overviewSummarySubtitle: {
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: '500',
-    marginTop: 2,
-    fontFamily: modernFont,
-  },
-  overviewSummaryRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#f8fafc',
-    padding: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
-  overviewMonthSelectorLight: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  overviewMonthText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-    fontFamily: modernFont,
-  },
-  overviewBtnFiltrar: {
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-  },
-  overviewBtnFiltrarText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-
-  /* ─── 4 CARDS DE KPIS / MÉTRICAS ─── */
-  kpiCardsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    marginBottom: 20,
-  },
-  kpiMetricCard: {
-    flex: 1,
-    minWidth: 220,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.8)',
-    padding: 18,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  kpiMetricCardTotal: {
-    borderTopWidth: 4,
-    borderTopColor: '#2563eb',
-  },
-  kpiMetricCardMes: {
-    borderTopWidth: 4,
-    borderTopColor: '#06b6d4',
-  },
-  kpiMetricCardHoje: {
-    borderTopWidth: 4,
-    borderTopColor: '#f97316',
-  },
-  kpiMetricCardUsuarios: {
-    borderTopWidth: 4,
-    borderTopColor: '#8b5cf6',
-  },
-  kpiMetricTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  kpiMetricLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  kpiMetricValue: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#0f172a',
-    marginVertical: 4,
-    fontFamily: modernFont,
-  },
-  kpiMetricFootnote: {
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: '500',
-    fontFamily: modernFont,
-  },
-
-  /* ─── BARRA DE ABAS DE NAVEGAÇÃO ─── */
-  tabsBarRow: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.8)',
-    borderRadius: 14,
-    padding: 6,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 20,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  tabNavButton: {
-    flex: 1,
-    minWidth: 110,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-  },
-  tabNavButtonActive: {
-    backgroundColor: '#1e293b',
+    padding: 24,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowRadius: 24,
+    elevation: 8,
   },
-  tabNavButtonInactive: {
-    backgroundColor: 'transparent',
-  },
-  tabNavButtonText: {
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  tabNavButtonTextActive: {
-    color: '#ffffff',
-  },
-  tabNavButtonTextInactive: {
-    color: '#64748b',
-  },
-
-  /* ─── CARD UNIFICADO DE RELATÓRIOS (FILTROS + LISTAGEM + PAGINAÇÃO) ─── */
-  unifiedReportsCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.8)',
-    overflow: 'hidden',
-    marginBottom: 24,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  reportsFilterSection: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    gap: 12,
-  },
-  reportsFilterHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  reportsFilterHeaderTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 1.2,
-    color: '#0f172a',
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  reportsFilterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 8,
-  },
-  reportsFilterFieldBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    height: 38,
-  },
-  reportsFilterFieldLabel: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#64748b',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  reportsFilterInput: {
-    fontSize: 12,
-    color: '#0f172a',
-    padding: 0,
-    width: 90,
-    fontFamily: modernFont,
-  },
-  reportsFilterInputNoBorder: {
-    fontSize: 12,
-    color: '#0f172a',
-    padding: 0,
-    flex: 1,
-    fontFamily: modernFont,
-  },
-  reportsDropdownBtn: {
-    justifyContent: 'space-between',
-    minWidth: 140,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-  },
-  reportsDropdownBtnText: {
-    fontSize: 12,
-    color: '#0f172a',
-    fontWeight: '800',
-    fontFamily: modernFont,
-  },
-  reportsDropdownChevron: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#475569',
-    marginLeft: 6,
-  },
-  btnReportsFiltrar: {
-    backgroundColor: '#334155',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    height: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnReportsFiltrarText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  btnReportsLimpar: {
-    backgroundColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    height: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnReportsLimparText: {
-    color: '#475569',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-
-  /* ─── TABELA DE RELATÓRIOS (CABECALHO E LINHAS) ─── */
-  reportsListHeaderRow: {
-    backgroundColor: '#f8fafc',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  reportsListHeaderText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#64748b',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  reportsListContainer: {
-    backgroundColor: '#ffffff',
-  },
-  reportsItemCard: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    backgroundColor: '#ffffff',
-  },
-  reportsItemTop: {
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 12,
   },
-  reportsItemUnidade: {
-    fontSize: 13,
+  modalTitle: {
+    fontSize: 16,
     fontWeight: '900',
-    color: '#2563eb',
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-    flex: 1,
-    marginRight: 8,
-  },
-  reportsEmpresaBadge: {
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  reportsEmpresaBadgeText: {
-    fontSize: 8,
-    fontWeight: '900',
+    color: '#0f172a',
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
-  reportsItemSub: {
-    fontSize: 10,
+  modalCloseBtnText: {
+    fontSize: 18,
     color: '#64748b',
     fontWeight: '700',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-    fontFamily: modernFont,
+    padding: 4,
   },
-  reportsItemTimeRow: {
-    marginBottom: 10,
-  },
-  reportsItemTimeText: {
+  inputFieldLabel: {
     fontSize: 10,
-    color: '#64748b',
-    fontWeight: '600',
+    fontWeight: '800',
+    color: '#475569',
+    letterSpacing: 0.5,
+    marginBottom: 6,
     fontFamily: modernFont,
   },
-  reportsActionPillsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  actionPill: {
-    borderRadius: 8,
+  modalTextInput: {
     borderWidth: 1,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
+    fontFamily: modernFont,
+  },
+  popupTypeChoice: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
+  },
+  popupTypeChoiceActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  popupTypeChoiceText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+    fontFamily: modernFont,
+  },
+  popupTypeChoiceTextActive: {
+    color: '#ffffff',
+  },
+  modalActionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  actionPillDownload: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#dbeafe',
-  },
-  actionPillDownloadText: {
-    color: '#1d4ed8',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  actionPillVisualizar: {
-    backgroundColor: '#eef2ff',
-    borderColor: '#e0e7ff',
-  },
-  actionPillVisualizarText: {
-    color: '#4338ca',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  actionPillEditar: {
-    backgroundColor: '#fffbeb',
-    borderColor: '#fef3c7',
-  },
-  actionPillEditarText: {
-    color: '#b45309',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  actionPillCompartilhar: {
-    backgroundColor: '#ecfdf5',
-    borderColor: '#d1fae5',
-  },
-  actionPillCompartilharText: {
-    color: '#047857',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  actionPillExcluir: {
-    backgroundColor: '#fff1f2',
-    borderColor: '#ffe4e6',
-  },
-  actionPillExcluirText: {
-    color: '#be123c',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-
-  /* ─── PAGINAÇÃO ─── */
-  paginationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
-    gap: 12,
+    paddingTop: 14,
   },
-  pageBtn: {
-    backgroundColor: '#ffffff',
+  cancelBtn: {
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 6,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
   },
-  pageBtnDisabled: {
-    opacity: 0.4,
-  },
-  pageBtnText: {
-    fontSize: 10,
+  cancelBtnText: {
+    color: '#475569',
+    fontSize: 11,
     fontWeight: '800',
-    color: '#0f172a',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
-  pageIndicatorText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#64748b',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+  publishBtn: {
+    backgroundColor: '#0284c7',
+    paddingVertical: 9,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+  },
+  publishBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
     fontFamily: modernFont,
   },
 
-  /* ─── ABA RANKING (IGUAL COORD/INDEX.PHP) ─── */
-  rankingCard: {
+  /* DiÃ¡logo Customizado */
+  dialogContent: {
+    width: '100%',
+    maxWidth: 420,
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.8)',
-    overflow: 'hidden',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
+    padding: 22,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
   },
-  rankingHeader: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#fef3c7',
-    backgroundColor: '#fffbeb',
-  },
-  rankingHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  rankingIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#f59e0b',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#f59e0b',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  rankingTitle: {
-    fontSize: 14,
+  dialogTitle: {
+    fontSize: 16,
     fontWeight: '900',
-    letterSpacing: 1.2,
-    color: '#92400e',
-    textTransform: 'uppercase',
+    color: '#0f172a',
+    marginBottom: 8,
+    letterSpacing: 0.5,
     fontFamily: modernFont,
   },
-  rankingSubtitle: {
-    fontSize: 10,
-    color: '#d97706',
-    fontWeight: '600',
-    marginTop: 1,
-    fontFamily: modernFont,
-  },
-  rankingTableHeaderRow: {
-    backgroundColor: '#f8fafc',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rankingColPos: {
-    width: '15%',
-    alignItems: 'center',
-  },
-  rankingColUser: {
-    width: '65%',
-  },
-  rankingColTotal: {
-    width: '20%',
-    alignItems: 'center',
-  },
-  rankingTableHeaderText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#64748b',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    fontFamily: modernFont,
-  },
-  rankingTableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  rankingPosBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rankingPosBadge1: {
-    backgroundColor: '#fef9c3',
-  },
-  rankingPosBadge2: {
-    backgroundColor: '#e2e8f0',
-  },
-  rankingPosBadge3: {
-    backgroundColor: '#ffedd5',
-  },
-  rankingPosBadgeText1: {
-    color: '#a16207',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  rankingPosBadgeText2: {
+  dialogMessage: {
+    fontSize: 13,
     color: '#475569',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  rankingPosBadgeText3: {
-    color: '#c2410c',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  rankingPosNumber: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#94a3b8',
+    lineHeight: 18,
+    marginBottom: 18,
     fontFamily: modernFont,
   },
-  rankingUserName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-    fontFamily: modernFont,
+  dialogActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
   },
-  rankingTotalBadge: {
-    backgroundColor: '#eff6ff',
+  dialogCancelBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#dbeafe',
-    paddingHorizontal: 10,
+    borderColor: '#cbd5e1',
+  },
+  dialogCancelBtnText: {
+    color: '#475569',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  dialogConfirmBtn: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  dialogConfirmBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  /* UsuÃ¡rios / PermissÃµes */
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    height: 42,
+  },
+  searchIcon: {
+    fontSize: 14,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  userList: {
+    gap: 10,
+  },
+  userCard: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  badgeContainer: {
+    paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
-  rankingTotalBadgeText: {
+  badgeText: {
     fontSize: 10,
+    fontWeight: '800',
+  },
+  navbar: {
+    height: 64,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  navLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  coordBadgeIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navTitle: {
+    fontSize: 16,
     fontWeight: '900',
-    color: '#2563eb',
+    color: '#0f172a',
+    fontFamily: corporateFont,
+    letterSpacing: 0.5,
+  },
+  navSubtitle: {
+    fontSize: 10,
+    color: '#f59e0b',
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  navRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  themeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#334155',
+  },
+  backButton: {
+    backgroundColor: '#0284c7',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  modalReportContent: {
+    width: '100%',
+    maxWidth: 720,
+    maxHeight: '90%',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  modalReportHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  modalReportTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#0f172a',
     fontFamily: modernFont,
   },
-
+  modalReportSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontFamily: modernFont,
+  },
+  modalReportBody: {
+    padding: 16,
+  },
+  modalReportSection: {
+    marginBottom: 16,
+  },
+  modalReportSectionTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    fontFamily: modernFont,
+  },
+  modalReportGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  modalReportField: {
+    minWidth: 140,
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  modalReportFieldLabel: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  modalReportFieldValue: {
+    fontSize: 12,
+    color: '#0f172a',
+    fontWeight: '800',
+  },
+  modalActionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    flexWrap: 'wrap',
+  },
+  modalDownloadBtn: {
+    backgroundColor: '#0284c7',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  modalDownloadBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  modalEditarBtn: {
+    backgroundColor: '#f59e0b',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  modalEditarBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  modalWhatsAppBtn: {
+    backgroundColor: '#16a34a',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  modalWhatsAppBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
 });
-

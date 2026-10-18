@@ -990,6 +990,108 @@ export default function ReportGenerator() {
     setInfoSelection({ start: newCursorPos, end: newCursorPos });
   };
 
+  // Estados de Notificações e Comunicados In-App da Coordenação
+  const [activePopup, setActivePopup] = useState<any | null>(null);
+  const [isPopupModalOpen, setIsPopupModalOpen] = useState<boolean>(false);
+  const [mensagensList, setMensagensList] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState<boolean>(false);
+
+  const carregarNotificacoesInApp = async () => {
+    try {
+      // 1. Busca comunicado global ativo (notificacoes)
+      let popupAtivo: any = null;
+      try {
+        const { data: pops } = await supabase
+          .from('notificacoes')
+          .select('*')
+          .eq('ativa', 1)
+          .order('id', { ascending: false })
+          .limit(1);
+        if (pops && pops.length > 0) popupAtivo = pops[0];
+      } catch (e) {}
+
+      if (!popupAtivo && typeof localStorage !== 'undefined') {
+        try {
+          const rawP = localStorage.getItem('mms_popups_local');
+          if (rawP) {
+            const listP = JSON.parse(rawP);
+            popupAtivo = listP.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
+          }
+        } catch (e) {}
+      }
+
+      if (popupAtivo) {
+        setActivePopup(popupAtivo);
+        const popKey = 'mms_popup_visto_' + popupAtivo.id;
+        if (typeof localStorage !== 'undefined') {
+          const jaVisto = localStorage.getItem(popKey);
+          if (!jaVisto || popupAtivo.regra_exibicao === 'sempre') {
+            setIsPopupModalOpen(true);
+          }
+        } else {
+          setIsPopupModalOpen(true);
+        }
+      }
+
+      // 2. Busca mensagens in-app (mms_mensagens)
+      let msgs: any[] = [];
+      try {
+        const { data: dbMsgs } = await supabase
+          .from('mms_mensagens')
+          .select('*')
+          .order('data_envio', { ascending: false })
+          .limit(20);
+        if (dbMsgs) msgs = dbMsgs;
+      } catch (e) {}
+
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const rawM = localStorage.getItem('mms_mensagens_local');
+          if (rawM) {
+            const localMsgs = JSON.parse(rawM);
+            const map = new Map();
+            localMsgs.forEach((m: any) => map.set(String(m.id || m.data_envio), m));
+            msgs.forEach((m: any) => map.set(String(m.id || m.data_envio), m));
+            msgs = Array.from(map.values()).sort(
+              (a, b) => new Date(b.data_envio).getTime() - new Date(a.data_envio).getTime()
+            );
+          }
+        } catch (e) {}
+      }
+
+      setMensagensList(msgs);
+
+      // Calcula mensagens não lidas
+      let lidas: number[] = [];
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const rawLidas = localStorage.getItem('mms_mensagens_lidas');
+          if (rawLidas) lidas = JSON.parse(rawLidas);
+        } catch (e) {}
+      }
+      const naoLidas = msgs.filter((m) => !lidas.includes(m.id));
+      setUnreadCount(naoLidas.length);
+    } catch (err) {
+      console.warn('Erro ao carregar notificações in-app:', err);
+    }
+  };
+
+  const handleMarcarTodasLidas = () => {
+    if (typeof localStorage !== 'undefined') {
+      const ids = mensagensList.map((m) => m.id);
+      localStorage.setItem('mms_mensagens_lidas', JSON.stringify(ids));
+      setUnreadCount(0);
+    }
+  };
+
+  const handleFecharPopup = () => {
+    setIsPopupModalOpen(false);
+    if (activePopup && typeof localStorage !== 'undefined') {
+      localStorage.setItem('mms_popup_visto_' + activePopup.id, 'true');
+    }
+  };
+
   // Custom Alert / Confirmation Pop-up State
   const [customDialog, setCustomDialog] = useState<{
     visible: boolean;
@@ -1237,6 +1339,10 @@ export default function ReportGenerator() {
         updateCurrentTab({ preposto: '' });
       }
       setIsAuthChecking(false);
+      carregarNotificacoesInApp();
+      if (typeof window !== 'undefined') {
+        window.addEventListener('mms_mensagens_atualizadas', carregarNotificacoesInApp);
+      }
     }).catch(() => {
       setIsAuthChecking(false);
     });
@@ -2675,20 +2781,26 @@ export default function ReportGenerator() {
 
         {/* Direita: Notificações e Menu */}
         <View style={styles.navRightGroup}>
-          {/* Botão de Notificações */}
+          {/* Botão de Notificações com Badge e Ação Real */}
           <TouchableOpacity
             style={styles.navNotifBtn}
             activeOpacity={0.7}
             onPress={() => {
-              // Notificações
+              setIsNotifDropdownOpen(!isNotifDropdownOpen);
+              handleMarcarTodasLidas();
             }}
           >
             {Platform.OS === 'web' ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#94a3b8">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke={unreadCount > 0 ? '#38bdf8' : '#94a3b8'}>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
             ) : (
               <Text style={{ fontSize: 18 }}>🔔</Text>
+            )}
+            {unreadCount > 0 && (
+              <View style={styles.notifBadgeCircle}>
+                <Text style={styles.notifBadgeCircleText}>{unreadCount}</Text>
+              </View>
             )}
           </TouchableOpacity>
 
@@ -2764,7 +2876,7 @@ export default function ReportGenerator() {
                             styles.nivelBadgeText,
                             isUserCoordinator(userSession) ? styles.nivelBadgeCoordText : styles.nivelBadgePrepostoText
                           ]}>
-                            {isUserCoordinator(userSession) ? 'COORDENAÇÃO (NÍVEL 2)' : 'PREPOSTO (NÍVEL 1)'}
+                            {isUserCoordinator(userSession) ? 'COORDENAÇÃO' : 'PREPOSTO'}
                           </Text>
                         </View>
                       </View>
@@ -2885,6 +2997,106 @@ export default function ReportGenerator() {
             </Animated.View>
           </TouchableOpacity>
         </Modal>
+
+        {/* Dropdown de Notificações / Mensagens da Coordenação */}
+        <Modal
+          visible={isNotifDropdownOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsNotifDropdownOpen(false)}
+        >
+          <TouchableOpacity
+            style={styles.dropdownModalBackdrop}
+            activeOpacity={1}
+            onPress={() => setIsNotifDropdownOpen(false)}
+          >
+            <View style={[styles.dropdownMenuCard, { width: 340, maxWidth: '92%', maxHeight: 480, padding: 0, overflow: 'hidden' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ fontSize: 16 }}>🔔</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#0f172a' }}>NOTIFICAÇÕES DA COORDENAÇÃO</Text>
+                </View>
+                <TouchableOpacity onPress={() => setIsNotifDropdownOpen(false)}>
+                  <Text style={{ fontSize: 16, color: '#94a3b8', fontWeight: 'bold' }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ maxHeight: 380, padding: 12 }}>
+                {mensagensList.length === 0 ? (
+                  <View style={{ padding: 24, alignItems: 'center' }}>
+                    <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma notificação no momento.</Text>
+                  </View>
+                ) : (
+                  mensagensList.map((m, idx) => {
+                    const corBadge = m.tipo === 'urgente' ? '#fee2e2' : m.tipo === 'alerta' ? '#fef3c7' : m.tipo === 'aviso' ? '#ffedd5' : '#e0f2fe';
+                    const textBadge = m.tipo === 'urgente' ? '#dc2626' : m.tipo === 'alerta' ? '#b45309' : m.tipo === 'aviso' ? '#c2410c' : '#0284c7';
+                    const dataStr = m.data_envio ? new Date(m.data_envio).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+                    return (
+                      <View key={m.id || idx} style={{ backgroundColor: '#f8fafc', borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: '#0f172a', flex: 1 }}>{m.titulo}</Text>
+                          <View style={{ backgroundColor: corBadge, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                            <Text style={{ fontSize: 9, fontWeight: '900', color: textBadge, textTransform: 'uppercase' }}>{m.tipo || 'info'}</Text>
+                          </View>
+                        </View>
+                        <Text style={{ fontSize: 12, color: '#475569', lineHeight: 16, marginBottom: 6 }}>{m.mensagem}</Text>
+                        <Text style={{ fontSize: 10, color: '#94a3b8' }}>🕒 {dataStr}</Text>
+                      </View>
+                    );
+                  })
+                )}
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Modal de Comunicado / Pop-up Global da Coordenação */}
+        {activePopup && (
+          <Modal
+            visible={isPopupModalOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => handleFecharPopup()}
+          >
+            <View
+              // @ts-ignore
+              dataSet={{ modalOverlay: 'true' }}
+              style={styles.modalOverlay}
+            >
+              <View style={[styles.authCard, { maxWidth: 440, padding: 24, borderRadius: 20 }]}>
+                <View style={{ alignItems: 'center', marginBottom: 14 }}>
+                  <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: activePopup.tipo === 'urgente' ? '#fee2e2' : '#eff6ff', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 28 }}>{activePopup.tipo === 'urgente' ? '⚠️' : activePopup.tipo === 'feedback' ? '⭐' : '📢'}</Text>
+                  </View>
+                  <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a', textAlign: 'center', marginBottom: 4 }}>
+                    {activePopup.titulo}
+                  </Text>
+                  <View style={{ backgroundColor: activePopup.tipo === 'urgente' ? '#fee2e2' : '#e0f2fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginTop: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '900', color: activePopup.tipo === 'urgente' ? '#dc2626' : '#0284c7', textTransform: 'uppercase' }}>
+                      {activePopup.tipo || 'COMUNICADO'}
+                    </Text>
+                  </View>
+                </View>
+
+                <ScrollView style={{ maxHeight: 220, marginBottom: 20 }}>
+                  <Text style={{ fontSize: 13, color: '#475569', lineHeight: 20, textAlign: 'center' }}>
+                    {activePopup.mensagem}
+                  </Text>
+                </ScrollView>
+
+                <TouchableOpacity
+                  style={{ backgroundColor: '#2563eb', paddingVertical: 12, borderRadius: 10, alignItems: 'center' }}
+                  onPress={() => handleFecharPopup()}
+                  activeOpacity={0.85}
+                >
+                  <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 }}>
+                    ENTENDI / FECHAR
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -4187,6 +4399,27 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  notifBadgeCircle: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#e11d48',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#0f172a',
+  },
+  notifBadgeCircleText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '900',
+    lineHeight: 11,
   },
   navMenuBtn: {
     flexDirection: 'row',
