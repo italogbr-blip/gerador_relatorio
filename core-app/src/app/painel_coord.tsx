@@ -128,6 +128,21 @@ export default function PainelCoordScreen() {
     return () => clearInterval(timer);
   }, []);
 
+  const nomeMesAtual = useMemo(() => {
+    const meses = [
+      'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+      'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+    ];
+    const d = new Date();
+    return `${meses[d.getMonth()]} de ${d.getFullYear()}`;
+  }, []);
+
+  const mesAnoCurto = useMemo(() => {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `em ${m}/${d.getFullYear()}`;
+  }, []);
+
   // Modal de Detalhes do Relatório
   const [selectedReport, setSelectedReport] = useState<any>(null);
 
@@ -947,98 +962,220 @@ export default function PainelCoordScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* KPI Banner / Métricas */}
-        <View style={styles.kpiGrid}>
-          <View style={[styles.kpiCard, !isDarkMode && styles.kpiCardLight]}>
-            <View style={styles.kpiHeaderRow}>
-              <Text style={styles.kpiLabel}>TOTAL GERAL</Text>
-              <Text style={styles.kpiIcon}>📊</Text>
+        {/* Card Superior Visão Geral (Fiel ao Anexo 2) */}
+        <View style={[styles.anexo2HeaderCard, !isDarkMode && styles.anexo2HeaderCardLight]}>
+          <View style={styles.anexo2HeaderLeft}>
+            <View style={styles.anexo2HeaderIconBox}>
+              <Text style={{ fontSize: 22, color: '#ffffff' }}>📊</Text>
             </View>
-            <Text style={[styles.kpiValue, !isDarkMode && { color: '#0f172a' }]}>{totalRelatoriosGeral}</Text>
-            <Text style={styles.kpiFootnote}>Relatórios emitidos</Text>
+            <View>
+              <Text style={[styles.anexo2HeaderTitle, !isDarkMode && { color: '#0f172a' }]}>
+                VISÃO GERAL
+              </Text>
+              <Text style={styles.anexo2HeaderSubtitle}>
+                Análise de métricas e performance
+              </Text>
+            </View>
           </View>
 
-          <View style={[styles.kpiCard, !isDarkMode && styles.kpiCardLight]}>
-            <View style={styles.kpiHeaderRow}>
-              <Text style={styles.kpiLabel}>NESTE MÊS</Text>
-              <Text style={styles.kpiIcon}>📅</Text>
+          <View style={styles.anexo2HeaderRight}>
+            <View style={[styles.anexo2MonthSelector, !isDarkMode && styles.anexo2MonthSelectorLight]}>
+              <Text style={[styles.anexo2MonthText, !isDarkMode && { color: '#0f172a' }]}>
+                📅 {nomeMesAtual}
+              </Text>
             </View>
-            <Text style={[styles.kpiValue, { color: '#06b6d4' }]}>{relatoriosMesCount}</Text>
-            <Text style={styles.kpiFootnote}>Atendimentos no mês atual</Text>
-          </View>
-
-          <View style={[styles.kpiCard, !isDarkMode && styles.kpiCardLight]}>
-            <View style={styles.kpiHeaderRow}>
-              <Text style={styles.kpiLabel}>HOJE</Text>
-              <Text style={styles.kpiIcon}>⚡</Text>
-            </View>
-            <Text style={[styles.kpiValue, { color: '#10b981' }]}>{relatoriosHojeCount}</Text>
-            <Text style={styles.kpiFootnote}>Relatórios gerados hoje</Text>
-          </View>
-
-          <View style={[styles.kpiCard, !isDarkMode && styles.kpiCardLight]}>
-            <View style={styles.kpiHeaderRow}>
-              <Text style={styles.kpiLabel}>USUÁRIOS</Text>
-              <Text style={styles.kpiIcon}>👥</Text>
-            </View>
-            <Text style={[styles.kpiValue, { color: '#f59e0b' }]}>{usuarios.length}</Text>
-            <Text style={styles.kpiFootnote}>Contas registradas</Text>
+            <TouchableOpacity
+              style={styles.anexo2BtnFiltrar}
+              onPress={() => carregarRelatorios()}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.anexo2BtnFiltrarText}>FILTRAR ›</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Abas de Navegação */}
-        <View style={[styles.tabsContainer, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+        {/* 4 Cards de Métricas / KPIs (Fiel ao Anexo 2) */}
+        <View style={styles.anexo2KpiGrid}>
+          {/* 1. HOJE */}
+          <View
+            style={[
+              styles.anexo2KpiCard,
+              styles.anexo2KpiCardHoje,
+              !isDarkMode ? styles.anexo2KpiCardLight : styles.anexo2KpiCardDark,
+            ]}
+          >
+            <Text style={[styles.anexo2KpiLabel, { color: '#2563eb' }]}>HOJE</Text>
+            <Text style={[styles.anexo2KpiValue, !isDarkMode && { color: '#0f172a' }]}>
+              {relatoriosHojeCount}
+            </Text>
+            <Text style={styles.anexo2KpiFootnote}>relatórios gerados</Text>
+          </View>
+
+          {/* 2. NO MÊS */}
+          <View
+            style={[
+              styles.anexo2KpiCard,
+              styles.anexo2KpiCardMes,
+              !isDarkMode ? styles.anexo2KpiCardLight : styles.anexo2KpiCardDark,
+            ]}
+          >
+            <Text style={[styles.anexo2KpiLabel, { color: '#10b981' }]}>NO MÊS</Text>
+            <Text style={[styles.anexo2KpiValue, !isDarkMode && { color: '#0f172a' }]}>
+              {relatoriosMesCount}
+            </Text>
+            <Text style={styles.anexo2KpiFootnote}>{mesAnoCurto}</Text>
+          </View>
+
+          {/* 3. USUÁRIOS ATIVOS */}
+          <View
+            style={[
+              styles.anexo2KpiCard,
+              styles.anexo2KpiCardUsuarios,
+              !isDarkMode ? styles.anexo2KpiCardLight : styles.anexo2KpiCardDark,
+            ]}
+          >
+            <Text style={[styles.anexo2KpiLabel, { color: '#f59e0b' }]}>USUÁRIOS ATIVOS</Text>
+            <Text style={[styles.anexo2KpiValue, !isDarkMode && { color: '#0f172a' }]}>
+              {usuarios.length > 0 ? 1 : 0}
+            </Text>
+            <Text style={styles.anexo2KpiFootnote}>online no momento</Text>
+          </View>
+
+          {/* 4. TOTAL GERAL */}
+          <View
+            style={[
+              styles.anexo2KpiCard,
+              styles.anexo2KpiCardTotal,
+              !isDarkMode ? styles.anexo2KpiCardLight : styles.anexo2KpiCardDark,
+            ]}
+          >
+            <Text style={[styles.anexo2KpiLabel, { color: '#475569' }]}>TOTAL GERAL</Text>
+            <Text style={[styles.anexo2KpiValue, !isDarkMode && { color: '#0f172a' }]}>
+              {totalRelatoriosGeral}
+            </Text>
+            <Text style={styles.anexo2KpiFootnote}>relatórios salvos</Text>
+          </View>
+        </View>
+
+        {/* Abas de Navegação (Fiel ao Anexo 2 - Sem container escuro) */}
+        <View style={styles.anexo2TabsBar}>
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'relatorios' && styles.tabButtonActive]}
+            style={[
+              styles.anexo2TabItem,
+              activeTab === 'relatorios' &&
+                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+            ]}
             onPress={() => setActiveTab('relatorios')}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.tabButtonText, activeTab === 'relatorios' && styles.tabButtonTextActive]}>
-              📊 Relatórios Gerais
+            <Text style={{ fontSize: 13, marginRight: 6 }}>📊</Text>
+            <Text
+              style={[
+                styles.anexo2TabItemText,
+                activeTab === 'relatorios' && styles.anexo2TabItemTextActive,
+              ]}
+            >
+              RELATÓRIOS
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'ranking' && styles.tabButtonActive]}
+            style={[
+              styles.anexo2TabItem,
+              activeTab === 'ranking' &&
+                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+            ]}
             onPress={() => setActiveTab('ranking')}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.tabButtonText, activeTab === 'ranking' && styles.tabButtonTextActive]}>
-              🏆 Top Geradores
+            <Text style={{ fontSize: 13, marginRight: 6 }}>🏆</Text>
+            <Text
+              style={[
+                styles.anexo2TabItemText,
+                activeTab === 'ranking' && styles.anexo2TabItemTextActive,
+              ]}
+            >
+              RANKING
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'usuarios' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('usuarios')}
-          >
-            <Text style={[styles.tabButtonText, activeTab === 'usuarios' && styles.tabButtonTextActive]}>
-              👥 Usuários & Permissões
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'popups' && styles.tabButtonActive]}
+            style={[
+              styles.anexo2TabItem,
+              activeTab === 'popups' &&
+                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+            ]}
             onPress={() => setActiveTab('popups')}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.tabButtonText, activeTab === 'popups' && styles.tabButtonTextActive]}>
-              📢 Comunicados In-App
+            <Text style={{ fontSize: 13, marginRight: 6 }}>📢</Text>
+            <Text
+              style={[
+                styles.anexo2TabItemText,
+                activeTab === 'popups' && styles.anexo2TabItemTextActive,
+              ]}
+            >
+              POP-UPS
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'sistema' && styles.tabButtonActive]}
+            style={[
+              styles.anexo2TabItem,
+              activeTab === 'usuarios' &&
+                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+            ]}
+            onPress={() => setActiveTab('usuarios')}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 13, marginRight: 6 }}>💬</Text>
+            <Text
+              style={[
+                styles.anexo2TabItemText,
+                activeTab === 'usuarios' && styles.anexo2TabItemTextActive,
+              ]}
+            >
+              MENSAGENS
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.anexo2TabItem,
+              activeTab === 'sistema' &&
+                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+            ]}
             onPress={() => setActiveTab('sistema')}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.tabButtonText, activeTab === 'sistema' && styles.tabButtonTextActive]}>
-              ⚙️ Sistema & Status
+            <Text style={{ fontSize: 13, marginRight: 6 }}>🛡️</Text>
+            <Text
+              style={[
+                styles.anexo2TabItemText,
+                activeTab === 'sistema' && styles.anexo2TabItemTextActive,
+              ]}
+            >
+              SEGURANÇA
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'version' && styles.tabButtonActive]}
+            style={[
+              styles.anexo2TabItem,
+              activeTab === 'version' &&
+                (isDarkMode ? styles.anexo2TabItemActiveDark : styles.anexo2TabItemActiveLight),
+            ]}
             onPress={() => setActiveTab('version')}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.tabButtonText, activeTab === 'version' && styles.tabButtonTextActive]}>
-              🏷️ Controle de Versões
+            <Text style={{ fontSize: 13, marginRight: 6 }}>🏷️</Text>
+            <Text
+              style={[
+                styles.anexo2TabItemText,
+                activeTab === 'version' && styles.anexo2TabItemTextActive,
+              ]}
+            >
+              VERSION
             </Text>
           </TouchableOpacity>
         </View>
@@ -1046,10 +1183,19 @@ export default function PainelCoordScreen() {
         {/* ════════════════ ABA 1: RELATÓRIOS GERAIS ════════════════ */}
         {activeTab === 'relatorios' && (
           <View style={styles.tabContent}>
-            {/* Filtros conforme Anexo 6 */}
+            {/* Título da Seção Fiel ao Anexo 2 */}
+            <View style={styles.anexo2SectionTitleRow}>
+              <Text style={{ fontSize: 16 }}>📊</Text>
+              <Text style={[styles.anexo2SectionTitleText, !isDarkMode && { color: '#0f172a' }]}>
+                RELATÓRIOS GERADOS
+              </Text>
+            </View>
+
+            {/* Filtros conforme Anexo 2 */}
             <View style={[styles.anexo6FilterCard, !isDarkMode && styles.anexo6FilterCardLight]}>
-              <View style={styles.anexo6FilterRow}>
-                <View style={styles.anexo6DateBox}>
+              <View style={styles.anexo2FilterResponsiveRow}>
+                {/* DE */}
+                <View style={styles.anexo2DateBox}>
                   <Text style={styles.anexo6FilterLabel}>DE:</Text>
                   <TextInput
                     style={[styles.anexo6FilterInput, !isDarkMode && styles.anexo6FilterInputLight]}
@@ -1058,8 +1204,11 @@ export default function PainelCoordScreen() {
                     value={filtroDataInicio}
                     onChangeText={setFiltroDataInicio}
                   />
+                  <Text style={{ fontSize: 12, color: '#64748b', marginLeft: 4 }}>📅</Text>
                 </View>
-                <View style={styles.anexo6DateBox}>
+
+                {/* ATÉ */}
+                <View style={styles.anexo2DateBox}>
                   <Text style={styles.anexo6FilterLabel}>ATÉ:</Text>
                   <TextInput
                     style={[styles.anexo6FilterInput, !isDarkMode && styles.anexo6FilterInputLight]}
@@ -1068,47 +1217,79 @@ export default function PainelCoordScreen() {
                     value={filtroDataFim}
                     onChangeText={setFiltroDataFim}
                   />
+                  <Text style={{ fontSize: 12, color: '#64748b', marginLeft: 4 }}>📅</Text>
                 </View>
-              </View>
 
-              <View style={styles.anexo6FilterRow}>
+                {/* Buscar Usuário */}
                 <TextInput
-                  style={[styles.anexo6SearchInput, !isDarkMode && styles.anexo6FilterInputLight]}
+                  style={[styles.anexo2SearchUserInput, !isDarkMode && styles.anexo6FilterInputLight]}
                   placeholder="Buscar usuário..."
                   placeholderTextColor="#94a3b8"
                   value={filtroBuscaUsuario}
                   onChangeText={setFiltroBuscaUsuario}
                 />
+
+                {/* Unidade */}
                 <TextInput
-                  style={[styles.anexo6SearchInput, !isDarkMode && styles.anexo6FilterInputLight]}
+                  style={[styles.anexo2SearchUnidadeInput, !isDarkMode && styles.anexo6FilterInputLight]}
                   placeholder="Unidade..."
                   placeholderTextColor="#94a3b8"
                   value={filtroBusca}
                   onChangeText={setFiltroBusca}
                 />
-              </View>
 
-              <View style={styles.anexo6FilterRow}>
+                {/* Select Empresa */}
                 <TouchableOpacity
-                  style={[styles.anexo6SelectBox, !isDarkMode && styles.anexo6SelectBoxLight]}
+                  style={[styles.anexo2SelectBox, !isDarkMode && styles.anexo6SelectBoxLight]}
                   onPress={() => setIsEmpresaDropdownOpen(!isEmpresaDropdownOpen)}
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.anexo6SelectBoxText, !isDarkMode && { color: '#0f172a' }]}>
                     {filtroEmpresa === 'TODAS' ? 'Empresa...' : filtroEmpresa}
                   </Text>
-                  <Text style={styles.anexo6SelectChevron}>⇅</Text>
+                  <Text style={styles.anexo6SelectChevron}>⌵</Text>
                 </TouchableOpacity>
 
+                {/* Select Usuário */}
                 <TouchableOpacity
-                  style={[styles.anexo6SelectBox, !isDarkMode && styles.anexo6SelectBoxLight]}
+                  style={[styles.anexo2SelectBox, !isDarkMode && styles.anexo6SelectBoxLight]}
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.anexo6SelectBoxText, !isDarkMode && { color: '#0f172a' }]}>
                     Usuário...
                   </Text>
-                  <Text style={styles.anexo6SelectChevron}>⇅</Text>
+                  <Text style={styles.anexo6SelectChevron}>⌵</Text>
                 </TouchableOpacity>
+
+                {/* Botões FILTRAR e LIMPAR */}
+                <View style={styles.anexo2ButtonsGroup}>
+                  <TouchableOpacity
+                    style={styles.anexo6BtnFiltrar}
+                    onPress={() => {
+                      setPaginaRelatorios(1);
+                      carregarRelatorios();
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.anexo6BtnFiltrarText}>FILTRAR</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.anexo6BtnLimpar}
+                    onPress={() => {
+                      setFiltroBusca('');
+                      setFiltroBuscaUsuario('');
+                      setFiltroEmpresa('TODAS');
+                      setFiltroDataInicio('');
+                      setFiltroDataFim('');
+                      setPaginaRelatorios(1);
+                      carregarRelatorios();
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.anexo6BtnLimparText}>LIMPAR</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {isEmpresaDropdownOpen && (
@@ -1140,35 +1321,6 @@ export default function PainelCoordScreen() {
                   ))}
                 </View>
               )}
-
-              <View style={styles.anexo6FilterButtonsRow}>
-                <TouchableOpacity
-                  style={styles.anexo6BtnFiltrar}
-                  onPress={() => {
-                    setPaginaRelatorios(1);
-                    carregarRelatorios();
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.anexo6BtnFiltrarText}>FILTRAR</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.anexo6BtnLimpar}
-                  onPress={() => {
-                    setFiltroBusca('');
-                    setFiltroBuscaUsuario('');
-                    setFiltroEmpresa('TODAS');
-                    setFiltroDataInicio('');
-                    setFiltroDataFim('');
-                    setPaginaRelatorios(1);
-                    carregarRelatorios();
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.anexo6BtnLimparText}>LIMPAR</Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             {/* Listagem conforme Anexo 6 */}
@@ -2163,6 +2315,282 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '800',
+  },
+
+  // ─── ESTILOS ANEXO 2 (VISÃO GERAL, KPIS LIGHT COM TOPO COLORIDO, ABAS E FILTROS) ───
+  anexo2HeaderCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  anexo2HeaderCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  anexo2HeaderCardDark: {
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+  },
+  anexo2HeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  anexo2HeaderIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anexo2HeaderTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  anexo2HeaderSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  anexo2HeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  anexo2MonthSelector: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  anexo2MonthSelectorLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  anexo2MonthSelectorDark: {
+    backgroundColor: '#0f172a',
+    borderColor: '#334155',
+  },
+  anexo2MonthText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  anexo2BtnFiltrar: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anexo2BtnFiltrarText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+
+  // KPI Cards Anexo 2
+  anexo2KpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
+  anexo2KpiCard: {
+    flex: 1,
+    minWidth: 160,
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderTopWidth: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  anexo2KpiCardLight: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  anexo2KpiCardDark: {
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+  },
+  anexo2KpiCardHoje: {
+    borderTopColor: '#2563eb',
+  },
+  anexo2KpiCardMes: {
+    borderTopColor: '#10b981',
+  },
+  anexo2KpiCardUsuarios: {
+    borderTopColor: '#f59e0b',
+  },
+  anexo2KpiCardTotal: {
+    borderTopColor: '#334155',
+  },
+  anexo2KpiLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    fontFamily: modernFont,
+    marginBottom: 6,
+  },
+  anexo2KpiValue: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#0f172a',
+    fontFamily: modernFont,
+    marginBottom: 4,
+  },
+  anexo2KpiFootnote: {
+    fontSize: 11,
+    color: '#64748b',
+    fontFamily: modernFont,
+  },
+
+  // Abas Anexo 2 (Sem caixa escura envolvente)
+  anexo2TabsBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: 'transparent',
+    gap: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  anexo2TabItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  anexo2TabItemActiveLight: {
+    backgroundColor: '#1e293b',
+  },
+  anexo2TabItemActiveDark: {
+    backgroundColor: '#2563eb',
+  },
+  anexo2TabItemText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#64748b',
+    fontFamily: modernFont,
+  },
+  anexo2TabItemTextActive: {
+    color: '#ffffff',
+    fontWeight: '900',
+  },
+
+  // Título da Seção Anexo 2
+  anexo2SectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  anexo2SectionTitleText: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+
+  // Filtros Responsivos Anexo 2
+  anexo2FilterResponsiveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    width: '100%',
+  },
+  anexo2DateBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 40,
+    minWidth: 130,
+    flex: 1,
+  },
+  anexo2SearchUserInput: {
+    flex: 1,
+    minWidth: 140,
+    height: 40,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 12,
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  anexo2SearchUnidadeInput: {
+    flex: 1,
+    minWidth: 110,
+    height: 40,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 12,
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  anexo2SelectBox: {
+    flex: 1,
+    minWidth: 120,
+    height: 40,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  anexo2ButtonsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
 
   // KPIs
