@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { Platform } from 'react-native';
 import '../css/painel_coord.css';
+import '../css/estilo.css';
 
 export default function Layout() {
   useEffect(() => {
