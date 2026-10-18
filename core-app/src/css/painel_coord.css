@@ -1,0 +1,102 @@
+/* ==========================================================================
+   PAINEL DE COORDENAÇÃO - MMS TOOLS (ESTILOS LIMPOS E RESPONSIVOS)
+   Portado e otimizado com fidelidade 100% ao ecossistema original
+   ========================================================================== */
+
+/* ─── NAVBAR SUPERIOR STICKY ─── */
+.coord-navbar-sticky {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ─── SCROLL HORIZONTAL PARA TABELAS RESPONSIVAS ─── */
+.coord-table-scroll-container {
+  width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin !important;
+}
+
+.coord-table-scroll-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.coord-table-scroll-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.coord-table-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.coord-table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ─── ABAS DE NAVEGAÇÃO HORIZONTAL EM MOBILE ─── */
+.coord-tabs-scroll {
+  display: flex !important;
+  flex-direction: row !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  padding-bottom: 4px !important;
+}
+
+.coord-tabs-scroll::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* ─── CARD DE LOGIN / BLOQUEIO ─── */
+.coord-lock-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding-top: 24px !important;
+  padding-bottom: 40px !important;
+  width: 100% !important;
+}
+
+/* ─── TRANSIÇÕES E HOVER SUAVE ─── */
+.coord-interactive-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.coord-interactive-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ─── MEDIA QUERIES PARA MOBILE (< 768px) ─── */
+@media (max-width: 768px) {
+  .coord-navbar-mobile-col {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .coord-kpi-grid-mobile {
+    grid-template-columns: 1fr !important;
+  }
+
+  .coord-header-wrap-mobile {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .coord-lock-card-mobile {
+    width: 95% !important;
+    max-width: 100% !important;
+    padding: 20px !important;
+  }
+}
