@@ -1128,7 +1128,7 @@ export default function PainelCoordScreen() {
               <Text style={[styles.kpiMetricLabel, { color: '#7c3aed' }]}>USUÁRIOS</Text>
               <Text style={{ fontSize: 14 }}>👥</Text>
             </View>
-            <Text style={[styles.kpiMetricValue, { color: '#ea580c' }]}>{usuarios.length > 0 ? usuarios.length : 10}</Text>
+            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{usuarios.length > 0 ? usuarios.length : 10}</Text>
             <Text style={styles.kpiMetricFootnote}>Contas registradas</Text>
           </View>
         </View>
@@ -3623,12 +3623,12 @@ const styles = StyleSheet.create({
   // Modais
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
   },
   modalContent: {
     backgroundColor: '#1e293b',
@@ -4629,18 +4629,18 @@ const styles = StyleSheet.create({
     paddingBottom: 64,
   },
 
-  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO (IGUAL AO COORD/INDEX.PHP) ─── */
+  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO (TEMA DARK NAVY CONFORME ANEXO 3) ─── */
   coordNavbar: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0b132b',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#1e293b',
     width: '100%',
     zIndex: 50,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   coordNavbarInner: {
     maxWidth: 1600,
@@ -4678,7 +4678,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   coordNavLogoText: {
-    color: '#1e293b',
+    color: '#ffffff',
     fontSize: 18,
     fontWeight: '900',
     letterSpacing: 1.5,
@@ -4694,17 +4694,17 @@ const styles = StyleSheet.create({
   coordNavDateTimeGroup: {
     alignItems: 'flex-end',
     borderRightWidth: 1,
-    borderRightColor: '#e2e8f0',
+    borderRightColor: '#334155',
     paddingRight: 16,
   },
   coordNavDateTimeText: {
-    color: '#334155',
+    color: '#cbd5e1',
     fontSize: 12,
     fontWeight: '700',
     fontFamily: modernFont,
   },
   coordNavIpText: {
-    color: '#64748b',
+    color: '#94a3b8',
     fontSize: 10,
     fontWeight: '500',
     fontFamily: modernFont,
@@ -4715,13 +4715,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   coordNavUserGreeting: {
-    color: '#475569',
+    color: '#94a3b8',
     fontSize: 13,
     fontWeight: '500',
     fontFamily: modernFont,
   },
   coordNavUserName: {
-    color: '#0f172a',
+    color: '#ffffff',
     fontWeight: '800',
   },
   coordNavButtonsGroup: {
@@ -4733,20 +4733,22 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
   },
   coordNavVoltarBtn: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#1e293b',
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#334155',
   },
   coordNavVoltarBtnText: {
-    color: '#334155',
+    color: '#ffffff',
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.8,
