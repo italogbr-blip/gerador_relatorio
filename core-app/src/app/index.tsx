@@ -215,6 +215,75 @@ const MaterialFlatIcon = ({
   );
 };
 
+// Item Animado do Menu Flutuante (Feedback visual com bounce spring e material flat)
+const AnimatedFlatMenuItem = ({
+  icon,
+  size = 25,
+  color,
+  active = false,
+  onPress,
+  label,
+}: {
+  icon: MaterialIconName;
+  size?: number;
+  color?: string;
+  active?: boolean;
+  onPress: () => void;
+  label?: string;
+}) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.84,
+      useNativeDriver: Platform.OS !== 'web',
+      friction: 6,
+      tension: 140,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.sequence([
+      Animated.spring(scaleAnim, {
+        toValue: 1.18,
+        useNativeDriver: Platform.OS !== 'web',
+        friction: 4,
+        tension: 100,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: Platform.OS !== 'web',
+        friction: 5,
+        tension: 80,
+      }),
+    ]).start();
+  };
+
+  const iconColor = active ? '#2563eb' : (color || '#475569');
+
+  return (
+    <TouchableOpacity
+      style={styles.floatingNavTabItem}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={0.8}
+      accessibilityLabel={label}
+    >
+      <Animated.View
+        style={{
+          transform: [{ scale: scaleAnim }],
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <MaterialFlatIcon name={icon} size={size} color={iconColor} />
+      </Animated.View>
+      {active && <View style={styles.floatingNavActiveIndicator} />}
+    </TouchableOpacity>
+  );
+};
+
 const GRUPO_OPTIONS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
 
 interface SaidaItem {
@@ -672,6 +741,7 @@ export default function ReportGenerator() {
   };
 
   const { editId } = useLocalSearchParams<{ editId?: string }>();
+  const [activeMenuTab, setActiveMenuTab] = useState<'refresh' | 'coord' | 'relatorios' | 'logout'>('refresh');
   const [editingReportId, setEditingReportId] = useState<number | null>(null);
   const [isLoadingReportEdit, setIsLoadingReportEdit] = useState<boolean>(false);
   const [pdfGenerated, setPdfGenerated] = useState<boolean>(false);
@@ -2080,7 +2150,7 @@ export default function ReportGenerator() {
         } else {
           showCustomAlert(
             'RELATÓRIO ATUALIZADO',
-            `O relatório #${editingReportId} (${currentData.unidade}) foi atualizado com sucesso no Supabase!`
+            `O relatório #${editingReportId} (${currentData.unidade}) foi atualizado com sucesso no banco de dados central!`
           );
         }
         return;
@@ -2252,6 +2322,59 @@ export default function ReportGenerator() {
     );
   };
 
+  // Fechar / Limpar Aba de Relatório em Andamento (Imediato, sem bloqueios)
+  const fecharAba = (slotId: number) => {
+    // 1. Limpa o cache local da aba específica
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem('mms_tab_' + slotId);
+      } catch (e) {}
+    }
+
+    const userName =
+      userSession?.user?.user_metadata?.name ||
+      userSession?.user?.email?.split('@')[0] ||
+      '';
+    const cleanDefault = createDefaultTab(userName);
+
+    setTabs((prevTabs) => {
+      const remaining = prevTabs.filter((t) => t !== slotId);
+
+      // Se todas as abas foram fechadas, reseta para a Aba 1 vazia
+      if (remaining.length === 0) {
+        setActiveTab(1);
+        setTabStore({ 1: cleanDefault });
+        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+          try {
+            localStorage.setItem('mms_active_tab', '1');
+            localStorage.setItem('mms_tab_1', JSON.stringify(cleanDefault));
+          } catch (e) {}
+        }
+        return [1];
+      }
+
+      // Se fechou a aba que estava ativa, foca imediatamente em outra restante
+      if (activeTab === slotId) {
+        const nextActive = remaining[0];
+        setActiveTab(nextActive);
+        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+          try {
+            localStorage.setItem('mms_active_tab', String(nextActive));
+          } catch (e) {}
+        }
+      }
+
+      // Limpa os dados da aba fechada no estado
+      setTabStore((prevStore) => {
+        const nextStore = { ...prevStore };
+        delete nextStore[slotId];
+        return nextStore;
+      });
+
+      return remaining;
+    });
+  };
+
   // Renderizador dos Slots do Agrupamento de Relatórios em Andamento (Fiel ao Anexo 4)
   const renderAnexo4Slot = (slotId: number) => {
     const isActive = activeTab === slotId;
@@ -2288,9 +2411,10 @@ export default function ReportGenerator() {
             style={styles.anexo4RemoveBtn}
             onPress={(e) => {
               e.stopPropagation?.();
-              removeTab(slotId);
+              fecharAba(slotId);
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={`Fechar Relatório ${slotId}`}
           >
             <Text style={styles.anexo4RemoveText}>✕</Text>
           </TouchableOpacity>
@@ -2556,7 +2680,7 @@ export default function ReportGenerator() {
                   Editando Relatório #{editingReportId} ({currentData.unidade || 'Sem Unidade'})
                 </Text>
                 <Text style={styles.editingBannerSub}>
-                  Ao salvar, as alterações atualizarão o registro existente no Supabase sem duplicar.
+                  Ao salvar, as alterações atualizarão o registro existente na nuvem sem duplicar.
                 </Text>
               </View>
               <TouchableOpacity
@@ -3448,54 +3572,7 @@ export default function ReportGenerator() {
         </View>
       </ScrollView>
 
-      {/* Barra Flutuante de Navegação Inferior (Exclusiva para WebApp Mobile e Aplicativo) */}
-      {isAppOrMobile && (
-        <View style={styles.floatingNavWrapper} pointerEvents="box-none">
-          <View style={styles.floatingNavPill}>
-            {/* 1ª Opção: Refresh na página */}
-            <TouchableOpacity
-              style={[styles.floatingNavBtn, styles.navBtnRefresh]}
-              onPress={handleRefresh}
-              activeOpacity={0.75}
-              accessibilityLabel="Atualizar Página"
-            >
-              <MaterialFlatIcon name="refresh" size={24} color="#2563eb" />
-            </TouchableOpacity>
-
-            {/* 2ª Opção: Painel Coordenação */}
-            <TouchableOpacity
-              style={[styles.floatingNavBtn, styles.navBtnCoord]}
-              onPress={handleGoCoord}
-              activeOpacity={0.75}
-              accessibilityLabel="Painel Coordenação"
-            >
-              <MaterialFlatIcon name="settings" size={23} color="#7c3aed" />
-            </TouchableOpacity>
-
-            {/* 3ª Opção: Navegador de URL (com URL atual pré-preenchida) */}
-            <TouchableOpacity
-              style={[styles.floatingNavBtn, styles.navBtnUrl]}
-              onPress={handleOpenUrlModal}
-              activeOpacity={0.75}
-              accessibilityLabel="Navegador de URL"
-            >
-              <MaterialFlatIcon name="public" size={23} color="#0284c7" />
-            </TouchableOpacity>
-
-            {/* 4ª Opção: Logout */}
-            <TouchableOpacity
-              style={[styles.floatingNavBtn, styles.navBtnLogout]}
-              onPress={handleMenuLogout}
-              activeOpacity={0.75}
-              accessibilityLabel="Encerrar Sessão"
-            >
-              <MaterialFlatIcon name="logout" size={22} color="#e11d48" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* Modal Autenticação Supabase */}
+      {/* Modal Autenticação Central da Plataforma */}
       <Modal visible={isAuthModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.authCard}>
@@ -3843,49 +3920,56 @@ export default function ReportGenerator() {
         </View>
       )}
 
-      {/* Menu Flutuante em Pílula (Fiel ao Anexo 3) */}
+      {/* Menu Flutuante em Pílula (Menos alto, mais largo, fiel à imagem com animações) */}
       <View style={styles.floatingNavWrapper} pointerEvents="box-none">
         <View style={styles.floatingNavPill}>
           {/* 1. Sincronizar / Refresh com indicador ativo azul */}
-          <TouchableOpacity
-            style={styles.floatingNavTabItem}
-            onPress={handleRefresh}
-            activeOpacity={0.7}
-            accessibilityLabel="Sincronizar"
-          >
-            <MaterialFlatIcon name="refresh" size={26} color="#2563eb" />
-            <View style={styles.floatingNavActiveIndicator} />
-          </TouchableOpacity>
+          <AnimatedFlatMenuItem
+            icon="refresh"
+            size={26}
+            active={activeMenuTab === 'refresh'}
+            onPress={() => {
+              setActiveMenuTab('refresh');
+              handleRefresh();
+            }}
+            label="Sincronizar"
+          />
 
           {/* 2. Coordenação / Configurações (Engrenagem) */}
-          <TouchableOpacity
-            style={styles.floatingNavTabItem}
-            onPress={handleGoCoord}
-            activeOpacity={0.7}
-            accessibilityLabel="Painel de Coordenação"
-          >
-            <MaterialFlatIcon name="settings" size={26} color="#64748b" />
-          </TouchableOpacity>
+          <AnimatedFlatMenuItem
+            icon="settings"
+            size={26}
+            active={activeMenuTab === 'coord'}
+            onPress={() => {
+              setActiveMenuTab('coord');
+              handleGoCoord();
+            }}
+            label="Painel de Coordenação"
+          />
 
           {/* 3. Meus Relatórios / Histórico (Globo) */}
-          <TouchableOpacity
-            style={styles.floatingNavTabItem}
-            onPress={() => router.push('/meus_relatorios')}
-            activeOpacity={0.7}
-            accessibilityLabel="Meus Relatórios"
-          >
-            <MaterialFlatIcon name="public" size={26} color="#64748b" />
-          </TouchableOpacity>
+          <AnimatedFlatMenuItem
+            icon="public"
+            size={26}
+            active={activeMenuTab === 'relatorios'}
+            onPress={() => {
+              setActiveMenuTab('relatorios');
+              router.push('/meus_relatorios');
+            }}
+            label="Meus Relatórios"
+          />
 
           {/* 4. Sair / Logout */}
-          <TouchableOpacity
-            style={styles.floatingNavTabItem}
-            onPress={handleMenuLogout}
-            activeOpacity={0.7}
-            accessibilityLabel="Encerrar Sessão"
-          >
-            <MaterialFlatIcon name="logout" size={26} color="#64748b" />
-          </TouchableOpacity>
+          <AnimatedFlatMenuItem
+            icon="logout"
+            size={26}
+            active={activeMenuTab === 'logout'}
+            onPress={() => {
+              setActiveMenuTab('logout');
+              handleMenuLogout();
+            }}
+            label="Encerrar Sessão"
+          />
         </View>
       </View>
     </SafeAreaView>
@@ -5503,30 +5587,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 28,
+    paddingVertical: 5,
+    paddingHorizontal: 44,
     borderRadius: 9999,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    elevation: 8,
-    gap: 30,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 6,
+    gap: 34,
   },
   floatingNavTabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    minHeight: 32,
   },
   floatingNavActiveIndicator: {
-    width: 20,
+    width: 22,
     height: 3,
     backgroundColor: '#2563eb',
     borderRadius: 2,
-    marginTop: 4,
+    marginTop: 3,
   },
   demoBannerBox: {
     marginTop: 24,

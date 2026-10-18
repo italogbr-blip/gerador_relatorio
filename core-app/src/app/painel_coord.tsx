@@ -79,7 +79,7 @@ export default function PainelCoordScreen() {
   // Abas do Painel: 'relatorios' | 'ranking' | 'usuarios' | 'popups' | 'sistema' | 'version'
   const [activeTab, setActiveTab] = useState<'relatorios' | 'ranking' | 'usuarios' | 'popups' | 'sistema' | 'version'>('relatorios');
 
-  // Estados de Controle de Versões (Supabase mms_versao_app)
+  // Estados de Controle de Versões (Central mms_versao_app)
   const [versoesList, setVersoesList] = useState<AppVersionRecord[]>([]);
   const [loadingVersoes, setLoadingVersoes] = useState<boolean>(false);
   const [inputVersaoNumero, setInputVersaoNumero] = useState<string>('');
@@ -401,28 +401,26 @@ export default function PainelCoordScreen() {
 
   const carregarMetricas = async () => {
     try {
-      // 1. Total Geral
-      const { count: countTotal } = await supabase
-        .from('relatorios')
-        .select('*', { count: 'exact', head: true });
-      setTotalRelatoriosGeral(countTotal || 0);
-
-      // 2. Relatórios Hoje
       const hojeStr = new Date().toISOString().split('T')[0];
-      const { count: countHoje } = await supabase
-        .from('relatorios')
-        .select('*', { count: 'exact', head: true })
-        .gte('data_criacao', `${hojeStr}T00:00:00`);
-      setRelatoriosHojeCount(countHoje || 0);
-
-      // 3. Relatórios no Mês
       const agora = new Date();
       const primeiroDiaMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
-      const { count: countMes } = await supabase
-        .from('relatorios')
-        .select('*', { count: 'exact', head: true })
-        .gte('data_criacao', primeiroDiaMes);
-      setRelatoriosMesCount(countMes || 0);
+
+      // Executa as 3 contagens simultaneamente em paralelo na nuvem
+      const [resTotal, resHoje, resMes] = await Promise.all([
+        supabase.from('relatorios').select('*', { count: 'exact', head: true }),
+        supabase.from('relatorios').select('*', { count: 'exact', head: true }).gte('data_criacao', `${hojeStr}T00:00:00`),
+        supabase.from('relatorios').select('*', { count: 'exact', head: true }).gte('data_criacao', primeiroDiaMes),
+      ]);
+
+      if (resTotal.count !== null && resTotal.count !== undefined) {
+        setTotalRelatoriosGeral(resTotal.count);
+      }
+      if (resHoje.count !== null && resHoje.count !== undefined) {
+        setRelatoriosHojeCount(resHoje.count);
+      }
+      if (resMes.count !== null && resMes.count !== undefined) {
+        setRelatoriosMesCount(resMes.count);
+      }
     } catch (e) {
       console.warn('Erro ao carregar métricas:', e);
     }
@@ -440,11 +438,12 @@ export default function PainelCoordScreen() {
     return trimmed;
   };
 
+  // Carregamento Otimizado dos Relatórios: Seleciona apenas colunas necessárias para listagem rápida sem transferir megabytes de fotos base64
   const carregarRelatorios = async () => {
     try {
       let query = supabase
         .from('relatorios')
-        .select('*', { count: 'exact' });
+        .select('id, empresa, unidade, local_atendimento, data_criacao, ip_origem, teve_anexo, pdf_url, caminho_pdf, usuario_id', { count: 'exact' });
 
       if (filtroEmpresa && filtroEmpresa !== 'TODAS') {
         query = query.eq('empresa', filtroEmpresa);
@@ -457,7 +456,7 @@ export default function PainelCoordScreen() {
 
       if (filtroBuscaUsuario.trim()) {
         const userTerm = `%${filtroBuscaUsuario.trim()}%`;
-        query = query.or(`dados_json.ilike.${userTerm},ip_origem.ilike.${userTerm}`);
+        query = query.or(`ip_origem.ilike.${userTerm},unidade.ilike.${userTerm}`);
       }
 
       const dtIni = formatarDataFiltro(filtroDataInicio);
@@ -482,6 +481,31 @@ export default function PainelCoordScreen() {
       }
     } catch (e) {
       console.warn('Erro ao carregar relatórios do painel:', e);
+    }
+  };
+
+  // Carregamento sob demanda dos dados completos do relatório (apenas ao visualizar)
+  const handleVisualizarRelatorio = async (item: any) => {
+    if (item.dados_json) {
+      setSelectedReport(item);
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('relatorios')
+        .select('*')
+        .eq('id', item.id)
+        .single();
+      if (!error && data) {
+        setSelectedReport(data);
+      } else {
+        setSelectedReport(item);
+      }
+    } catch (e) {
+      setSelectedReport(item);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1354,7 +1378,7 @@ export default function PainelCoordScreen() {
                         minute: '2-digit',
                       })
                     : 'N/A';
-                  const preposto = parsed?.preposto || 'Não informado';
+                  const preposto = parsed?.preposto || usuarios.find((u) => u.id === item.usuario_id)?.nome || 'Não informado';
                   const ipOrigem = item.ip_origem || '2804:14d...';
 
                   return (
@@ -1390,7 +1414,7 @@ export default function PainelCoordScreen() {
 
                         <TouchableOpacity
                           style={[styles.anexo6Pill, styles.anexo6PillVisualizar]}
-                          onPress={() => setSelectedReport(item)}
+                          onPress={() => handleVisualizarRelatorio(item)}
                           activeOpacity={0.8}
                         >
                           <Text style={styles.anexo6PillVisualizarText}>👁️ VISUALIZAR</Text>
@@ -1657,15 +1681,15 @@ export default function PainelCoordScreen() {
 
               <View style={styles.sysStatusGrid}>
                 <View style={[styles.sysStatusCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
-                  <Text style={styles.sysStatusLabel}>BANCO SUPABASE (POSTGRESQL)</Text>
+                  <Text style={styles.sysStatusLabel}>BANCO DE DADOS CENTRAL (POSTGRESQL)</Text>
                   <Text style={styles.sysStatusOnline}>● OPERACIONAL E CONECTADO</Text>
-                  <Text style={styles.sysStatusInfo}>URL: https://xtlhrlbdpnnrcivpiomv.supabase.co</Text>
+                  <Text style={styles.sysStatusInfo}>STATUS: Servidor Nuvem Ativo (Criptografia SSL)</Text>
                 </View>
 
                 <View style={[styles.sysStatusCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
                   <Text style={styles.sysStatusLabel}>STORAGE DE PDFS (BUCKET)</Text>
                   <Text style={styles.sysStatusOnline}>● RELATORIOS_PDF ONLINE</Text>
-                  <Text style={styles.sysStatusInfo}>Armazenamento direto na nuvem Supabase Storage</Text>
+                  <Text style={styles.sysStatusInfo}>Armazenamento direto em nuvem segura</Text>
                 </View>
 
                 <View style={[styles.sysStatusCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
@@ -1678,7 +1702,7 @@ export default function PainelCoordScreen() {
 
                 <View style={[styles.sysStatusCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
                   <Text style={styles.sysStatusLabel}>VERSÃO DO APLICATIVO</Text>
-                  <Text style={[styles.sysStatusVal, !isDarkMode && { color: '#0f172a' }]}>v2.4.0 (Build Supabase)</Text>
+                  <Text style={[styles.sysStatusVal, !isDarkMode && { color: '#0f172a' }]}>v2.4.0 (Build Nuvem)</Text>
                   <Text style={styles.sysStatusInfo}>Expo SDK 54 / React Native Web</Text>
                 </View>
               </View>
@@ -1860,7 +1884,7 @@ export default function PainelCoordScreen() {
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardTitle, !isDarkMode && { color: '#0f172a' }]}>
-                    🏷️ CONTROLE DE VERSÕES (SUPABASE)
+                    🏷️ CONTROLE DE VERSÕES DO SISTEMA
                   </Text>
                   <Text style={styles.cardSubtitle}>
                     Registre e controle as atualizações do sistema manualmente. A versão cadastrada aqui é exibida no rodapé do gerador de relatórios.
