@@ -401,7 +401,7 @@ const FabBar = ({
   );
 };
 
-const GRUPO_OPTIONS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
+const GRUPO_OPTIONS = ['TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'];
 
 interface SaidaItem {
   id: string;
@@ -447,7 +447,7 @@ interface TabData {
 }
 
 const createDefaultTab = (prepostoDefault = ''): TabData => ({
-  grupo: 'ALPHA OFFSHORE',
+  grupo: 'TECHNIP',
   unidade: '',
   data: '',
   local: '',
@@ -1744,6 +1744,22 @@ export default function ReportGenerator() {
     setShowMenu(false);
   };
 
+  const limparCacheGeral = () => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('mms_')) {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+        window.location.reload();
+      } catch (e) {}
+    }
+  };
+
   // Sequência e Auto-Advance encadeado de todos os campos de horas e minutos
   const focusNextTimeField = (currentFieldId: string) => {
     const sequence: string[] = [];
@@ -2587,28 +2603,64 @@ export default function ReportGenerator() {
 
 
   return (
-    <SafeAreaView style={[styles.body, isDarkMode && { backgroundColor: colors.body }]}>
-      <StatusBar style={isDarkMode ? "light" : "dark"} />
+    <SafeAreaView style={styles.body}>
+      <StatusBar style="light" />
 
-      {/* Navbar Superior Limpa */}
+      {/* Navbar Superior 100% Idêntica ao index.php:269-358 */}
       <View style={styles.navbar}>
-        <Text style={styles.navTitleText}>📋 GERADOR DE RELATÓRIOS</Text>
+        {/* Esquerda: Ícone Gradiente com Documento */}
+        <View style={styles.navLeftGradientBox}>
+          {Platform.OS === 'web' ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="#ffffff">
+              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+            </svg>
+          ) : (
+            <Text style={{ color: '#fff', fontSize: 16 }}>📄</Text>
+          )}
+        </View>
 
-        <TouchableOpacity
-          onPress={toggleMenu}
-          style={[styles.navMenuBtn, showMenu && styles.navMenuBtnActive]}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.navMenuBtnText, showMenu && styles.navMenuBtnTextActive]}>MENU</Text>
+        {/* Direita: Notificações e Menu */}
+        <View style={styles.navRightGroup}>
+          {/* Botão de Notificações */}
+          <TouchableOpacity
+            style={styles.navNotifBtn}
+            activeOpacity={0.7}
+            onPress={() => {
+              // Notificações
+            }}
+          >
+            {Platform.OS === 'web' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#94a3b8">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            ) : (
+              <Text style={{ fontSize: 18 }}>🔔</Text>
+            )}
+          </TouchableOpacity>
 
-          <View style={styles.menuIconCircle}>
-            <Text style={styles.menuIconCircleText}>
-              {userSession?.user
-                ? (userSession.user.user_metadata?.name || userSession.user.email || 'i')[0].toLowerCase()
-                : 'i'}
-            </Text>
-          </View>
-        </TouchableOpacity>
+          {/* Botão Menu Hamburger / Avatar */}
+          <TouchableOpacity
+            onPress={toggleMenu}
+            style={[styles.navMenuBtn, showMenu && styles.navMenuBtnActive]}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.navMenuBtnText}>MENU</Text>
+
+            {userSession?.user ? (
+              <View style={styles.menuAvatarCircle}>
+                <Text style={styles.menuAvatarCircleText}>
+                  {(userSession.user.user_metadata?.name || userSession.user.email || 'U')[0].toUpperCase()}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.navHamburgerLines}>
+                <View style={styles.navHamburgerBar} />
+                <View style={styles.navHamburgerBar} />
+                <View style={styles.navHamburgerBar} />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Dropdown Menu Modal (Elimina qualquer travamento, estouro de tela ou bug de z-index) */}
         <Modal
@@ -2625,7 +2677,6 @@ export default function ReportGenerator() {
             <Animated.View
               style={[
                 styles.dropdownMenuCard,
-                !isDarkMode && styles.dropdownMenuCardLight,
                 {
                   opacity: menuAnim,
                   transform: [
@@ -2646,22 +2697,6 @@ export default function ReportGenerator() {
               ]}
             >
               <TouchableOpacity activeOpacity={1} style={{ width: '100%' }}>
-                {/* Linha com Switch de Tema */}
-                <View style={styles.menuThemeRow}>
-                  <Text style={styles.menuThemeLabel}>
-                    {isDarkMode ? '🌙 Modo Escuro' : '☀️ Modo Claro'}
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.themeToggleTrack, isDarkMode && styles.themeToggleTrackActive]}
-                    onPress={() => setIsDarkMode(!isDarkMode)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.themeToggleThumb, isDarkMode && styles.themeToggleThumbActive]} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.menuDivider} />
-
                 {userSession?.user ? (
                   <>
                     <View style={styles.menuHeader}>
@@ -2685,65 +2720,64 @@ export default function ReportGenerator() {
                     </View>
 
                     <TouchableOpacity
-                      style={[
-                        styles.menuItem,
-                        selectedMenuItem === 'meus_relatorios' && styles.menuItemSelected,
-                      ]}
+                      style={styles.menuItem}
                       onPress={() => {
-                        setSelectedMenuItem('meus_relatorios');
                         toggleMenu();
                         router.push('/meus_relatorios');
                       }}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.menuItemIcon}>📁</Text>
-                        <Text
-                          style={[
-                            styles.menuItemText,
-                            selectedMenuItem === 'meus_relatorios' && styles.menuItemTextSelected,
-                          ]}
-                        >
-                          Meus Relatórios
-                        </Text>
+                        <Text style={styles.menuItemIcon}>📂</Text>
+                        <Text style={styles.menuItemText}>Meus Relatórios</Text>
                       </View>
-                      {selectedMenuItem === 'meus_relatorios' && (
-                        <Text style={styles.menuItemSelectedCheck}>✓</Text>
-                      )}
                     </TouchableOpacity>
 
                     {/* Painel de Coordenação: EXCLUSIVO PARA USUÁRIOS LOGADOS NÍVEL 2 */}
                     {isUserCoordinator(userSession) && (
-                      <TouchableOpacity
-                        style={[
-                          styles.menuItem,
-                          selectedMenuItem === 'painel_coord' && styles.menuItemSelectedAmber,
-                        ]}
-                        onPress={() => {
-                          setSelectedMenuItem('painel_coord');
-                          toggleMenu();
-                          router.push('/painel_coord');
-                        }}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Text style={styles.menuItemIcon}>🛡️</Text>
-                          <Text
-                            style={[
-                              styles.menuItemText,
-                              { color: colors.amber800 },
-                              selectedMenuItem === 'painel_coord' && styles.menuItemTextSelected,
-                            ]}
-                          >
-                            Painel de Coordenação
-                          </Text>
-                        </View>
-                        {selectedMenuItem === 'painel_coord' && (
-                          <Text style={[styles.menuItemSelectedCheck, { color: colors.amber800 }]}>✓</Text>
-                        )}
-                      </TouchableOpacity>
+                      <>
+                        <TouchableOpacity
+                          style={styles.menuItem}
+                          onPress={() => {
+                            toggleMenu();
+                            router.push('/painel_coord');
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.menuItemIcon}>⚙️</Text>
+                            <Text style={[styles.menuItemText, { color: '#d97706' }]}>Painel Coordenação</Text>
+                          </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100 }]}
+                          onPress={() => {
+                            toggleMenu();
+                            limparCacheGeral();
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.menuItemIcon}>🧹</Text>
+                            <Text style={[styles.menuItemText, { color: '#4f46e5' }]}>Limpar Cache</Text>
+                          </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100 }]}
+                          onPress={() => {
+                            toggleMenu();
+                            setIsUrlModalVisible(true);
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.menuItemIcon}>🌐</Text>
+                            <Text style={[styles.menuItemText, { color: '#0d9488' }]}>Navegador WebView</Text>
+                          </View>
+                        </TouchableOpacity>
+                      </>
                     )}
 
                     <TouchableOpacity
-                      style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100 }]}
+                      style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100, marginTop: 4 }]}
                       onPress={() => {
                         toggleMenu();
                         handleSignOut();
@@ -2765,12 +2799,8 @@ export default function ReportGenerator() {
                     </View>
 
                     <TouchableOpacity
-                      style={[
-                        styles.menuItem,
-                        selectedMenuItem === 'login' && styles.menuItemSelected,
-                      ]}
+                      style={styles.menuItem}
                       onPress={() => {
-                        setSelectedMenuItem('login');
                         toggleMenu();
                         setAuthMode('login');
                         setIsAuthModalVisible(true);
@@ -2780,15 +2810,11 @@ export default function ReportGenerator() {
                         <Text style={styles.menuItemIcon}>🔑</Text>
                         <Text style={[styles.menuItemText, { color: colors.blue600 }]}>Fazer Login</Text>
                       </View>
-                      {selectedMenuItem === 'login' && (
-                        <Text style={styles.menuItemSelectedCheck}>✓</Text>
-                      )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100 }]}
+                      style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100, marginTop: 4 }]}
                       onPress={() => {
-                        setSelectedMenuItem('cadastro');
                         toggleMenu();
                         setAuthMode('cadastro');
                         setIsAuthModalVisible(true);
@@ -2798,9 +2824,6 @@ export default function ReportGenerator() {
                         <Text style={styles.menuItemIcon}>📝</Text>
                         <Text style={[styles.menuItemText, { color: colors.emerald600 }]}>Criar Nova Conta</Text>
                       </View>
-                      {selectedMenuItem === 'cadastro' && (
-                        <Text style={styles.menuItemSelectedCheck}>✓</Text>
-                      )}
                     </TouchableOpacity>
                   </>
                 )}
@@ -2811,17 +2834,75 @@ export default function ReportGenerator() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Banner Inline Salvar na Nuvem (Exato do index.php:361-392) */}
+        {!userSession && !isBannerDismissed && (
+          <View style={styles.cloudBannerWrapper}>
+            <View style={styles.cloudBannerCard}>
+              <View style={styles.cloudBannerLeft}>
+                <View style={styles.cloudBannerIconCircle}>
+                  <Text style={{ fontSize: 20 }}>☁️</Text>
+                </View>
+                <View style={styles.cloudBannerTextCol}>
+                  <Text style={styles.cloudBannerTitle}>Salvar na Nuvem</Text>
+                  <Text style={styles.cloudBannerSubtitle}>
+                    Crie uma conta para organizar e acessar facilmente todos os seus relatórios.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.cloudBannerActions}>
+                <TouchableOpacity
+                  style={styles.cloudBannerBtnEntrar}
+                  onPress={() => {
+                    setAuthMode('login');
+                    setIsAuthModalVisible(true);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.cloudBannerBtnEntrarText}>ENTRAR</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cloudBannerBtnCadastrar}
+                  onPress={() => {
+                    setAuthMode('cadastro');
+                    setIsAuthModalVisible(true);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.cloudBannerBtnCadastrarText}>CRIAR CONTA</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Botão Fechar (✕) */}
+              <TouchableOpacity
+                style={styles.cloudBannerCloseBtn}
+                onPress={() => setIsBannerDismissed(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cloudBannerCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Cartão Principal de Preenchimento (Independente e Separado do Preview) */}
         <View style={styles.card}>
-          {/* Header do Card com Botão Iniciar Novo Relatório */}
+          {/* Header do Card com Logo MMS à esquerda e Botão Iniciar Novo Relatório à direita */}
           <View style={styles.cardHeader}>
+            <Image
+              source={require('../../assets/images/logo.png')}
+              style={styles.headerLogoImage}
+              resizeMode="contain"
+            />
             <TouchableOpacity onPress={limparTudo} style={styles.btnNovoRelatorio} activeOpacity={0.75}>
               <Text style={styles.btnNovoRelatorioIcon}>+</Text>
               <Text style={styles.btnNovoRelatorioText}>Iniciar Novo Relatório</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={[styles.mainTitle, isDesktop && styles.mainTitleDesktop]}>PREENCHIMENTO DE RELATÓRIO</Text>
+          <Text style={[styles.mainTitle, isDesktop && styles.mainTitleDesktop]}>Preenchimento de Relatório</Text>
           {/* Banner de Modo Edição Ativo */}
           {editingReportId && (
             <View style={styles.editingBannerCard}>
@@ -3535,6 +3616,28 @@ export default function ReportGenerator() {
               </View>
             )}
 
+            {/* Link Ferramenta MMS: Gerador de QR Code (Idêntico ao index.php:706-709) */}
+            <View style={styles.qrCodeToolContainer}>
+              <TouchableOpacity
+                style={styles.qrCodeToolBtn}
+                onPress={() => {
+                  if (Platform.OS === 'web') {
+                    window.open('../gerador_qrcode/', '_blank');
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                {Platform.OS === 'web' ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                  </svg>
+                ) : (
+                  <Text style={{ fontSize: 14 }}>▦</Text>
+                )}
+                <Text style={styles.qrCodeToolText}>Ferramenta MMS: Gerador de QR Code</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Footer Personalizável */}
             <View style={[styles.appFooterContainer, !isDesktop && styles.appFooterContainerMobile]}>
               {isDesktop && <View style={styles.appFooterSpacer} />}
@@ -3912,72 +4015,6 @@ export default function ReportGenerator() {
         </View>
       </Modal>
 
-      {/* Pop-up Alert: Banner "Salvar na Nuvem" (Aviso em Modal para Visitantes não logados) */}
-      <Modal visible={!userSession && !isBannerDismissed} transparent animationType="none">
-        <View
-          // @ts-ignore
-          dataSet={{ modalOverlay: 'true' }}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.cloudBannerPopUpCard}>
-            <TouchableOpacity
-              style={styles.authCloseBtn}
-              onPress={() => setIsBannerDismissed(true)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={styles.authCloseText}>✕</Text>
-            </TouchableOpacity>
-
-            <View style={styles.cloudBannerPopUpHeader}>
-              <View style={styles.cloudBannerIconBoxPopUp}>
-                <Text style={{ fontSize: 28 }}>☁️</Text>
-              </View>
-              <Text style={styles.cloudBannerTitlePopUp}>Sincronização em Nuvem</Text>
-              <Text style={styles.cloudBannerPopUpSubtitle}>
-                Acesse seus relatórios de qualquer dispositivo
-              </Text>
-            </View>
-
-            <Text style={styles.cloudBannerPopUpBody}>
-              Conecte sua conta para salvar relatórios com segurança no banco de dados, sincronizar fotos de atendimentos e consultar todo o seu histórico em tempo real.
-            </Text>
-
-            <View style={styles.cloudBannerPopUpActions}>
-              <TouchableOpacity
-                style={styles.btnBannerEntrarPopUp}
-                onPress={() => {
-                  setIsBannerDismissed(true);
-                  setAuthMode('login');
-                  setIsAuthModalVisible(true);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.btnBannerEntrarPopUpText}>🔑 ENTRAR</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.btnBannerCriarContaPopUp}
-                onPress={() => {
-                  setIsBannerDismissed(true);
-                  setAuthMode('cadastro');
-                  setIsAuthModalVisible(true);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.btnBannerCriarContaPopUpText}>✨ CRIAR CONTA</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => setIsBannerDismissed(true)}
-              style={{ marginTop: 14, paddingVertical: 4 }}
-            >
-              <Text style={styles.btnBannerContinuarVisitante}>Continuar como visitante por enquanto</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Pop-up Flat & Elegante para Navegador de URL */}
       <Modal visible={isUrlModalVisible} transparent animationType="none">
@@ -4104,24 +4141,6 @@ export default function ReportGenerator() {
         </View>
       )}
 
-      {/* Menu FabBar Estilo iOS Liquid Glass com Floating Action Button (+) Adaptado de Ryan Ashcraft */}
-      <FabBar
-        activeTab={activeMenuTab}
-        onSelectTab={(tabId) => {
-          setActiveMenuTab(tabId as any);
-          if (tabId === 'inicio') {
-            handleRefresh();
-          } else if (tabId === 'coord') {
-            handleGoCoord();
-          } else if (tabId === 'relatorios') {
-            router.push('/meus_relatorios');
-          } else if (tabId === 'logout') {
-            handleMenuLogout();
-          }
-        }}
-        onFabPress={limparTudo}
-        isDarkMode={isDarkMode}
-      />
     </SafeAreaView>
   );
 }
@@ -4136,77 +4155,87 @@ const fmtHoraA4 = (h?: string, m?: string) => {
 const styles = StyleSheet.create({
   body: {
     flex: 1,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#0f172a',
   },
   navbar: {
-    height: 56,
-    backgroundColor: colors.slate900,
+    height: 64,
+    backgroundColor: '#0f172a',
     borderBottomWidth: 1,
-    borderBottomColor: colors.slate800,
+    borderBottomColor: '#1e293b',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     zIndex: 50,
   },
-  navTitleText: {
-    color: colors.white,
-    fontWeight: '900',
-    fontSize: 14,
-    letterSpacing: 1,
-    fontFamily: modernFont,
+  navLeftGradientBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#10b981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  navRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  navNotifBtn: {
+    padding: 8,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   navMenuBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
     backgroundColor: 'transparent',
-    borderWidth: 0,
   },
   navMenuBtnActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#1e293b',
   },
   navMenuBtnText: {
-    color: colors.white,
+    color: '#e2e8f0',
     fontWeight: '700',
-    fontSize: 14,
-    letterSpacing: 0.5,
+    fontSize: 12,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
-  navMenuBtnTextActive: {
-    color: colors.white,
-  },
-  menuIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#06b6d4',
+  menuAvatarCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#10b981',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuIconCircleText: {
-    color: colors.white,
+  menuAvatarCircleText: {
+    color: '#ffffff',
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: modernFont,
   },
-  hamburgerLinesContainer: {
-    width: 18,
+  navHamburgerLines: {
+    width: 20,
     height: 14,
     justifyContent: 'space-between',
-    marginLeft: 4,
   },
-  hamburgerLineBar: {
-    width: 18,
+  navHamburgerBar: {
+    width: 20,
     height: 2,
-    backgroundColor: colors.slate200,
+    backgroundColor: '#e2e8f0',
     borderRadius: 1,
-  },
-  hamburgerLineBarActive: {
-    backgroundColor: colors.blue500,
   },
   dropdownModalBackdrop: {
     flex: 1,
@@ -4219,15 +4248,15 @@ const styles = StyleSheet.create({
     WebkitBackdropFilter: 'blur(4px)',
   },
   dropdownMenuCard: {
-    width: 280,
+    width: 240,
     backgroundColor: colors.white,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.slate200,
+    borderColor: '#e2e8f0',
     elevation: 12,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 16,
     padding: 8,
     overflow: 'hidden',
@@ -4473,46 +4502,46 @@ const styles = StyleSheet.create({
     color: colors.blue600,
   },
   scroll: {
+    backgroundColor: '#0f172a',
     padding: 12,
     paddingBottom: 48,
     alignItems: 'center',
   },
   card: {
     backgroundColor: colors.white,
-    borderRadius: 12,
-    paddingVertical: 18,
-    paddingHorizontal: 4,
+    borderRadius: 8,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     width: '100%',
     maxWidth: 672,
     alignItems: 'stretch',
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
     borderWidth: 1,
     borderColor: colors.white,
-    marginBottom: 24,
+    marginBottom: 48,
   },
   cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 4,
+    marginBottom: 24,
   },
   headerLogoImage: {
-    height: 60,
-    width: 150,
+    height: 52,
+    width: 140,
   },
   btnNovoRelatorio: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.slate50,
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.slate300,
-    paddingVertical: 9,
-    paddingHorizontal: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 8,
     gap: 8,
     shadowColor: colors.black,
@@ -4528,7 +4557,7 @@ const styles = StyleSheet.create({
   },
   btnNovoRelatorioText: {
     color: colors.slate700,
-    fontWeight: '700',
+    fontWeight: '600',
     fontSize: 13,
     fontFamily: modernFont,
   },
@@ -4538,13 +4567,44 @@ const styles = StyleSheet.create({
     textAlign: 'center', // text-center
     marginBottom: 16, // mb-4
     borderBottomWidth: 2, // border-b-2
-    borderBottomColor: '#e2e8f0', // border-slate-200
-    paddingBottom: 4, // pb-1 (rente à linha divisória)
+    borderBottomColor: '#f1f5f9', // border-slate-100
+    paddingBottom: 16, // pb-4
     paddingHorizontal: 4,
     color: '#1e293b', // text-slate-800
     textTransform: 'uppercase', // uppercase
     letterSpacing: -0.5, // tracking-tight
     fontFamily: corporateFont,
+  },
+  qrCodeToolContainer: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.slate100,
+    alignItems: 'center',
+    width: '100%',
+  },
+  qrCodeToolBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.slate50,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  qrCodeToolIcon: {
+    fontSize: 14,
+    color: colors.slate600,
+  },
+  qrCodeToolText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: colors.slate600,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
   },
   mainTitleDesktop: {
     fontSize: 24, // md:text-2xl
@@ -5288,71 +5348,71 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   paxBoxEmbarque: {
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(236, 253, 245, 0.3)',
     borderWidth: 1,
     borderColor: '#d1fae5',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 8,
+    padding: 10,
+    height: 500,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 2,
+    elevation: 1,
+    overflow: 'hidden',
   },
   paxHeaderBadgeEmbarque: {
-    backgroundColor: '#e6f7f0',
-    borderRadius: 6,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(209, 250, 229, 0.5)',
+    borderRadius: 4,
+    paddingVertical: 6,
     paddingHorizontal: 12,
-    marginBottom: 10,
+    marginBottom: 8,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#d1fae5',
   },
   paxTitleEmbarque: {
-    fontSize: 13,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '900',
     color: '#047857',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
-    fontFamily: corporateFont,
+    fontFamily: modernFont,
   },
   paxBoxDesembarque: {
-    backgroundColor: colors.white,
+    backgroundColor: 'rgba(255, 241, 242, 0.3)',
     borderWidth: 1,
-    borderColor: '#fecdd3',
-    borderRadius: 12,
-    padding: 12,
+    borderColor: '#ffe4e6',
+    borderRadius: 8,
+    padding: 10,
+    height: 500,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 2,
+    elevation: 1,
+    overflow: 'hidden',
   },
   paxHeaderBadgeDesembarque: {
-    backgroundColor: '#fff1f2',
-    borderRadius: 6,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(254, 205, 211, 0.5)',
+    borderRadius: 4,
+    paddingVertical: 6,
     paddingHorizontal: 12,
-    marginBottom: 10,
+    marginBottom: 8,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#fecdd3',
   },
   paxTitleDesembarque: {
-    fontSize: 13,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '900',
     color: '#be123c',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
-    fontFamily: corporateFont,
+    fontFamily: modernFont,
   },
   paxTextInputEmbarque: {
+    flex: 1,
     backgroundColor: colors.white,
     borderRadius: 8,
     padding: 12,
-    minHeight: 380,
-    fontSize: 13,
+    fontSize: 15,
     color: colors.slate800,
     textAlignVertical: 'top',
     fontFamily: corporateFont,
@@ -5370,11 +5430,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   paxTextInputDesembarque: {
+    flex: 1,
     backgroundColor: colors.white,
     borderRadius: 8,
     padding: 12,
-    minHeight: 380,
-    fontSize: 13,
+    fontSize: 15,
     color: colors.slate800,
     textAlignVertical: 'top',
     fontFamily: corporateFont,

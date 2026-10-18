@@ -87,64 +87,65 @@ export default function Layout() {
         const style = document.createElement('style');
         style.id = 'custom-scrollbar-style';
         style.innerHTML = `
-          /* Prevenção Imediata de Flash de Tema (FOUC) - Fundo Padrão Suave e Claro */
+          /* Reset e Fundo Padrão Idêntico ao index.php */
           html, body {
             touch-action: pan-x pan-y;
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
-            background-color: #f1f5f9;
-          }
-          html.dark-theme, body.dark-theme {
-            background-color: #0b1329;
+            background-color: #0f172a;
+            margin: 0;
+            min-height: 100vh;
           }
 
-          /* Scrollbar Estilizado Customizado - Padrão Modo Claro */
+          /* Scrollbar Estilizado Customizado (#0f172a Padrão) */
           ::-webkit-scrollbar {
             width: 14px;
             height: 14px;
           }
           ::-webkit-scrollbar-track,
           ::-webkit-scrollbar-button {
-            background-color: #f1f5f9;
+            background-color: #0f172a;
           }
           ::-webkit-scrollbar-thumb {
-            background-color: #94a3b8;
+            background-color: #64748b;
             border-radius: 7px;
-            border: 3px solid #f1f5f9;
+            border: 3px solid #0f172a;
           }
           ::-webkit-scrollbar-thumb:hover {
-            background-color: #475569;
+            background-color: #94a3b8;
           }
           ::-webkit-scrollbar-button:single-button:vertical:decrement {
             height: 14px;
-            background: #f1f5f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2364748b'><polygon points='50,20 20,80 80,80'/></svg>") no-repeat center center;
+            background: #0f172a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2394a3b8'><polygon points='50,20 20,80 80,80'/></svg>") no-repeat center center;
             background-size: 8px 8px;
           }
           ::-webkit-scrollbar-button:single-button:vertical:increment {
             height: 14px;
-            background: #f1f5f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2364748b'><polygon points='50,80 20,20 80,20'/></svg>") no-repeat center center;
+            background: #0f172a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2394a3b8'><polygon points='50,80 20,20 80,20'/></svg>") no-repeat center center;
             background-size: 8px 8px;
           }
 
-          /* Modo Escuro (Ativado se dark-theme estiver presente) */
-          body.dark-theme ::-webkit-scrollbar-track,
-          body.dark-theme ::-webkit-scrollbar-button {
-            background-color: #0f172a;
+          /* Modo Claro (Utilizado no Painel de Coordenação) */
+          body.light-theme {
+            background-color: #f1f5f9;
           }
-          body.dark-theme ::-webkit-scrollbar-thumb {
-            background-color: #64748b;
-            border: 3px solid #0f172a;
+          body.light-theme ::-webkit-scrollbar-track,
+          body.light-theme ::-webkit-scrollbar-button {
+            background-color: #f1f5f9;
           }
-          body.dark-theme ::-webkit-scrollbar-thumb:hover {
+          body.light-theme ::-webkit-scrollbar-thumb {
             background-color: #94a3b8;
+            border: 3px solid #f1f5f9;
           }
-          body.dark-theme ::-webkit-scrollbar-button:single-button:vertical:decrement {
-            background: #0f172a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2394a3b8'><polygon points='50,20 20,80 80,80'/></svg>") no-repeat center center;
+          body.light-theme ::-webkit-scrollbar-thumb:hover {
+            background-color: #475569;
+          }
+          body.light-theme ::-webkit-scrollbar-button:single-button:vertical:decrement {
+            background: #f1f5f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2364748b'><polygon points='50,20 20,80 80,80'/></svg>") no-repeat center center;
             background-size: 8px 8px;
           }
-          body.dark-theme ::-webkit-scrollbar-button:single-button:vertical:increment {
-            height: 14px;
-            background: #0f172a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2394a3b8'><polygon points='50,80 20,20 80,20'/></svg>") no-repeat center center;
+          body.light-theme ::-webkit-scrollbar-button:single-button:vertical:increment {
+            background: #f1f5f9 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' fill='%2364748b'><polygon points='50,80 20,20 80,20'/></svg>") no-repeat center center;
             background-size: 8px 8px;
           }
 
