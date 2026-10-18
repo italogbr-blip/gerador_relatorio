@@ -757,6 +757,17 @@ export default function PainelCoordScreen() {
     }
   };
 
+  // Cores de Badge de Empresa idênticas ao coord/index.php
+  const getCompanyBadgeStyle = (empresa?: string) => {
+    const emp = (empresa || '').toUpperCase().trim();
+    if (emp.includes('TECHNIP/DOF')) return { bg: '#fce7f3', text: '#be185d' };
+    if (emp.includes('TECHNIP')) return { bg: '#f3e8ff', text: '#7e22ce' };
+    if (emp.includes('DOF')) return { bg: '#ffedd5', text: '#c2410c' };
+    if (emp.includes('CONSTELLATION')) return { bg: '#dbeafe', text: '#1d4ed8' };
+    if (emp.includes('ZONDA')) return { bg: '#ecfccb', text: '#3f6212' };
+    return { bg: '#e2e8f0', text: '#334155' };
+  };
+
   // Toggle Status Pop-up
   const handleTogglePopup = async (popupId: number, statusAtual: boolean | number) => {
     const novoStatus = !(statusAtual === true || statusAtual === 1);
@@ -995,79 +1006,79 @@ export default function PainelCoordScreen() {
     );
   }
 
-  // 4. Painel de Coordenação Autorizado e Desbloqueado
+  // 4. Painel de Coordenação Autorizado e Desbloqueado (100% Idêntico ao coord/index.php)
   return (
-    <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
-      {/* Top Navbar */}
-      <View style={[styles.coordNavbar, !isDarkMode && styles.coordNavbarLight]}>
-        <View style={styles.coordNavTopRow}>
-          <View style={styles.coordNavLogoGroup}>
+    <SafeAreaView style={styles.container}>
+      {/* Navbar Principal com Cabeçalho Customizado (Tema Claro / Offshore) */}
+      <View style={styles.coordNavbar}>
+        <View style={styles.coordNavbarInner}>
+          {/* Lado Esquerdo: Ícone + Título COORDENAÇÃO */}
+          <View style={styles.coordNavLeft}>
             <View style={styles.coordNavLogoIcon}>
               <Text style={styles.coordNavLogoRay}>⚡</Text>
             </View>
-            <Text style={[styles.coordNavLogoText, !isDarkMode && { color: '#0f172a' }]}>COORDENAÇÃO</Text>
+            <Text style={styles.coordNavLogoText}>COORDENAÇÃO</Text>
           </View>
-          <View style={styles.coordNavDateTimeGroup}>
-            <Text style={[styles.coordNavDateTimeText, !isDarkMode && { color: '#475569' }]}>{dataHoraAtual}</Text>
-            <Text style={[styles.coordNavIpText, !isDarkMode && { color: '#64748b' }]}>IP: {userIp}</Text>
-          </View>
-        </View>
 
-        <View style={styles.coordNavUserControlRow}>
-          <Text style={[styles.coordNavUserGreeting, !isDarkMode && { color: '#475569' }]}>
-            Olá, <Text style={[styles.coordNavUserName, !isDarkMode && { color: '#0f172a' }]}>italogabriel</Text>
-          </Text>
-          <View style={styles.coordNavButtonsGroup}>
-            <TouchableOpacity
-              style={[styles.coordNavNotificationBtn, !isDarkMode && { backgroundColor: '#f1f5f9' }]}
-              onPress={() => setActiveTab('popups')}
-              activeOpacity={0.8}
-            >
-              <Text style={{ fontSize: 16 }}>🔔</Text>
-            </TouchableOpacity>
+          {/* Lado Direito: Data/Hora, IP, Usuário, Notificação, Voltar e Sair */}
+          <View style={styles.coordNavRight}>
+            <View style={styles.coordNavDateTimeGroup}>
+              <Text style={styles.coordNavDateTimeText}>{dataHoraAtual}</Text>
+              <Text style={styles.coordNavIpText}>IP Conectado: {userIp}</Text>
+            </View>
 
-            <TouchableOpacity
-              style={[styles.coordNavVoltarBtn, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#cbd5e1' }]}
-              onPress={() => router.push('/')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.coordNavVoltarBtnText, !isDarkMode && { color: '#334155' }]}>VOLTAR</Text>
-            </TouchableOpacity>
+            <View style={styles.coordNavUserGroup}>
+              <Text style={styles.coordNavUserGreeting}>
+                Olá, <Text style={styles.coordNavUserName}>{userSession?.user?.user_metadata?.name || 'italogabriel'}</Text>
+              </Text>
 
-            <TouchableOpacity
-              style={styles.coordNavSairBtn}
-              onPress={handleBloquearPainel}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.coordNavSairBtnText}>SAIR</Text>
-            </TouchableOpacity>
+              <View style={styles.coordNavButtonsGroup}>
+                <TouchableOpacity
+                  style={styles.coordNavNotificationBtn}
+                  onPress={() => setActiveTab('popups')}
+                  activeOpacity={0.8}
+                  title="Notificações"
+                >
+                  <Text style={{ fontSize: 18 }}>🔔</Text>
+                </TouchableOpacity>
 
+                <TouchableOpacity
+                  style={styles.coordNavVoltarBtn}
+                  onPress={() => router.push('/')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.coordNavVoltarBtnText}>VOLTAR</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.coordNavSairBtn}
+                  onPress={handleBloquearPainel}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.coordNavSairBtnText}>SAIR</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Card Superior Visão Geral */}
+        {/* Filtro de KPIs / Visão Geral (Refinado) */}
         <View style={styles.overviewSummaryCardLight}>
           <View style={styles.overviewSummaryLeft}>
             <View style={styles.overviewSummaryIconBox}>
               <Text style={{ fontSize: 22, color: '#ffffff' }}>📊</Text>
             </View>
             <View>
-              <Text style={[styles.overviewSummaryTitle, { color: '#0f172a' }]}>
-                VISÃO GERAL
-              </Text>
-              <Text style={styles.overviewSummarySubtitle}>
-                Análise de métricas e performance
-              </Text>
+              <Text style={styles.overviewSummaryTitle}>VISÃO GERAL</Text>
+              <Text style={styles.overviewSummarySubtitle}>Análise de métricas e performance</Text>
             </View>
           </View>
 
           <View style={styles.overviewSummaryRight}>
             <View style={styles.overviewMonthSelectorLight}>
-              <Text style={[styles.overviewMonthText, { color: '#0f172a' }]}>
-                📅 {nomeMesAtual}
-              </Text>
+              <Text style={styles.overviewMonthText}>📅 {nomeMesAtual}</Text>
             </View>
             <TouchableOpacity
               style={styles.overviewBtnFiltrar}
@@ -1079,53 +1090,45 @@ export default function PainelCoordScreen() {
           </View>
         </View>
 
-        {/* 4 Cards de Métricas / KPIs */}
+        {/* Seção de 4 KPIs / Métricas Principais */}
         <View style={styles.kpiCardsGrid}>
-          {/* 1. TOTAL GERAL */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardTotal, styles.kpiMetricCardLight]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <Text style={[styles.kpiMetricLabel, { color: '#475569' }]}>TOTAL GERAL</Text>
+          {/* Card 1: Total Geral */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardTotal]}>
+            <View style={styles.kpiMetricTopRow}>
+              <Text style={[styles.kpiMetricLabel, { color: '#2563eb' }]}>TOTAL GERAL</Text>
               <Text style={{ fontSize: 14 }}>📊</Text>
             </View>
-            <Text style={[styles.kpiMetricValue, { color: '#0f172a' }]}>
-              {totalRelatoriosGeral}
-            </Text>
+            <Text style={styles.kpiMetricValue}>{totalRelatoriosGeral}</Text>
             <Text style={styles.kpiMetricFootnote}>Relatórios emitidos</Text>
           </View>
 
-          {/* 2. NESTE MÊS */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardMes, styles.kpiMetricCardLight]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          {/* Card 2: Neste Mês */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardMes]}>
+            <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>NESTE MÊS</Text>
               <Text style={{ fontSize: 14 }}>📅</Text>
             </View>
-            <Text style={[styles.kpiMetricValue, { color: '#0284c7' }]}>
-              {relatoriosMesCount}
-            </Text>
+            <Text style={[styles.kpiMetricValue, { color: '#0284c7' }]}>{relatoriosMesCount}</Text>
             <Text style={styles.kpiMetricFootnote}>Atendimentos no mês atual</Text>
           </View>
 
-          {/* 3. HOJE */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardHoje, styles.kpiMetricCardLight]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          {/* Card 3: Hoje */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardHoje]}>
+            <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#ea580c' }]}>HOJE</Text>
               <Text style={{ fontSize: 14 }}>⚡</Text>
             </View>
-            <Text style={[styles.kpiMetricValue, { color: '#0f172a' }]}>
-              {relatoriosHojeCount}
-            </Text>
+            <Text style={styles.kpiMetricValue}>{relatoriosHojeCount}</Text>
             <Text style={styles.kpiMetricFootnote}>Relatórios gerados hoje</Text>
           </View>
 
-          {/* 4. USUÁRIOS */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardUsuarios, styles.kpiMetricCardLight]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <Text style={[styles.kpiMetricLabel, { color: '#8b5cf6' }]}>USUÁRIOS</Text>
+          {/* Card 4: Usuários */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardUsuarios]}>
+            <View style={styles.kpiMetricTopRow}>
+              <Text style={[styles.kpiMetricLabel, { color: '#7c3aed' }]}>USUÁRIOS</Text>
               <Text style={{ fontSize: 14 }}>👥</Text>
             </View>
-            <Text style={[styles.kpiMetricValue, { color: '#ea580c' }]}>
-              {usuarios.length > 0 ? usuarios.length : 10}
-            </Text>
+            <Text style={[styles.kpiMetricValue, { color: '#ea580c' }]}>{usuarios.length > 0 ? usuarios.length : 10}</Text>
             <Text style={styles.kpiMetricFootnote}>Contas registradas</Text>
           </View>
         </View>
@@ -1133,86 +1136,51 @@ export default function PainelCoordScreen() {
         {/* Abas de Navegação */}
         <View style={styles.tabsBarRow}>
           <TouchableOpacity
-            style={[
-              styles.tabNavButton,
-              activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
-            ]}
+            style={[styles.tabNavButton, activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
             onPress={() => setActiveTab('relatorios')}
             activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>📊</Text>
-            <Text
-              style={[
-                styles.tabNavButtonText,
-                activeTab === 'relatorios' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
-              ]}
-            >
+            <Text style={[styles.tabNavButtonText, activeTab === 'relatorios' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
               RELATÓRIOS
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.tabNavButton,
-              activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
-            ]}
+            style={[styles.tabNavButton, activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
             onPress={() => setActiveTab('ranking')}
             activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>🏆</Text>
-            <Text
-              style={[
-                styles.tabNavButtonText,
-                activeTab === 'ranking' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
-              ]}
-            >
+            <Text style={[styles.tabNavButtonText, activeTab === 'ranking' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
               RANKING
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.tabNavButton,
-              activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
-            ]}
+            style={[styles.tabNavButton, activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
             onPress={() => setActiveTab('popups')}
             activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>📢</Text>
-            <Text
-              style={[
-                styles.tabNavButtonText,
-                activeTab === 'popups' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
-              ]}
-            >
+            <Text style={[styles.tabNavButtonText, activeTab === 'popups' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
               POP-UPS
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.tabNavButton,
-              activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
-            ]}
+            style={[styles.tabNavButton, activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
             onPress={() => setActiveTab('mensagens')}
             activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>💬</Text>
-            <Text
-              style={[
-                styles.tabNavButtonText,
-                activeTab === 'mensagens' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
-              ]}
-            >
+            <Text style={[styles.tabNavButtonText, activeTab === 'mensagens' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
               MENSAGENS
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.tabNavButton,
-              activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
-            ]}
+            style={[styles.tabNavButton, activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
             onPress={() => {
               setActiveTab('seguranca');
               carregarSeguranca();
@@ -1220,383 +1188,400 @@ export default function PainelCoordScreen() {
             activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>🛡️</Text>
-            <Text
-              style={[
-                styles.tabNavButtonText,
-                activeTab === 'seguranca' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
-              ]}
-            >
+            <Text style={[styles.tabNavButtonText, activeTab === 'seguranca' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
               SEGURANÇA
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.tabNavButton,
-              activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
-            ]}
+            style={[styles.tabNavButton, activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
             onPress={() => setActiveTab('sistema')}
             activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>⚙️</Text>
-            <Text
-              style={[
-                styles.tabNavButtonText,
-                activeTab === 'sistema' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
-              ]}
-            >
+            <Text style={[styles.tabNavButtonText, activeTab === 'sistema' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
               SISTEMA
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.tabNavButton,
-              activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive,
-            ]}
+            style={[styles.tabNavButton, activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
             onPress={() => setActiveTab('version')}
             activeOpacity={0.85}
           >
             <Text style={{ fontSize: 13, marginRight: 6 }}>🏷️</Text>
-            <Text
-              style={[
-                styles.tabNavButtonText,
-                activeTab === 'version' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive,
-              ]}
-            >
+            <Text style={[styles.tabNavButtonText, activeTab === 'version' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
               VERSION
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* ════════════════ ABA 1: RELATÓRIOS GERAIS ════════════════ */}
+        {/* ════════════════ ABA 1: RELATÓRIOS GERAIS (CARD UNIFICADO) ════════════════ */}
         {activeTab === 'relatorios' && (
           <View style={styles.tabContent}>
-            {/* Card Unificado: Cabeçalho com Título + Corpo de Filtros */}
-            <View style={styles.reportsFilterCardContainer}>
-              <View style={styles.reportsFilterCardHeader}>
-                <Text style={{ fontSize: 16 }}>📊</Text>
-                <Text style={styles.reportsFilterCardHeaderTitle}>
-                  RELATÓRIOS GERADOS
-                </Text>
-              </View>
+            <View style={styles.unifiedReportsCard}>
+              {/* Cabeçalho de Filtros */}
+              <View style={styles.reportsFilterSection}>
+                <View style={styles.reportsFilterHeaderRow}>
+                  <Text style={{ fontSize: 16 }}>📊</Text>
+                  <Text style={styles.reportsFilterHeaderTitle}>RELATÓRIOS GERADOS</Text>
+                </View>
 
-              <View style={styles.reportsFilterCardBody}>
                 <View style={styles.reportsFilterRow}>
                   {/* DE */}
                   <View style={styles.reportsFilterFieldBox}>
-                  <Text style={styles.reportsFilterFieldLabel}>DE:</Text>
-                  <TextInput
-                    style={styles.reportsFilterInput}
-                    placeholder="dd/mm/aaaa"
-                    placeholderTextColor="#94a3b8"
-                    value={filtroDataInicio}
-                    onChangeText={setFiltroDataInicio}
-                  />
-                </View>
+                    <Text style={styles.reportsFilterFieldLabel}>DE:</Text>
+                    <TextInput
+                      style={styles.reportsFilterInput}
+                      placeholder="dd/mm/aaaa"
+                      placeholderTextColor="#94a3b8"
+                      value={filtroDataInicio}
+                      onChangeText={setFiltroDataInicio}
+                    />
+                  </View>
 
-                {/* ATÉ */}
-                <View style={styles.reportsFilterFieldBox}>
-                  <Text style={styles.reportsFilterFieldLabel}>ATÉ:</Text>
-                  <TextInput
-                    style={styles.reportsFilterInput}
-                    placeholder="dd/mm/aaaa"
-                    placeholderTextColor="#94a3b8"
-                    value={filtroDataFim}
-                    onChangeText={setFiltroDataFim}
-                  />
-                </View>
+                  {/* ATÉ */}
+                  <View style={styles.reportsFilterFieldBox}>
+                    <Text style={styles.reportsFilterFieldLabel}>ATÉ:</Text>
+                    <TextInput
+                      style={styles.reportsFilterInput}
+                      placeholder="dd/mm/aaaa"
+                      placeholderTextColor="#94a3b8"
+                      value={filtroDataFim}
+                      onChangeText={setFiltroDataFim}
+                    />
+                  </View>
 
-                {/* Buscar Usuário */}
-                <View style={[styles.reportsFilterFieldBox, { flex: 1.2, minWidth: 150 }]}>
-                  <TextInput
-                    style={styles.reportsFilterInputNoBorder}
-                    placeholder="Buscar usuário..."
-                    placeholderTextColor="#94a3b8"
-                    value={filtroBuscaUsuario}
-                    onChangeText={setFiltroBuscaUsuario}
-                  />
-                </View>
+                  {/* Buscar Usuário */}
+                  <View style={[styles.reportsFilterFieldBox, { minWidth: 150, flex: 1 }]}>
+                    <TextInput
+                      style={styles.reportsFilterInputNoBorder}
+                      placeholder="Buscar usuário..."
+                      placeholderTextColor="#94a3b8"
+                      value={filtroBuscaUsuario}
+                      onChangeText={setFiltroBuscaUsuario}
+                    />
+                  </View>
 
-                {/* Unidade */}
-                <View style={[styles.reportsFilterFieldBox, { flex: 1.2, minWidth: 140 }]}>
-                  <TextInput
-                    style={styles.reportsFilterInputNoBorder}
-                    placeholder="Unidade..."
-                    placeholderTextColor="#94a3b8"
-                    value={filtroBusca}
-                    onChangeText={setFiltroBusca}
-                  />
-                </View>
+                  {/* Unidade */}
+                  <View style={[styles.reportsFilterFieldBox, { minWidth: 140, flex: 1 }]}>
+                    <TextInput
+                      style={styles.reportsFilterInputNoBorder}
+                      placeholder="Unidade..."
+                      placeholderTextColor="#94a3b8"
+                      value={filtroBusca}
+                      onChangeText={setFiltroBusca}
+                    />
+                  </View>
 
-                {/* Empresa Dropdown */}
-                <TouchableOpacity
-                  style={[styles.reportsFilterFieldBox, styles.reportsDropdownBtn]}
-                  onPress={() => setIsEmpresaDropdownOpen(!isEmpresaDropdownOpen)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.reportsDropdownBtnText} numberOfLines={1}>
-                    {filtroEmpresa === 'TODAS' ? 'Empresa...' : filtroEmpresa}
-                  </Text>
-                  <Text style={styles.reportsDropdownChevron}>▾</Text>
-                </TouchableOpacity>
-
-                {/* Usuário Dropdown */}
-                <TouchableOpacity
-                  style={[styles.reportsFilterFieldBox, styles.reportsDropdownBtn]}
-                  onPress={() => setIsUsuarioDropdownOpen(!isUsuarioDropdownOpen)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.reportsDropdownBtnText} numberOfLines={1}>
-                    {filtroUsuarioId ? (usuarios.find((u) => u.id === filtroUsuarioId)?.nome || 'Usuário...') : 'Usuário...'}
-                  </Text>
-                  <Text style={styles.reportsDropdownChevron}>▾</Text>
-                </TouchableOpacity>
-
-                {/* Botões FILTRAR e LIMPAR */}
-                <TouchableOpacity
-                  style={styles.btnReportsFiltrar}
-                  onPress={() => {
-                    setPaginaRelatorios(1);
-                    carregarRelatorios();
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.btnReportsFiltrarText}>FILTRAR</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.btnReportsLimpar}
-                  onPress={limparFiltros}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.btnReportsLimparText}>LIMPAR</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Dropdown de Usuários */}
-              {isUsuarioDropdownOpen && (
-                <View style={styles.coordDropdownOptionsListLight}>
+                  {/* Empresa Dropdown */}
                   <TouchableOpacity
-                    style={[styles.coordDropdownOptionItem, !filtroUsuarioId && styles.coordDropdownOptionItemActive]}
+                    style={[styles.reportsFilterFieldBox, styles.reportsDropdownBtn]}
                     onPress={() => {
-                      setFiltroUsuarioId(null);
+                      setIsEmpresaDropdownOpen(!isEmpresaDropdownOpen);
                       setIsUsuarioDropdownOpen(false);
                     }}
+                    activeOpacity={0.8}
                   >
-                    <Text style={styles.coordDropdownOptionText}>TODOS OS USUÁRIOS</Text>
-                    {!filtroUsuarioId && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
+                    <Text style={styles.reportsDropdownBtnText} numberOfLines={1}>
+                      {filtroEmpresa === 'TODAS' ? 'Empresa...' : filtroEmpresa}
+                    </Text>
+                    <Text style={styles.reportsDropdownChevron}>▾</Text>
                   </TouchableOpacity>
-                  {usuarios.map((u) => (
+
+                  {/* Usuário Dropdown */}
+                  <TouchableOpacity
+                    style={[styles.reportsFilterFieldBox, styles.reportsDropdownBtn]}
+                    onPress={() => {
+                      setIsUsuarioDropdownOpen(!isUsuarioDropdownOpen);
+                      setIsEmpresaDropdownOpen(false);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.reportsDropdownBtnText} numberOfLines={1}>
+                      {filtroUsuarioId ? (usuarios.find((u) => u.id === filtroUsuarioId)?.nome || 'Usuário...') : 'Usuário...'}
+                    </Text>
+                    <Text style={styles.reportsDropdownChevron}>▾</Text>
+                  </TouchableOpacity>
+
+                  {/* Botões FILTRAR e LIMPAR */}
+                  <TouchableOpacity
+                    style={styles.btnReportsFiltrar}
+                    onPress={() => {
+                      setPaginaRelatorios(1);
+                      carregarRelatorios();
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.btnReportsFiltrarText}>FILTRAR</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.btnReportsLimpar}
+                    onPress={limparFiltros}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.btnReportsLimparText}>LIMPAR</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Dropdowns flutuantes se abertos */}
+                {isUsuarioDropdownOpen && (
+                  <View style={styles.coordDropdownOptionsListLight}>
                     <TouchableOpacity
-                      key={u.id}
-                      style={[styles.coordDropdownOptionItem, filtroUsuarioId === u.id && styles.coordDropdownOptionItemActive]}
+                      style={[styles.coordDropdownOptionItem, !filtroUsuarioId && styles.coordDropdownOptionItemActive]}
                       onPress={() => {
-                        setFiltroUsuarioId(u.id);
+                        setFiltroUsuarioId(null);
                         setIsUsuarioDropdownOpen(false);
                       }}
                     >
-                      <Text style={styles.coordDropdownOptionText}>
-                        {u.nome || u.username} ({u.username})
-                      </Text>
-                      {filtroUsuarioId === u.id && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
+                      <Text style={styles.coordDropdownOptionText}>TODOS OS USUÁRIOS</Text>
+                      {!filtroUsuarioId && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
                     </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              {isEmpresaDropdownOpen && (
-                <View style={[styles.coordDropdownOptionsList, !isDarkMode && styles.coordDropdownOptionsListLight]}>
-                  {EMPRESAS.map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.coordDropdownOptionItem,
-                        !isDarkMode && styles.coordDropdownOptionItemLight,
-                        filtroEmpresa === opt && styles.coordDropdownOptionItemActive,
-                      ]}
-                      onPress={() => {
-                        setFiltroEmpresa(opt);
-                        setIsEmpresaDropdownOpen(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.coordDropdownOptionText,
-                          !isDarkMode && { color: '#334155' },
-                          filtroEmpresa === opt && styles.coordDropdownOptionTextActive,
-                        ]}
+                    {usuarios.map((u) => (
+                      <TouchableOpacity
+                        key={u.id}
+                        style={[styles.coordDropdownOptionItem, filtroUsuarioId === u.id && styles.coordDropdownOptionItemActive]}
+                        onPress={() => {
+                          setFiltroUsuarioId(u.id);
+                          setIsUsuarioDropdownOpen(false);
+                        }}
                       >
-                        {opt}
-                      </Text>
-                      {filtroEmpresa === opt && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-              </View>
-            </View>
-
-            {/* Listagem de Relatórios */}
-            {loading ? (
-              <View style={styles.loadingBox}>
-                <ActivityIndicator size="large" color="#06b6d4" />
-                <Text style={styles.loadingText}>Carregando relatórios...</Text>
-              </View>
-            ) : relatorios.length === 0 ? (
-              <View style={[styles.emptyBox, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
-                <Text style={{ fontSize: 36, marginBottom: 8 }}>📭</Text>
-                <Text style={[styles.emptyTitle, !isDarkMode && { color: '#0f172a' }]}>Nenhum relatório encontrado</Text>
-                <Text style={styles.emptySubtitle}>Ajuste os filtros ou verifique a conexão com o banco de dados.</Text>
-              </View>
-            ) : (
-              <View style={[styles.reportsTableCard, !isDarkMode && styles.reportsTableCardLight]}>
-                {/* Header da Lista */}
-                <View style={styles.reportsListHeaderRow}>
-                  <Text style={styles.reportsListHeaderText}>UNIDADE / AUTOR</Text>
-                  <Text style={styles.reportsListHeaderText}>EMPRESA</Text>
-                </View>
-
-                {relatorios.map((item) => {
-                  const parsed = parseReportData(item);
-                  const dataFormatada = item.data_criacao
-                    ? new Date(item.data_criacao).toLocaleString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : 'N/A';
-                  const preposto = parsed?.preposto || usuarios.find((u) => u.id === item.usuario_id)?.nome || 'Não informado';
-                  const ipOrigem = item.ip_origem || '2804:14d...';
-
-                  return (
-                    <View key={item.id} style={styles.reportsItemCard}>
-                      <View style={styles.reportsItemTop}>
-                        <Text style={styles.reportsItemUnidade} numberOfLines={1}>
-                          {item.unidade || 'Sem unidade'}
+                        <Text style={styles.coordDropdownOptionText}>
+                          {u.nome || u.username} ({u.username})
                         </Text>
-                        <View style={styles.reportsEmpresaBadge}>
-                          <Text style={styles.reportsEmpresaBadgeText}>
-                            {(item.empresa || 'OUTROS').toUpperCase()}
+                        {filtroUsuarioId === u.id && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {isEmpresaDropdownOpen && (
+                  <View style={styles.coordDropdownOptionsListLight}>
+                    {EMPRESAS.map((opt) => (
+                      <TouchableOpacity
+                        key={opt}
+                        style={[
+                          styles.coordDropdownOptionItem,
+                          filtroEmpresa === opt && styles.coordDropdownOptionItemActive,
+                        ]}
+                        onPress={() => {
+                          setFiltroEmpresa(opt);
+                          setIsEmpresaDropdownOpen(false);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.coordDropdownOptionText,
+                            filtroEmpresa === opt && styles.coordDropdownOptionTextActive,
+                          ]}
+                        >
+                          {opt}
+                        </Text>
+                        {filtroEmpresa === opt && <Text style={styles.coordDropdownOptionCheck}>✓</Text>}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* Header da Tabela UNIDADE / AUTOR vs EMPRESA */}
+              <View style={styles.reportsListHeaderRow}>
+                <Text style={styles.reportsListHeaderText}>UNIDADE / AUTOR</Text>
+                <Text style={styles.reportsListHeaderText}>EMPRESA</Text>
+              </View>
+
+              {/* Listagem de Relatórios */}
+              {loading ? (
+                <View style={styles.loadingBox}>
+                  <ActivityIndicator size="large" color="#0284c7" />
+                  <Text style={styles.loadingText}>Carregando relatórios...</Text>
+                </View>
+              ) : relatorios.length === 0 ? (
+                <View style={styles.emptyBox}>
+                  <Text style={{ fontSize: 36, marginBottom: 8 }}>📭</Text>
+                  <Text style={styles.emptyTitle}>Nenhum relatório encontrado</Text>
+                  <Text style={styles.emptySubtitle}>Ajuste os filtros ou verifique a conexão com o banco de dados.</Text>
+                </View>
+              ) : (
+                <View style={styles.reportsListContainer}>
+                  {relatorios.map((item) => {
+                    const parsed = parseReportData(item);
+                    const dataFormatada = item.data_criacao
+                      ? new Date(item.data_criacao).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'N/A';
+                    const preposto = parsed?.preposto || usuarios.find((u) => u.id === item.usuario_id)?.nome || 'NÃO INFORMADO';
+                    const ipOrigem = item.ip_origem || 'N/A';
+                    const badgeStyle = getCompanyBadgeStyle(item.empresa);
+
+                    return (
+                      <View key={item.id} style={styles.reportsItemCard}>
+                        <View style={styles.reportsItemTop}>
+                          <Text style={styles.reportsItemUnidade} numberOfLines={1}>
+                            {item.unidade || 'SEM UNIDADE'}
                           </Text>
+                          <View style={[styles.reportsEmpresaBadge, { backgroundColor: badgeStyle.bg }]}>
+                            <Text style={[styles.reportsEmpresaBadgeText, { color: badgeStyle.text }]}>
+                              {(item.empresa || 'OUTROS').toUpperCase()}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.reportsItemSub} numberOfLines={1}>
+                          POR: 🌐 IP: {ipOrigem} ({preposto.toUpperCase()})
+                        </Text>
+
+                        <View style={styles.reportsItemTimeRow}>
+                          <Text style={styles.reportsItemTimeText}>🕒 {dataFormatada}</Text>
+                        </View>
+
+                        {/* Botões de Ação */}
+                        <View style={styles.reportsActionPillsRow}>
+                          <TouchableOpacity
+                            style={[styles.actionPill, styles.actionPillDownload]}
+                            onPress={() => openReportPdf(item)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.actionPillDownloadText}>📥 DOWNLOAD</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.actionPill, styles.actionPillVisualizar]}
+                            onPress={() => handleVisualizarRelatorio(item)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.actionPillVisualizarText}>👁️ VISUALIZAR</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.actionPill, styles.actionPillEditar]}
+                            onPress={() => router.push(`/?editId=${item.id}`)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.actionPillEditarText}>✏️ EDITAR</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.actionPill, styles.actionPillCompartilhar]}
+                            onPress={() => shareWhatsApp(item)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.actionPillCompartilharText}>💬 COMPARTILHAR</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.actionPill, styles.actionPillExcluir]}
+                            onPress={() => handleExcluirRelatorio(item.id)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.actionPillExcluirText}>🗑️ EXCLUIR</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
+                    );
+                  })}
+                </View>
+              )}
 
-                      <Text style={styles.reportsItemSub} numberOfLines={1}>
-                        POR: 🌐 IP: {ipOrigem} ({preposto.toUpperCase()})
-                      </Text>
+              {/* Paginação */}
+              <View style={styles.paginationRow}>
+                <TouchableOpacity
+                  style={[styles.pageBtn, paginaRelatorios <= 1 && styles.pageBtnDisabled]}
+                  disabled={paginaRelatorios <= 1}
+                  onPress={() => setPaginaRelatorios((p) => Math.max(1, p - 1))}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.pageBtnText}>← ANTERIOR</Text>
+                </TouchableOpacity>
 
-                      <View style={styles.reportsItemTimeRow}>
-                        <Text style={styles.reportsItemTimeText}>🕒 {dataFormatada}</Text>
-                      </View>
+                <Text style={styles.pageIndicatorText}>
+                  PÁGINA {paginaRelatorios} DE {Math.max(1, Math.ceil(totalRelatoriosGeral / porPagina))}
+                </Text>
 
-                      {/* Botões de Ação */}
-                      <View style={styles.reportsActionPillsRow}>
-                        <TouchableOpacity
-                          style={[styles.actionPill, styles.actionPillDownload]}
-                          onPress={() => openReportPdf(item)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.actionPillDownloadText}>📥 DOWNLOAD</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[styles.actionPill, styles.actionPillVisualizar]}
-                          onPress={() => handleVisualizarRelatorio(item)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.actionPillVisualizarText}>👁️ VISUALIZAR</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[styles.actionPill, styles.actionPillEditar]}
-                          onPress={() => router.push(`/?editId=${item.id}`)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.actionPillEditarText}>✏️ EDITAR</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[styles.actionPill, styles.actionPillCompartilhar]}
-                          onPress={() => shareWhatsApp(item)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.actionPillCompartilharText}>📤 COMPARTILHAR</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[styles.actionPill, styles.actionPillExcluir]}
-                          onPress={() => handleExcluirRelatorio(item.id)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.actionPillExcluirText}>🗑️ EXCLUIR</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })}
+                <TouchableOpacity
+                  style={[styles.pageBtn, relatorios.length < porPagina && styles.pageBtnDisabled]}
+                  disabled={relatorios.length < porPagina}
+                  onPress={() => setPaginaRelatorios((p) => p + 1)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.pageBtnText}>PRÓXIMA →</Text>
+                </TouchableOpacity>
               </View>
-            )}
-
-            {/* Paginação */}
-            <View style={styles.paginationRow}>
-              <TouchableOpacity
-                style={[styles.pageBtn, paginaRelatorios <= 1 && styles.pageBtnDisabled]}
-                disabled={paginaRelatorios <= 1}
-                onPress={() => setPaginaRelatorios((p) => Math.max(1, p - 1))}
-              >
-                <Text style={styles.pageBtnText}>← ANTERIOR</Text>
-              </TouchableOpacity>
-
-              <Text style={styles.pageIndicatorText}>Página {paginaRelatorios}</Text>
-
-              <TouchableOpacity
-                style={[styles.pageBtn, relatorios.length < porPagina && styles.pageBtnDisabled]}
-                disabled={relatorios.length < porPagina}
-                onPress={() => setPaginaRelatorios((p) => p + 1)}
-              >
-                <Text style={styles.pageBtnText}>PRÓXIMA →</Text>
-              </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* ════════════════ ABA 2: RANKING / TOP GERADORES ════════════════ */}
+        {/* ════════════════ ABA 2: RANKING / TOP GERADORES (IGUAL COORD/INDEX.PHP) ════════════════ */}
         {activeTab === 'ranking' && (
           <View style={styles.tabContent}>
-            <View style={[styles.sectionCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={{ fontSize: 24 }}>🏆</Text>
-                <View>
-                  <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>RANKING DE PREPOSTOS</Text>
-                  <Text style={styles.sectionSubtitle}>Top geradores com maior volume de emissões registradas</Text>
+            <View style={styles.rankingCard}>
+              <View style={styles.rankingHeader}>
+                <View style={styles.rankingHeaderLeft}>
+                  <View style={styles.rankingIconBox}>
+                    <Text style={{ fontSize: 20, color: '#ffffff' }}>🏆</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.rankingTitle}>TOP GERADORES</Text>
+                    <Text style={styles.rankingSubtitle}>Ranking dos que mais geraram relatórios</Text>
+                  </View>
                 </View>
               </View>
 
-              <View style={styles.rankingList}>
+              {/* Tabela do Ranking */}
+              <View style={styles.rankingTableHeaderRow}>
+                <View style={styles.rankingColPos}>
+                  <Text style={styles.rankingTableHeaderText}>POSIÇÃO</Text>
+                </View>
+                <View style={styles.rankingColUser}>
+                  <Text style={styles.rankingTableHeaderText}>USUÁRIO / PREPOSTO</Text>
+                </View>
+                <View style={styles.rankingColTotal}>
+                  <Text style={styles.rankingTableHeaderText}>TOTAL</Text>
+                </View>
+              </View>
+
+              <View>
                 {rankingGeradores.map((item, index) => {
-                  const medalha = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}º`;
-                  const percentual = totalRelatoriosGeral > 0
-                    ? Math.round((item.total / totalRelatoriosGeral) * 100)
-                    : 0;
+                  const is1 = index === 0;
+                  const is2 = index === 1;
+                  const is3 = index === 2;
 
                   return (
-                    <View key={item.nome} style={[styles.rankingItem, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
-                      <View style={styles.rankingItemLeft}>
-                        <Text style={styles.rankingMedal}>{medalha}</Text>
-                        <View>
-                          <Text style={[styles.rankingNome, !isDarkMode && { color: '#0f172a' }]}>{item.nome}</Text>
-                          <Text style={styles.rankingEmpresa}>{item.empresa}</Text>
-                        </View>
+                    <View key={item.nome || index} style={styles.rankingTableRow}>
+                      <View style={styles.rankingColPos}>
+                        {is1 ? (
+                          <View style={[styles.rankingPosBadge, styles.rankingPosBadge1]}>
+                            <Text style={styles.rankingPosBadgeText1}>1</Text>
+                          </View>
+                        ) : is2 ? (
+                          <View style={[styles.rankingPosBadge, styles.rankingPosBadge2]}>
+                            <Text style={styles.rankingPosBadgeText2}>2</Text>
+                          </View>
+                        ) : is3 ? (
+                          <View style={[styles.rankingPosBadge, styles.rankingPosBadge3]}>
+                            <Text style={styles.rankingPosBadgeText3}>3</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.rankingPosNumber}>{index + 1}</Text>
+                        )}
                       </View>
 
-                      <View style={styles.rankingItemRight}>
-                        <View style={styles.rankingBadge}>
-                          <Text style={styles.rankingTotalText}>{item.total} relatórios</Text>
+                      <View style={styles.rankingColUser}>
+                        <Text style={styles.rankingUserName} numberOfLines={1}>
+                          {item.nome}
+                        </Text>
+                      </View>
+
+                      <View style={styles.rankingColTotal}>
+                        <View style={styles.rankingTotalBadge}>
+                          <Text style={styles.rankingTotalBadgeText}>{item.total}</Text>
                         </View>
-                        <Text style={styles.rankingPercentText}>{percentual}% do total</Text>
                       </View>
                     </View>
                   );
@@ -4629,32 +4614,62 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
-  coordNavbarLight: {
-    backgroundColor: '#ffffff',
-    borderBottomColor: '#e2e8f0',
+
+  /* ─── CONTAINER GERAL E LAYOUT (TEMA COORDENAÇÃO PHP) ─── */
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
   },
-  coordNavTopRow: {
+  scrollContent: {
+    width: '100%',
+    maxWidth: 1600,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 64,
+  },
+
+  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO (IGUAL AO COORD/INDEX.PHP) ─── */
+  coordNavbar: {
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    width: '100%',
+    zIndex: 50,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  coordNavbarInner: {
+    maxWidth: 1600,
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  coordNavLogoGroup: {
+  coordNavLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
   coordNavLogoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#3b82f6',
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#2563eb',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
     elevation: 3,
   },
   coordNavLogoRay: {
@@ -4663,40 +4678,51 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   coordNavLogoText: {
-    color: '#ffffff',
-    fontSize: 16,
+    color: '#1e293b',
+    fontSize: 18,
     fontWeight: '900',
-    letterSpacing: 1.2,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
+  },
+  coordNavRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flexWrap: 'wrap',
   },
   coordNavDateTimeGroup: {
     alignItems: 'flex-end',
+    borderRightWidth: 1,
+    borderRightColor: '#e2e8f0',
+    paddingRight: 16,
   },
   coordNavDateTimeText: {
-    color: '#94a3b8',
-    fontSize: 11,
+    color: '#334155',
+    fontSize: 12,
     fontWeight: '700',
     fontFamily: modernFont,
   },
   coordNavIpText: {
     color: '#64748b',
     fontSize: 10,
+    fontWeight: '500',
     fontFamily: modernFont,
   },
-  coordNavUserControlRow: {
+  coordNavUserGroup: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 4,
+    gap: 12,
   },
   coordNavUserGreeting: {
-    color: '#94a3b8',
+    color: '#475569',
     fontSize: 13,
+    fontWeight: '500',
     fontFamily: modernFont,
   },
   coordNavUserName: {
-    color: '#ffffff',
-    fontWeight: '900',
+    color: '#0f172a',
+    fontWeight: '800',
   },
   coordNavButtonsGroup: {
     flexDirection: 'row',
@@ -4704,23 +4730,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   coordNavNotificationBtn: {
-    padding: 6,
+    width: 36,
+    height: 36,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   coordNavVoltarBtn: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#f1f5f9',
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#cbd5e1',
   },
   coordNavVoltarBtnText: {
-    color: '#ffffff',
+    color: '#334155',
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.8,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
   coordNavSairBtn: {
@@ -4734,21 +4764,338 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.8,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
 
-  /* ─── TABELA E CARDS DE RELATÓRIOS ─── */
-  reportsTableCard: {
+  /* ─── CARD SUPERIOR VISÃO GERAL (IGUAL COORD/INDEX.PHP) ─── */
+  overviewSummaryCardLight: {
     backgroundColor: '#ffffff',
-    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 20,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  overviewSummaryLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  overviewSummaryIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  overviewSummaryTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    color: '#1e293b',
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  overviewSummarySubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  overviewSummaryRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#f8fafc',
+    padding: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  overviewMonthSelectorLight: {
+    backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    overflow: 'hidden',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  reportsTableCardLight: {
+  overviewMonthText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+    fontFamily: modernFont,
+  },
+  overviewBtnFiltrar: {
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+  },
+  overviewBtnFiltrarText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+
+  /* ─── 4 CARDS DE KPIS / MÉTRICAS ─── */
+  kpiCardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 20,
+  },
+  kpiMetricCard: {
+    flex: 1,
+    minWidth: 220,
     backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+    padding: 18,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
+  kpiMetricCardTotal: {
+    borderTopWidth: 4,
+    borderTopColor: '#2563eb',
+  },
+  kpiMetricCardMes: {
+    borderTopWidth: 4,
+    borderTopColor: '#06b6d4',
+  },
+  kpiMetricCardHoje: {
+    borderTopWidth: 4,
+    borderTopColor: '#f97316',
+  },
+  kpiMetricCardUsuarios: {
+    borderTopWidth: 4,
+    borderTopColor: '#8b5cf6',
+  },
+  kpiMetricTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  kpiMetricLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  kpiMetricValue: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#0f172a',
+    marginVertical: 4,
+    fontFamily: modernFont,
+  },
+  kpiMetricFootnote: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+    fontFamily: modernFont,
+  },
+
+  /* ─── BARRA DE ABAS DE NAVEGAÇÃO ─── */
+  tabsBarRow: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+    borderRadius: 14,
+    padding: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 20,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  tabNavButton: {
+    flex: 1,
+    minWidth: 110,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  tabNavButtonActive: {
+    backgroundColor: '#1e293b',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  tabNavButtonInactive: {
+    backgroundColor: 'transparent',
+  },
+  tabNavButtonText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  tabNavButtonTextActive: {
+    color: '#ffffff',
+  },
+  tabNavButtonTextInactive: {
+    color: '#64748b',
+  },
+
+  /* ─── CARD UNIFICADO DE RELATÓRIOS (FILTROS + LISTAGEM + PAGINAÇÃO) ─── */
+  unifiedReportsCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+    overflow: 'hidden',
+    marginBottom: 24,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  reportsFilterSection: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    gap: 12,
+  },
+  reportsFilterHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reportsFilterHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    color: '#0f172a',
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  reportsFilterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reportsFilterFieldBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 38,
+  },
+  reportsFilterFieldLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#64748b',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  reportsFilterInput: {
+    fontSize: 12,
+    color: '#0f172a',
+    padding: 0,
+    width: 90,
+    fontFamily: modernFont,
+  },
+  reportsFilterInputNoBorder: {
+    fontSize: 12,
+    color: '#0f172a',
+    padding: 0,
+    flex: 1,
+    fontFamily: modernFont,
+  },
+  reportsDropdownBtn: {
+    justifyContent: 'space-between',
+    minWidth: 130,
+  },
+  reportsDropdownBtnText: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '600',
+    fontFamily: modernFont,
+  },
+  reportsDropdownChevron: {
+    fontSize: 10,
+    color: '#64748b',
+    marginLeft: 4,
+  },
+  btnReportsFiltrar: {
+    backgroundColor: '#334155',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnReportsFiltrarText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  btnReportsLimpar: {
+    backgroundColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnReportsLimparText: {
+    color: '#475569',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+
+  /* ─── TABELA DE RELATÓRIOS (CABECALHO E LINHAS) ─── */
   reportsListHeaderRow: {
     backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
@@ -4760,12 +5107,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   reportsListHeaderText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
-    color: '#475569',
-    letterSpacing: 0.8,
+    color: '#64748b',
+    letterSpacing: 1,
     textTransform: 'uppercase',
     fontFamily: modernFont,
+  },
+  reportsListContainer: {
+    backgroundColor: '#ffffff',
   },
   reportsItemCard: {
     paddingHorizontal: 16,
@@ -4777,33 +5127,35 @@ const styles = StyleSheet.create({
   reportsItemTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 4,
   },
   reportsItemUnidade: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
     color: '#2563eb',
+    textTransform: 'uppercase',
     fontFamily: modernFont,
     flex: 1,
     marginRight: 8,
   },
   reportsEmpresaBadge: {
-    backgroundColor: '#e0f2fe',
-    borderRadius: 6,
+    borderRadius: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 2,
   },
   reportsEmpresaBadgeText: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '900',
-    color: '#0284c7',
     letterSpacing: 0.5,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
   reportsItemSub: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#64748b',
+    fontWeight: '700',
+    textTransform: 'uppercase',
     marginBottom: 4,
     fontFamily: modernFont,
   },
@@ -4811,70 +5163,268 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   reportsItemTimeText: {
-    fontSize: 11,
-    color: '#475569',
+    fontSize: 10,
+    color: '#64748b',
     fontWeight: '600',
     fontFamily: modernFont,
   },
   reportsActionPillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   actionPill: {
     borderRadius: 8,
     borderWidth: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   actionPillDownload: {
     backgroundColor: '#eff6ff',
-    borderColor: '#bfdbfe',
+    borderColor: '#dbeafe',
   },
   actionPillDownloadText: {
     color: '#1d4ed8',
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
   actionPillVisualizar: {
-    backgroundColor: '#f5f3ff',
-    borderColor: '#ddd6fe',
+    backgroundColor: '#eef2ff',
+    borderColor: '#e0e7ff',
   },
   actionPillVisualizarText: {
-    color: '#6d28d9',
-    fontSize: 11,
+    color: '#4338ca',
+    fontSize: 9,
     fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
   actionPillEditar: {
-    backgroundColor: '#fefce8',
-    borderColor: '#fef08a',
+    backgroundColor: '#fffbeb',
+    borderColor: '#fef3c7',
   },
   actionPillEditarText: {
     color: '#b45309',
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
   actionPillCompartilhar: {
-    backgroundColor: '#f0fdf4',
-    borderColor: '#bbf7d0',
+    backgroundColor: '#ecfdf5',
+    borderColor: '#d1fae5',
   },
   actionPillCompartilharText: {
-    color: '#15803d',
-    fontSize: 11,
+    color: '#047857',
+    fontSize: 9,
     fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
     fontFamily: modernFont,
   },
   actionPillExcluir: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#fecaca',
+    backgroundColor: '#fff1f2',
+    borderColor: '#ffe4e6',
   },
   actionPillExcluirText: {
-    color: '#b91c1c',
-    fontSize: 11,
+    color: '#be123c',
+    fontSize: 9,
     fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+
+  /* ─── PAGINAÇÃO ─── */
+  paginationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    gap: 12,
+  },
+  pageBtn: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 6,
+  },
+  pageBtnDisabled: {
+    opacity: 0.4,
+  },
+  pageBtnText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  pageIndicatorText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748b',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+
+  /* ─── ABA RANKING (IGUAL COORD/INDEX.PHP) ─── */
+  rankingCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+    overflow: 'hidden',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  rankingHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#fef3c7',
+    backgroundColor: '#fffbeb',
+  },
+  rankingHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rankingIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#f59e0b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#f59e0b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  rankingTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    color: '#92400e',
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  rankingSubtitle: {
+    fontSize: 10,
+    color: '#d97706',
+    fontWeight: '600',
+    marginTop: 1,
+    fontFamily: modernFont,
+  },
+  rankingTableHeaderRow: {
+    backgroundColor: '#f8fafc',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rankingColPos: {
+    width: '15%',
+    alignItems: 'center',
+  },
+  rankingColUser: {
+    width: '65%',
+  },
+  rankingColTotal: {
+    width: '20%',
+    alignItems: 'center',
+  },
+  rankingTableHeaderText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#64748b',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  rankingTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  rankingPosBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankingPosBadge1: {
+    backgroundColor: '#fef9c3',
+  },
+  rankingPosBadge2: {
+    backgroundColor: '#e2e8f0',
+  },
+  rankingPosBadge3: {
+    backgroundColor: '#ffedd5',
+  },
+  rankingPosBadgeText1: {
+    color: '#a16207',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  rankingPosBadgeText2: {
+    color: '#475569',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  rankingPosBadgeText3: {
+    color: '#c2410c',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  rankingPosNumber: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94a3b8',
+    fontFamily: modernFont,
+  },
+  rankingUserName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+    fontFamily: modernFont,
+  },
+  rankingTotalBadge: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  rankingTotalBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#2563eb',
     fontFamily: modernFont,
   },
 
