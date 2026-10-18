@@ -1361,6 +1361,9 @@ export default function ReportGenerator() {
         setIsDesktop(window.innerWidth >= 640);
       };
       checkMode();
+      if (typeof window !== 'undefined') {
+        window.scrollTo(0, 0);
+      }
       window.addEventListener('resize', checkMode);
       return () => window.removeEventListener('resize', checkMode);
     }
@@ -1830,7 +1833,12 @@ export default function ReportGenerator() {
           recordSuccessfulLogin(dbUser.id, userName);
 
           setAuthMsg({ type: 'sucesso', text: 'Login realizado com sucesso!' });
-          setTimeout(() => setIsAuthModalVisible(false), 600);
+          setTimeout(() => {
+            setIsAuthModalVisible(false);
+            if (typeof window !== 'undefined') {
+              window.scrollTo(0, 0);
+            }
+          }, 600);
           setAuthLoading(false);
           return;
         }
@@ -1887,7 +1895,12 @@ export default function ReportGenerator() {
           recordSuccessfulLogin(dbUser?.id || authData.session.user.id, userName);
 
           setAuthMsg({ type: 'sucesso', text: 'Login realizado com sucesso!' });
-          setTimeout(() => setIsAuthModalVisible(false), 600);
+          setTimeout(() => {
+            setIsAuthModalVisible(false);
+            if (typeof window !== 'undefined') {
+              window.scrollTo(0, 0);
+            }
+          }, 600);
         }
       } else {
         const cleanName = authName.trim();
@@ -1951,6 +1964,9 @@ export default function ReportGenerator() {
           setTimeout(() => {
             setIsAuthModalVisible(false);
             setAuthConfirmPassword('');
+            if (typeof window !== 'undefined') {
+              window.scrollTo(0, 0);
+            }
           }, 1000);
         } else {
           setAuthMsg({ type: 'erro', text: authErr?.message || dbErr?.message || 'Erro ao criar conta.' });
@@ -2898,7 +2914,7 @@ export default function ReportGenerator() {
             {userSession?.user ? (
               <View style={styles.menuAvatarCircle}>
                 <Text style={styles.menuAvatarCircleText}>
-                  {(userSession.user.user_metadata?.name || userSession.user.email || 'U')[0].toUpperCase()}
+                  {((userSession?.user?.user_metadata?.name || (userSession?.user as any)?.nome || (userSession?.user as any)?.username || userSession?.user?.email || 'U').toString().trim().charAt(0) || 'U').toUpperCase()}
                 </Text>
               </View>
             ) : (
@@ -2964,7 +2980,7 @@ export default function ReportGenerator() {
                         </View>
                       </View>
                       <Text style={styles.menuHeaderName} numberOfLines={1}>
-                        {userSession.user.user_metadata?.name || userSession.user.email?.split('@')[0]}
+                        {userSession?.user?.user_metadata?.name || (userSession?.user as any)?.nome || (userSession?.user as any)?.username || userSession?.user?.email?.split('@')[0] || 'Usuário'}
                       </Text>
                     </View>
 
@@ -4460,7 +4476,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a',
   },
   navbar: {
-    height: 64,
+    minHeight: 60,
     backgroundColor: '#0f172a',
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
@@ -4468,6 +4484,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingVertical: 8,
+    position: 'relative',
+    width: '100%',
     zIndex: 50,
   },
   navBrandContainer: {

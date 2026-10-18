@@ -97,19 +97,21 @@ html, body {
   padding-bottom: 96px !important;
 }
 
-/* ─── 4. NAVBAR SUPERIOR (MMS NAVBAR) ─── */
+/* ─── 4. NAVBAR SUPERIOR (MMS NAVBAR - NÃO FIXO / FLUXO NATURAL) ─── */
 .mms-navbar {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 100 !important;
-  height: 64px !important;
+  position: relative !important;
+  top: auto !important;
+  z-index: 50 !important;
+  min-height: 60px !important;
+  height: auto !important;
+  width: 100% !important;
   background-color: var(--mms-navy-900) !important;
   border-bottom: 1px solid var(--mms-navy-800) !important;
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
   justify-content: space-between !important;
-  padding: 0 20px !important;
+  padding: 8px 16px !important;
   box-shadow: var(--mms-shadow-md) !important;
 }
 
