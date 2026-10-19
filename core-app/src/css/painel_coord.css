@@ -3,12 +3,13 @@
    Portado e otimizado com fidelidade 100% ao ecossistema original
    ========================================================================== */
 
-/* ─── NAVBAR SUPERIOR (NÃO FIXO / FLUXO NATURAL) ─── */
+/* ─── NAVBAR SUPERIOR (FIXO / STICKY NO TOPO) ─── */
 .coord-navbar-sticky,
 .coord-navbar {
-  position: relative !important;
-  top: auto !important;
-  z-index: 50 !important;
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
   width: 100% !important;
   background-color: #ffffff !important;
   border-bottom: 1px solid #e2e8f0 !important;

@@ -3224,7 +3224,7 @@ export default function ReportGenerator() {
           {/* Controle de Abas Simultâneas: Relatórios em Andamento */}
           <View style={styles.draftTabsSection} className="mms-draft-tabs-section">
             <View style={styles.draftTabsHeaderRow}>
-              <Text style={styles.draftTabsSectionTitle}>RELATÓRIOS EM ANDAMENTO</Text>
+              <Text style={styles.draftTabsSectionTitle} className="mms-draft-tabs-section-title">RELATÓRIOS EM ANDAMENTO</Text>
 
               <TouchableOpacity
                 style={[
@@ -3315,28 +3315,12 @@ export default function ReportGenerator() {
             <View style={styles.inputGroup} className="mms-field-group">
               <Text style={styles.label} className="mms-field-label">DATA:</Text>
               {Platform.OS === 'web' ? (
-                <View style={styles.dateInputContainer} className="mms-date-input-container">
+                <View style={[styles.dateInputContainer, { position: 'relative', width: '100%' }]} className="mms-date-input-container">
                   <input
                     id="field-data"
-                    type={currentData.data ? 'date' : 'text'}
-                    value={currentData.data}
+                    type="date"
+                    value={currentData.data || ''}
                     onChange={(e: any) => updateCurrentTab({ data: e.target.value })}
-                    onClick={(e: any) => {
-                      e.target.type = 'date';
-                      try {
-                        if (e.target.showPicker) e.target.showPicker();
-                      } catch (err) {}
-                    }}
-                    onFocus={(e: any) => {
-                      e.target.type = 'date';
-                      try {
-                        if (e.target.showPicker) e.target.showPicker();
-                      } catch (err) {}
-                    }}
-                    onBlur={(e: any) => {
-                      if (!e.target.value) e.target.type = 'text';
-                    }}
-                    placeholder="Selecione a data aqui 📅"
                     className="mms-input-control mms-input-date"
                     style={{
                       border: fieldErrors.data ? '2px solid #f87171' : '1px solid #cbd5e1',
@@ -3347,19 +3331,43 @@ export default function ReportGenerator() {
                       fontSize: 14,
                       fontFamily: corporateFont,
                       backgroundColor: fieldErrors.data ? '#ffe4e6' : '#f8fafc',
-                      color: '#1e293b',
+                      color: currentData.data ? '#1e293b' : 'transparent',
                       width: '100%',
                       maxWidth: '100%',
                       minWidth: 0,
                       outline: 'none',
                       cursor: 'pointer',
                       boxSizing: 'border-box',
-                      WebkitAppearance: 'none',
-                      MozAppearance: 'none',
-                      appearance: 'none',
                       textAlign: 'center',
                     }}
                   />
+                  {!currentData.data && (
+                    <View
+                      pointerEvents="none"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                        zIndex: 5,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: '#94a3b8',
+                          fontFamily: corporateFont,
+                          textAlign: 'center',
+                        }}
+                      >
+                        Selecione a data aqui 📅
+                      </Text>
+                    </View>
+                  )}
                 </View>
               ) : (
                 <TextInput
@@ -4434,7 +4442,7 @@ export default function ReportGenerator() {
 
       {/* Toast Flutuante de Rascunho Salvo (idêntico ao index.php) */}
       {isDraftToastVisible && (
-        <View style={styles.toastSaveContainer} pointerEvents="none">
+        <View style={styles.toastSaveContainer} pointerEvents="none" className="mms-toast-save">
           <View style={styles.toastSaveDot} />
           <Text style={styles.toastSaveText}>Rascunho Salvo</Text>
         </View>
@@ -4466,9 +4474,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    position: 'relative',
+    position: (Platform.OS === 'web' ? 'sticky' : 'relative') as any,
+    top: 0,
     width: '100%',
-    zIndex: 50,
+    zIndex: 1000,
   },
   navBrandContainer: {
     flexDirection: 'row',
@@ -5044,25 +5053,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
     width: '100%',
+    gap: 8,
   },
   draftTabsSectionTitle: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '900',
     color: '#475569',
-    letterSpacing: 1.2,
+    letterSpacing: 0.3,
     textTransform: 'uppercase',
     fontFamily: modernFont,
+    flexShrink: 1,
   },
   btnAddDraftReport: {
     backgroundColor: '#eff6ff',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: '#bfdbfe',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   btnAddDraftReportDisabled: {
     backgroundColor: '#f1f5f9',
@@ -5072,9 +5084,9 @@ const styles = StyleSheet.create({
   btnAddDraftReportText: {
     color: '#2563eb',
     fontWeight: '900',
-    fontSize: 11,
+    fontSize: 9.5,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
     fontFamily: modernFont,
   },
   btnAddDraftReportTextDisabled: {
@@ -6203,8 +6215,8 @@ const styles = StyleSheet.create({
     fontFamily: corporateFont,
   },
   toastSaveContainer: {
-    position: 'absolute',
-    bottom: 90,
+    position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as any,
+    bottom: (Platform.OS === 'web' ? 'calc(env(safe-area-inset-bottom, 0px) + 24px)' : 90) as any,
     right: 20,
     backgroundColor: 'rgba(15, 23, 42, 0.94)',
     paddingVertical: 10,
@@ -6218,7 +6230,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 16,
     elevation: 12,
-    zIndex: 10000,
+    zIndex: 99999,
   },
   toastSaveDot: {
     width: 10,
