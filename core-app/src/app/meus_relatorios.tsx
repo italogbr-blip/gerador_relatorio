@@ -483,16 +483,18 @@ export default function MeusRelatoriosScreen() {
                   Usuário ou E-mail
                 </Text>
                 <TextInput
-                  style={{
-                    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
-                    borderWidth: 1.5,
-                    borderColor: isDarkMode ? '#334155' : '#cbd5e1',
-                    borderRadius: 10,
-                    padding: 12,
-                    fontSize: 14,
-                    color: isDarkMode ? '#ffffff' : '#0f172a',
-                    outlineStyle: 'none',
-                  }}
+                  style={
+                    {
+                      backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
+                      borderWidth: 1.5,
+                      borderColor: isDarkMode ? '#334155' : '#cbd5e1',
+                      borderRadius: 10,
+                      padding: 12,
+                      fontSize: 14,
+                      color: isDarkMode ? '#ffffff' : '#0f172a',
+                      outlineStyle: 'none',
+                    } as any
+                  }
                   placeholder="Seu usuário ou e-mail"
                   placeholderTextColor="#94a3b8"
                   value={loginInput}
@@ -515,16 +517,18 @@ export default function MeusRelatoriosScreen() {
                   Senha
                 </Text>
                 <TextInput
-                  style={{
-                    backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
-                    borderWidth: 1.5,
-                    borderColor: isDarkMode ? '#334155' : '#cbd5e1',
-                    borderRadius: 10,
-                    padding: 12,
-                    fontSize: 14,
-                    color: isDarkMode ? '#ffffff' : '#0f172a',
-                    outlineStyle: 'none',
-                  }}
+                  style={
+                    {
+                      backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
+                      borderWidth: 1.5,
+                      borderColor: isDarkMode ? '#334155' : '#cbd5e1',
+                      borderRadius: 10,
+                      padding: 12,
+                      fontSize: 14,
+                      color: isDarkMode ? '#ffffff' : '#0f172a',
+                      outlineStyle: 'none',
+                    } as any
+                  }
                   placeholder="Sua senha"
                   placeholderTextColor="#94a3b8"
                   value={loginPass}
