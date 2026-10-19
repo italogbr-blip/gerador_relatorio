@@ -97,11 +97,12 @@ html, body {
   padding-bottom: 96px !important;
 }
 
-/* ─── 4. NAVBAR SUPERIOR (MMS NAVBAR - NÃO FIXO / FLUXO NATURAL) ─── */
+/* ─── 4. NAVBAR SUPERIOR (MMS NAVBAR - FIXO / STICKY NO TOPO) ─── */
 .mms-navbar {
-  position: relative !important;
-  top: auto !important;
-  z-index: 50 !important;
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
   min-height: 60px !important;
   height: auto !important;
   width: 100% !important;
@@ -348,6 +349,27 @@ html, body {
 }
 
 /* ─── 7. ABAS DE RASCUNHOS / SLOTS DE RELATÓRIO ─── */
+.mms-draft-tabs-section-title {
+  font-size: 9.5px !important;
+  letter-spacing: 0.3px !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 420px) {
+  .mms-draft-tabs-section-title {
+    font-size: 8.5px !important;
+    letter-spacing: 0.2px !important;
+  }
+}
+
+.mms-toast-save {
+  position: fixed !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 24px) !important;
+  right: 20px !important;
+  z-index: 99999 !important;
+  pointer-events: none !important;
+}
+
 .mms-draft-tabs-container {
   display: flex !important;
   flex-direction: row !important;

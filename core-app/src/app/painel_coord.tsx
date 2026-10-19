@@ -1167,7 +1167,7 @@ export default function PainelCoordScreen() {
   if (!isAuthorized || !isPanelUnlocked) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
-        <View style={[styles.navbar, { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
+        <View style={[styles.coordNavbar, { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]} className="coord-navbar coord-navbar-sticky">
           <View style={styles.navLeft}>
             <View style={styles.coordBadgeIcon}>
               <Text style={{ fontSize: 16 }}>🛡️</Text>
@@ -1258,8 +1258,8 @@ export default function PainelCoordScreen() {
   // 4. Painel de Coordenação Autorizado e Desbloqueado
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
-      {/* Navbar Principal com Cabeçalho Customizado (Tema Claro / Offshore - Não Fixo) */}
-      <View style={styles.coordNavbar}>
+      {/* Navbar Principal com Cabeçalho Customizado (Tema Claro / Offshore - Fixo / Sticky) */}
+      <View style={styles.coordNavbar} className="coord-navbar coord-navbar-sticky">
         <View style={[styles.coordNavbarInner, isMobile && { flexDirection: 'column', alignItems: 'stretch', gap: 6, paddingVertical: 8, paddingHorizontal: 12 }]}>
           {/* Linha 1 Mobile: Logo + Botões de Ação */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'nowrap', gap: 6 }}>
@@ -2932,6 +2932,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
+    position: (Platform.OS === 'web' ? 'sticky' : 'relative') as any,
+    top: 0,
+    zIndex: 1000,
   },
   navLeft: {
     flexDirection: 'row',
@@ -4668,15 +4671,15 @@ const styles = StyleSheet.create({
     paddingBottom: 64,
   },
 
-  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO (TEMA CLARO PHP - NÃO FIXO / FLUXO NATURAL) ─── */
+  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO (TEMA CLARO PHP - FIXO / STICKY NO TOPO) ─── */
   coordNavbar: {
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
     width: '100%',
-    position: 'relative',
-    top: 'auto' as any,
-    zIndex: 50,
+    position: (Platform.OS === 'web' ? 'sticky' : 'relative') as any,
+    top: 0,
+    zIndex: 1000,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
