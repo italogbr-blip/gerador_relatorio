@@ -449,6 +449,23 @@ html, body {
   resize: vertical !important;
 }
 
+/* ─── ESTADO BLOQUEADO APÓS GERAR RELATÓRIO (FIDELIDADE INDEX.PHP) ─── */
+.mms-form-locked {
+  opacity: 0.52 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  filter: grayscale(18%) !important;
+  transition: opacity 0.3s ease, filter 0.3s ease !important;
+}
+
+.mms-form-locked input,
+.mms-form-locked textarea,
+.mms-form-locked select,
+.mms-form-locked button {
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
+
 .mms-textarea-control:focus {
   outline: none !important;
   border-color: var(--mms-primary) !important;

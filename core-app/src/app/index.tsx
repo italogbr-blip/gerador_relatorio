@@ -19,7 +19,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { PHP_SAVE_ENDPOINT, formatReportPdfUrl } from '../lib/config';
 import { gerarHtmlPdfFidelidade } from '../lib/pdfHtmlGenerator';
+import {
+  baixarPdfRelatorio,
+  compartilharPdfRelatorio,
+  gerarNomeArquivoPdf,
+  visualizarRelatorioHtml,
+} from '../lib/pdfManager';
 import {
   getSavedSessionSync,
   getValidatedUserSession,
@@ -1235,7 +1242,7 @@ export default function ReportGenerator() {
     if (userSession?.user) {
       showCustomConfirm(
         'ENCERRAR SESSÃO',
-        `Deseja realmente sair da conta (${userSession.user.nome || userSession.user.email})?`,
+        `Deseja realmente sair da conta (${(userSession.user as any).nome || userSession.user.user_metadata?.name || userSession.user.email})?`,
         async () => {
           await logoutUserSession();
           setUserSession(null);
@@ -2254,12 +2261,14 @@ export default function ReportGenerator() {
   const [firstErrorField, setFirstErrorField] = useState<string | null>(null);
 
   const getFilenamePreview = () => {
-    const dateFormatted = currentData.data
-      ? currentData.data.split('-').reverse().join('-')
-      : '00-00-0000';
-    const obsFormatted = currentData.observacao ? `_${currentData.observacao.toUpperCase().replace(/\s+/g, '_')}` : '';
-    const unidadeClean = currentData.unidade ? currentData.unidade.toUpperCase().replace(/\s+/g, '_') : 'RELATORIO';
-    return `${unidadeClean}_${dateFormatted}${obsFormatted}.pdf`;
+    return gerarNomeArquivoPdf({
+      unidade: currentData.unidade,
+      data: currentData.data,
+      observacao: currentData.observacao,
+      horarios: {
+        embarque_previsto: currentData.semEmbarquePrev ? '' : `${currentData.h3}:${currentData.m3}`,
+      },
+    });
   };
 
   const scrollToField = (fieldKey: string | null) => {
@@ -2371,96 +2380,74 @@ export default function ReportGenerator() {
     }
   };
 
-  // Compartilhar Resumo Formatado via WhatsApp
-  const handleCompartilharWhatsApp = () => {
-    const dataFormatada = data ? formatarData(data) : new Date().toLocaleDateString('pt-BR');
-    const embLines = (embarcandoText || '').split('\n').filter((l) => l.trim().length > 0);
-    const desLines = (desembarcandoText || '').split('\n').filter((l) => l.trim().length > 0);
+  // Handlers para Baixar, Compartilhar e Editar Relatório
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
-    let msg = `📋 *RESUMO DO ATENDIMENTO OPERACIONAL*\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `🏢 *Empresa:* ${(empresa || 'N/A').toUpperCase()}\n`;
-    msg += `⚓ *Unidade:* ${unidade || 'N/A'}\n`;
-    msg += `📍 *Local:* ${local || 'N/A'}\n`;
-    msg += `👤 *Preposto:* ${preposto || 'Não informado'}\n`;
-    msg += `📅 *Data:* ${dataFormatada}\n`;
+  const obterDadosRelatorioAtual = () => ({
+    grupo: currentData.grupo,
+    unidade: currentData.unidade,
+    data: currentData.data,
+    local: currentData.local,
+    modal: currentData.modal,
+    preposto: currentData.preposto,
+    observacao: currentData.observacao,
+    observacao_nome_arquivo: currentData.observacao,
+    horarios: {
+      saida_hotel: currentData.listaSaidas,
+      embarque_previsto: currentData.semEmbarquePrev ? 'N/A' : `${currentData.h3}:${currentData.m3}`,
+      embarque_real: currentData.semEmbarque ? 'N/A' : `${currentData.h4}:${currentData.m4}`,
+      atendimento_inicio: `${currentData.h5}:${currentData.m5}`,
+      atendimento_fim: `${currentData.h6}:${currentData.m6}`,
+    },
+    info_troca: currentData.info,
+    pax_embarcando: currentData.pax1,
+    pax_desembarcando: currentData.pax2,
+    fotos: currentData.fotosAnexadas,
+    alinhamentoInfo: currentData.alinhamentoInfo,
+  });
 
-    if (embarquePrevistoHora || embarqueRealHora) {
-      const prev = embarquePrevistoHora ? `${embarquePrevistoHora}:${embarquePrevistoMin || '00'}` : 'N/A';
-      const real = embarqueRealHora ? `${embarqueRealHora}:${embarqueRealMin || '00'}` : 'N/A';
-      msg += `⏰ *Embarque:* Prev. ${prev} | Real ${real}\n`;
-    }
-
-    if (embLines.length > 0 || desLines.length > 0) {
-      msg += `👥 *Passageiros (PAX):* 🟢 ${embLines.length} Emb. | 🔴 ${desLines.length} Des.\n`;
-    }
-
-    if (infoTroca && infoTroca.trim()) {
-      msg += `📝 *Observação:* ${infoTroca.trim()}\n`;
-    }
-
-    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `🌐 *Consultar Relatório:* https://relatorios.atmai.com.br/meus_relatorios`;
-
-    const encoded = encodeURIComponent(msg);
-    const waUrl = `https://api.whatsapp.com/send?text=${encoded}`;
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.open(waUrl, '_blank');
-    } else {
-      Linking.openURL(waUrl);
+  const handleBaixarPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const dados = obterDadosRelatorioAtual();
+      const res = await baixarPdfRelatorio(dados);
+      if (res.sucesso && Platform.OS !== 'web') {
+        showCustomAlert('DOWNLOAD CONCLUÍDO', `Arquivo ${res.nomeArquivo} gerado com sucesso!`);
+      }
+    } catch (e: any) {
+      showCustomAlert('DOWNLOAD DO PDF', e.message || 'Falha ao processar o download do PDF.');
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
-  // Geração Nativa de Documento e PDF de Alta Fidelidade (Fiel ao modelo PHP)
-  const handleExportarPdfOffline = (modo: 'imprimir' | 'download_html' = 'imprimir') => {
-    const docHtml = gerarHtmlPdfFidelidade({
-      grupo: currentData.grupo,
-      unidade: currentData.unidade,
-      data: currentData.data,
-      local: currentData.local,
-      modal: currentData.modal,
-      preposto: currentData.preposto,
-      horarios: {
-        saida_hotel: currentData.listaSaidas,
-        embarque_previsto: currentData.semEmbarquePrev ? 'N/A' : `${currentData.h3}:${currentData.m3}`,
-        embarque_real: currentData.semEmbarque ? 'N/A' : `${currentData.h4}:${currentData.m4}`,
-        atendimento_inicio: `${currentData.h5}:${currentData.m5}`,
-        atendimento_fim: `${currentData.h6}:${currentData.m6}`,
-      },
-      info_troca: currentData.info,
-      pax_embarcando: currentData.pax1,
-      pax_desembarcando: currentData.pax2,
-      fotos: currentData.fotosAnexadas,
-      alinhamentoInfo: currentData.alinhamentoInfo,
-    });
-
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      if (modo === 'download_html') {
-        const blob = new Blob([docHtml], { type: 'text/html;charset=utf-8' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        const unidadeClean = (currentData.unidade || 'MMS').toUpperCase().replace(/\s+/g, '_');
-        const dataClean = (currentData.data || 'data').replace(/-/g, '_');
-        link.download = `${unidadeClean}_${dataClean}.html`;
-        link.click();
-        return;
-      }
-
-      // Impressão / Salvar como PDF
-      const printWin = window.open('', '_blank');
-      if (printWin) {
-        printWin.document.write(docHtml);
-        printWin.document.close();
-        setTimeout(() => {
-          printWin.focus();
-          printWin.print();
-        }, 350);
-      } else {
-        window.print();
-      }
-    } else {
-      showCustomAlert('EXPORTAÇÃO OFFLINE', 'Documento gerado e pronto para exportação.');
+  const handleCompartilharRelatorio = async () => {
+    setIsExportingPdf(true);
+    try {
+      const dados = obterDadosRelatorioAtual();
+      await compartilharPdfRelatorio(dados);
+    } catch (e: any) {
+      showCustomAlert('COMPARTILHAR', e.message || 'Falha ao abrir menu de compartilhamento.');
+    } finally {
+      setIsExportingPdf(false);
     }
+  };
+
+  const handleEditarRelatorio = () => {
+    setPdfGenerated(false);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const formEl = document.getElementById('mms-form-fields');
+      if (formEl) {
+        formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
+  // Mantém retrocompatibilidade para exportação offline
+  const handleExportarPdfOffline = (modo: 'imprimir' | 'download_html' = 'imprimir') => {
+    handleBaixarPdf();
   };
 
   const salvarRelatorioNoSupabase = async () => {
@@ -3265,8 +3252,13 @@ export default function ReportGenerator() {
             </View>
           </View>
 
-          {/* Formulário Principal */}
-          <View style={styles.formContainer} className="mms-form-container">
+          {/* Formulário Principal (Bloqueado e Opaco após Gerar Relatório) */}
+          <View
+            nativeID="mms-form-fields"
+            style={[styles.formContainer, pdfGenerated && styles.formContainerLocked]}
+            className={`mms-form-container ${pdfGenerated ? 'mms-form-locked' : ''}`}
+            pointerEvents={pdfGenerated ? 'none' : 'auto'}
+          >
             {/* Empresa / Grupo (Select Dropdown) */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>EMPRESA / GRUPO:</Text>
@@ -3716,17 +3708,6 @@ export default function ReportGenerator() {
                   </View>
                 </View>
               </View>
-                        style={[styles.timeInput, fieldErrors.m6 && styles.inputError]}
-                        value={currentData.m6}
-                        onChangeText={(val) => handleMinChange(val, 'm6', 'field-m6')}
-                        maxLength={2}
-                        keyboardType="numeric"
-                      />
-                      <Text style={styles.timeSufix}>m</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
             </View>
 
             {/* Informações sobre a troca */}
@@ -3852,7 +3833,10 @@ export default function ReportGenerator() {
                 <Text style={styles.btnUploadText}>📷 SELECIONAR IMAGEM</Text>
               </TouchableOpacity>
             </View>
+          </View>
 
+          {/* Área de Finalização do Formulário (Ações, Prévia e Botões) */}
+          <View style={styles.formFooterActionsWrap}>
             {/* Prévia do Nome do Arquivo */}
             <View style={styles.filenamePreviewBox}>
               <Text style={styles.filenamePreviewLabel}>PRÉVIA DO NOME DO ARQUIVO:</Text>
@@ -3888,9 +3872,9 @@ export default function ReportGenerator() {
               </TouchableOpacity>
             )}
 
-            {/* Sucesso do Relatório Gerado */}
+            {/* Sucesso do Relatório Gerado (Opção 1 DomPDF/Expo) */}
             {pdfGenerated && (
-              <View style={styles.areaSucessoPdf}>
+              <View style={styles.areaSucessoPdf} className="mms-area-sucesso-pdf">
                 <View style={styles.sucessoPillHeader}>
                   <Text style={styles.sucessoPillCheck}>✅</Text>
                   <Text style={styles.sucessoPillTitle}>Relatório gerado com sucesso!</Text>
@@ -3899,7 +3883,8 @@ export default function ReportGenerator() {
                 <View style={styles.sucessoActionsRow}>
                   <TouchableOpacity
                     style={styles.btnCompartilharPdf}
-                    onPress={handleCompartilharWhatsApp}
+                    onPress={handleCompartilharRelatorio}
+                    disabled={isExportingPdf}
                     activeOpacity={0.85}
                   >
                     <Text style={styles.btnCompartilharPdfIcon}>🔗</Text>
@@ -3908,22 +3893,18 @@ export default function ReportGenerator() {
 
                   <TouchableOpacity
                     style={styles.btnBaixarPdf}
-                    onPress={() => handleExportarPdfOffline('imprimir')}
+                    onPress={handleBaixarPdf}
+                    disabled={isExportingPdf}
                     activeOpacity={0.85}
                   >
                     <Text style={styles.btnBaixarPdfIcon}>📥</Text>
-                    <Text style={styles.btnBaixarPdfText}>Baixar</Text>
+                    <Text style={styles.btnBaixarPdfText}>{isExportingPdf ? 'Baixando...' : 'Baixar'}</Text>
                   </TouchableOpacity>
                 </View>
 
                 <TouchableOpacity
                   style={styles.btnEditarPdf}
-                  onPress={() => {
-                    setPdfGenerated(false);
-                    if (Platform.OS === 'web') {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                  }}
+                  onPress={handleEditarRelatorio}
                   activeOpacity={0.85}
                 >
                   <Text style={styles.btnEditarPdfIcon}>✏️</Text>
@@ -4622,8 +4603,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingTop: 64,
     paddingRight: 16,
-    backdropFilter: 'blur(1.5px)',
-    WebkitBackdropFilter: 'blur(1.5px)',
+    ...(Platform.OS === 'web'
+      ? ({
+          backdropFilter: 'blur(1.5px)',
+          WebkitBackdropFilter: 'blur(1.5px)',
+        } as any)
+      : {}),
   },
   dropdownMenuCard: {
     width: 240,
@@ -5195,6 +5180,15 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'stretch',
     gap: 20, // Aumentado o espaçamento entre os grupos de campos
+  },
+  formContainerLocked: {
+    opacity: 0.52,
+  },
+  formFooterActionsWrap: {
+    width: '100%',
+    alignSelf: 'stretch',
+    marginTop: 16,
+    gap: 16,
   },
   inputGroup: {
     width: '100%',

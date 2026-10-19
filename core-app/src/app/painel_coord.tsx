@@ -16,6 +16,13 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
+import {
+  baixarPdfRelatorio,
+  compartilharPdfRelatorio,
+  gerarNomeArquivoPdf,
+  visualizarRelatorioHtml,
+} from '../lib/pdfManager';
+import { ReportPdfData } from '../lib/pdfHtmlGenerator';
 import { verifyCoordinatorAccess, logoutUserSession, saveSessionLocal, getSavedSessionSync, AppUserSession } from '../lib/auth';
 import {
   fetchFooterConfig,
@@ -58,8 +65,8 @@ export default function PainelCoordScreen() {
     }
   }, []);
 
-  // Abas do Painel: 'relatorios' | 'ranking' | 'popups' | 'mensagens' | 'seguranca' | 'sistema' | 'version'
-  const [activeTab, setActiveTab] = useState<'relatorios' | 'ranking' | 'popups' | 'mensagens' | 'seguranca' | 'sistema' | 'version'>('relatorios');
+  // Abas do Painel: 'relatorios' | 'ranking' | 'popups' | 'mensagens' | 'usuarios' | 'seguranca' | 'sistema' | 'version'
+  const [activeTab, setActiveTab] = useState<'relatorios' | 'ranking' | 'popups' | 'mensagens' | 'usuarios' | 'seguranca' | 'sistema' | 'version'>('relatorios');
 
   // Estados de Controle de Versões (Central mms_versao_app)
   const [versoesList, setVersoesList] = useState<AppVersionRecord[]>([]);
@@ -256,9 +263,6 @@ export default function PainelCoordScreen() {
               nivel_autoridade: 2,
             },
           },
-          token: 'coord_token_' + Date.now(),
-          nivel: 2,
-          timestamp: Date.now(),
         };
 
         await saveSessionLocal(sessionPayload);
@@ -657,8 +661,8 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // Carregamento sob demanda dos dados completos do relatório (apenas ao visualizar)
-  const handleVisualizarRelatorio = async (item: any) => {
+  // Carregamento sob demanda dos dados completos do relatório (detalhes no modal)
+  const handleAbrirDetalhesModal = async (item: any) => {
     if (item.dados_json) {
       setSelectedReport(item);
       return;
@@ -856,6 +860,99 @@ export default function PainelCoordScreen() {
     } catch (e) {
       return null;
     }
+  };
+
+  // Extrai ReportPdfData completo do relatório para geração, download e compartilhamento
+  const extractReportPdfData = (report: any): ReportPdfData => {
+    const parsed = parseReportData(report) || {};
+    const paxEmb =
+      parsed.pax_embarcando ||
+      parsed.pax1 ||
+      (Array.isArray(parsed.embarcando)
+        ? parsed.embarcando
+            .map((p: any) => (typeof p === 'string' ? p : `${p.nome || ''} - ${p.funcao || p.doc || ''}`.trim()))
+            .join('\n')
+        : '');
+    const paxDes =
+      parsed.pax_desembarcando ||
+      parsed.pax2 ||
+      (Array.isArray(parsed.desembarcando)
+        ? parsed.desembarcando
+            .map((p: any) => (typeof p === 'string' ? p : `${p.nome || ''} - ${p.funcao || p.doc || ''}`.trim()))
+            .join('\n')
+        : '');
+
+    return {
+      grupo: parsed.grupo || report.empresa || 'MMS',
+      unidade: parsed.unidade || report.unidade || 'MMS',
+      data: parsed.data || (report.data_criacao ? report.data_criacao.split('T')[0] : new Date().toISOString().split('T')[0]),
+      local: parsed.local || parsed.local_atendimento || report.local_atendimento || 'Macaé / Aeroporto',
+      modal: parsed.modal || 'Helicóptero',
+      preposto: parsed.preposto || report.preposto || 'Coordenação',
+      observacao: parsed.observacao || parsed.observacao_nome_arquivo || '',
+      observacao_nome_arquivo: parsed.observacao_nome_arquivo || parsed.observacao || '',
+      horarios: parsed.horarios || {
+        saida_hotel: parsed.listaSaidas || [],
+        embarque_previsto: parsed.embarque_previsto || 'N/A',
+        embarque_real: parsed.embarque_real || 'N/A',
+        atendimento_inicio: parsed.atendimento_inicio || '00:00',
+        atendimento_fim: parsed.atendimento_fim || '00:00',
+      },
+      info_troca: parsed.info_troca || parsed.info || '',
+      pax_embarcando: paxEmb,
+      pax_desembarcando: paxDes,
+      fotos: parsed.fotos || parsed.fotosAnexadas || [],
+      alinhamentoInfo: parsed.alinhamentoInfo || 'left',
+    };
+  };
+
+  // 1. Baixar PDF real gerado
+  const handleBaixarRelatorio = async (report: any) => {
+    if (!report) return;
+    try {
+      const pdfData = extractReportPdfData(report);
+      const res = await baixarPdfRelatorio(pdfData);
+      if (res.sucesso && Platform.OS !== 'web') {
+        showCustomAlert('DOWNLOAD CONCLUÍDO', `Arquivo ${res.nomeArquivo} baixado com sucesso!`);
+      }
+    } catch (e: any) {
+      showCustomAlert('DOWNLOAD DO PDF', e.message || 'Falha ao baixar o PDF do relatório.');
+    }
+  };
+
+  // 2. Compartilhar PDF ou Resumo via App Menu nativo com nome de arquivo exato
+  const handleCompartilharRelatorio = async (report: any) => {
+    if (!report) return;
+    try {
+      const pdfData = extractReportPdfData(report);
+      const fallbackUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? `${window.location.origin}/?id=${report.id}`
+        : undefined;
+      await compartilharPdfRelatorio(pdfData, fallbackUrl);
+    } catch (e: any) {
+      showCustomAlert('COMPARTILHAR', e.message || 'Falha ao abrir menu de compartilhamento.');
+    }
+  };
+
+  // 3. Visualizar relatório em página completa (fidelidade a coord/index.php e ver_relatorio.php)
+  const handleVisualizarRelatorio = async (report: any) => {
+    if (!report) return;
+    let fullReport = report;
+    if (!report.dados_json) {
+      try {
+        const { data } = await supabase.from('relatorios').select('*').eq('id', report.id).single();
+        if (data) fullReport = data;
+      } catch (e) {}
+    }
+    const pdfData = extractReportPdfData(fullReport);
+    visualizarRelatorioHtml(pdfData);
+  };
+
+  // 4. Editar relatório na coordenação (redireciona para o gerador com todos os campos desbloqueados)
+  const handleEditarRelatorio = (report: any) => {
+    if (!report) return;
+    setSelectedReport(null);
+    router.push(`/?editId=${report.id}`);
   };
 
   // Cores de Badge de Empresa idênticas ao coord/index.php
@@ -1179,7 +1276,6 @@ export default function PainelCoordScreen() {
                   style={[styles.coordNavNotificationBtn, { width: 32, height: 32 }]}
                   onPress={() => setActiveTab('popups')}
                   activeOpacity={0.8}
-                  title="Notificações"
                 >
                   <Text style={{ fontSize: 14 }}>🔔</Text>
                 </TouchableOpacity>
@@ -1233,7 +1329,6 @@ export default function PainelCoordScreen() {
                     style={styles.coordNavNotificationBtn}
                     onPress={() => setActiveTab('popups')}
                     activeOpacity={0.8}
-                    title="Notificações"
                   >
                     <Text style={{ fontSize: 18 }}>🔔</Text>
                   </TouchableOpacity>
@@ -1649,7 +1744,7 @@ export default function PainelCoordScreen() {
                         <View style={styles.reportsActionPillsRow}>
                           <TouchableOpacity
                             style={[styles.actionPill, styles.actionPillDownload]}
-                            onPress={() => openReportPdf(item)}
+                            onPress={() => handleBaixarRelatorio(item)}
                             activeOpacity={0.8}
                           >
                             <Text style={styles.actionPillDownloadText}>📥 DOWNLOAD</Text>
@@ -1665,7 +1760,7 @@ export default function PainelCoordScreen() {
 
                           <TouchableOpacity
                             style={[styles.actionPill, styles.actionPillEditar]}
-                            onPress={() => router.push(`/?editId=${item.id}`)}
+                            onPress={() => handleEditarRelatorio(item)}
                             activeOpacity={0.8}
                           >
                             <Text style={styles.actionPillEditarText}>✏️ EDITAR</Text>
@@ -1673,7 +1768,7 @@ export default function PainelCoordScreen() {
 
                           <TouchableOpacity
                             style={[styles.actionPill, styles.actionPillCompartilhar]}
-                            onPress={() => shareWhatsApp(item)}
+                            onPress={() => handleCompartilharRelatorio(item)}
                             activeOpacity={0.8}
                           >
                             <Text style={styles.actionPillCompartilharText}>💬 COMPARTILHAR</Text>
@@ -2647,27 +2742,30 @@ export default function PainelCoordScreen() {
                   <View style={styles.modalBottomActions}>
                     <TouchableOpacity
                       style={styles.modalDownloadPdfBtn}
-                      onPress={() => openReportPdf(selectedReport)}
+                      onPress={() => handleBaixarRelatorio(selectedReport)}
                     >
                       <Text style={styles.modalDownloadPdfBtnText}>📥 BAIXAR PDF</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                      style={[styles.modalEditarBtn, { backgroundColor: '#4338ca' }]}
+                      onPress={() => handleVisualizarRelatorio(selectedReport)}
+                    >
+                      <Text style={styles.modalEditarBtnText}>👁️ VISUALIZAR</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                       style={styles.modalEditarBtn}
-                      onPress={() => {
-                        const id = selectedReport.id;
-                        setSelectedReport(null);
-                        router.push(`/?editId=${id}`);
-                      }}
+                      onPress={() => handleEditarRelatorio(selectedReport)}
                     >
                       <Text style={styles.modalEditarBtnText}>✏️ EDITAR</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       style={styles.modalWhatsAppBtn}
-                      onPress={() => shareWhatsApp(selectedReport)}
+                      onPress={() => handleCompartilharRelatorio(selectedReport)}
                     >
-                      <Text style={styles.modalWhatsAppBtnText}>💬 WHATSAPP</Text>
+                      <Text style={styles.modalWhatsAppBtnText}>💬 COMPARTILHAR</Text>
                     </TouchableOpacity>
                   </View>
                 </ScrollView>
@@ -2825,17 +2923,6 @@ export default function PainelCoordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f1f5f9',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 48,
-    maxWidth: 1400,
-    width: '100%',
-    alignSelf: 'center',
-  },
   navbar: {
     height: 64,
     backgroundColor: '#1e293b',
@@ -2916,310 +3003,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 6,
     elevation: 1,
-  },
-  overviewSummaryCardLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  overviewSummaryCardDark: {
-    backgroundColor: '#1e293b',
-    borderColor: '#334155',
-  },
-  overviewSummaryLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  overviewSummaryIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#2563eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  overviewSummaryTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#0f172a',
-    letterSpacing: 0.5,
-    fontFamily: modernFont,
-  },
-  overviewSummarySubtitle: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
-    fontFamily: modernFont,
-  },
-  overviewSummaryRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  overviewMonthSelector: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  overviewMonthSelectorLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  overviewMonthSelectorDark: {
-    backgroundColor: '#0f172a',
-    borderColor: '#334155',
-  },
-  overviewMonthText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0f172a',
-    fontFamily: modernFont,
-  },
-  overviewBtnFiltrar: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  overviewBtnFiltrarText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    fontFamily: modernFont,
-  },
-
-  /* ─── CARDS DE MÉTRICAS (KPIS) ─── */
-  kpiCardsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  kpiMetricCard: {
-    flex: 1,
-    minWidth: 160,
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-    borderTopWidth: 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  kpiMetricCardLight: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  kpiMetricCardDark: {
-    backgroundColor: '#ffffff',
-    borderColor: '#e2e8f0',
-  },
-  kpiMetricCardHoje: {
-    borderTopColor: '#ea580c',
-  },
-  kpiMetricCardMes: {
-    borderTopColor: '#0284c7',
-  },
-  kpiMetricCardUsuarios: {
-    borderTopColor: '#8b5cf6',
-  },
-  kpiMetricCardTotal: {
-    borderTopColor: '#334155',
-  },
-  kpiMetricLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    fontFamily: modernFont,
-    marginBottom: 6,
-  },
-  kpiMetricValue: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: '#0f172a',
-    fontFamily: modernFont,
-    marginBottom: 4,
-  },
-  kpiMetricFootnote: {
-    fontSize: 11,
-    color: '#64748b',
-    fontFamily: modernFont,
-  },
-
-  /* ─── NAVEGAÇÃO POR ABAS ─── */
-  tabsBarRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 24, // mb-6 (24px)
-    alignItems: 'center',
-  },
-  tabNavButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  tabNavButtonActive: {
-    backgroundColor: '#1e293b',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tabNavButtonInactive: {
-    backgroundColor: 'transparent',
-  },
-  tabNavButtonText: {
-    fontSize: 11,
-    letterSpacing: 0.8,
-    fontFamily: modernFont,
-  },
-  tabNavButtonTextActive: {
-    color: '#ffffff',
-    fontWeight: '900',
-  },
-  tabNavButtonTextInactive: {
-    color: '#64748b',
-    fontWeight: '800',
-  },
-
-  /* ─── CARD UNIFICADO DE FILTROS DE RELATÓRIOS ─── */
-  reportsFilterCardContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 24,
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  reportsFilterCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-  },
-  reportsFilterCardHeaderTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    color: '#0f172a',
-    fontFamily: modernFont,
-  },
-  reportsFilterCardBody: {
-    padding: 16,
-    flexDirection: 'column',
-    gap: 16,
-    backgroundColor: '#ffffff',
-  },
-  reportsFilterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    width: '100%',
-  },
-  reportsFilterFieldBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    height: 38,
-    minWidth: 115,
-    flex: 1,
-  },
-  reportsFilterFieldLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#64748b',
-    marginRight: 6,
-    fontFamily: modernFont,
-  },
-  reportsFilterInput: {
-    flex: 1,
-    height: 36,
-    fontSize: 12,
-    color: '#0f172a',
-    fontFamily: modernFont,
-  },
-  reportsFilterInputNoBorder: {
-    flex: 1,
-    height: 36,
-    fontSize: 12,
-    color: '#0f172a',
-    fontFamily: modernFont,
-  },
-  reportsDropdownBtn: {
-    justifyContent: 'space-between',
-    minWidth: 130,
-  },
-  reportsDropdownBtnText: {
-    fontSize: 12,
-    color: '#334155',
-    fontWeight: '600',
-    fontFamily: modernFont,
-  },
-  reportsDropdownChevron: {
-    fontSize: 12,
-    color: '#64748b',
-    marginLeft: 4,
-  },
-  btnReportsFiltrar: {
-    backgroundColor: '#1e293b',
-    paddingVertical: 10,
-    paddingHorizontal: 22,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnReportsFiltrarText: {
-    color: '#ffffff',
-    fontWeight: '900',
-    fontSize: 12,
-    letterSpacing: 0.8,
-    fontFamily: modernFont,
-  },
-  btnReportsLimpar: {
-    backgroundColor: '#e2e8f0',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnReportsLimparText: {
-    color: '#475569',
-    fontWeight: '800',
-    fontSize: 12,
-    letterSpacing: 0.8,
-    fontFamily: modernFont,
   },
 
   // KPIs
@@ -3511,34 +3294,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
-  },
-
-  // Paginação
-  paginationRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-    marginTop: 20,
-  },
-  pageBtn: {
-    backgroundColor: '#334155',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  pageBtnDisabled: {
-    opacity: 0.4,
-  },
-  pageBtnText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  pageIndicatorText: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '700',
   },
 
   // Seções & Cards

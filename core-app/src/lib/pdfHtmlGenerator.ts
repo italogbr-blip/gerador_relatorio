@@ -8,6 +8,7 @@ export interface ReportPdfData {
   modal: string;
   preposto: string;
   observacao?: string;
+  observacao_nome_arquivo?: string;
   horarios?: {
     saida_hotel?: Array<{
       id?: string;
