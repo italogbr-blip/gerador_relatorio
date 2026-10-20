@@ -1171,19 +1171,19 @@ export default function PainelCoordScreen() {
   if (!isAuthorized || !isPanelUnlocked) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
-        <View style={[styles.coordNavbar, { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]} className="coord-navbar coord-navbar-sticky">
-          <View style={styles.navLeft}>
-            <View style={styles.coordBadgeIcon}>
-              <Text style={{ fontSize: 16 }}>🛡️</Text>
+        <View style={styles.coordNavbar} className="coord-navbar coord-navbar-sticky">
+          <View style={[styles.coordNavbarInner, { paddingVertical: 12 }]}>
+            <View style={styles.coordNavLeft}>
+              <View style={styles.coordNavLogoIcon}>
+                <Text style={styles.coordNavLogoRay}>🛡️</Text>
+              </View>
+              <Text style={styles.coordNavLogoText}>PAINEL DE COORDENAÇÃO</Text>
             </View>
-            <View>
-              <Text style={[styles.navTitle, { color: '#0f172a' }]}>PAINEL DE COORDENAÇÃO</Text>
+            <View style={styles.coordNavRight}>
+              <TouchableOpacity style={styles.coordNavVoltarBtn} onPress={() => router.push('/')} activeOpacity={0.8}>
+                <Text style={styles.coordNavVoltarBtnText}>← VOLTAR</Text>
+              </TouchableOpacity>
             </View>
-          </View>
-          <View style={styles.navRight}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.push('/')}>
-              <Text style={styles.backButtonText}>← VOLTAR</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -1262,100 +1262,62 @@ export default function PainelCoordScreen() {
   // 4. Painel de Coordenação Autorizado e Desbloqueado
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
-      {/* Navbar Principal com Cabeçalho Customizado (Tema Claro / Offshore - Fixo / Sticky) */}
+      {/* Navbar Principal com Cabeçalho Customizado (Tema Escuro Idêntico ao index.tsx - Fixo / Sticky) */}
       <View style={styles.coordNavbar} className="coord-navbar coord-navbar-sticky">
-        <View style={[styles.coordNavbarInner, isMobile && { flexDirection: 'column', alignItems: 'stretch', gap: 6, paddingVertical: 8, paddingHorizontal: 12 }]}>
-          {/* Linha 1 Mobile: Logo + Botões de Ação */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'nowrap', gap: 6 }}>
-            <View style={styles.coordNavLeft}>
-              <View style={[styles.coordNavLogoIcon, isMobile && { width: 32, height: 32, borderRadius: 8 }]}>
-                <Text style={[styles.coordNavLogoRay, isMobile && { fontSize: 15 }]}>⚡</Text>
-              </View>
-              <Text style={[styles.coordNavLogoText, isMobile && { fontSize: 13, letterSpacing: 0.8 }]}>COORDENAÇÃO</Text>
+        <View style={styles.coordNavbarInner} className="coord-navbar-inner">
+          {/* Esquerda: Logo + Título */}
+          <View style={styles.coordNavLeft} className="coord-nav-left">
+            <View style={styles.coordNavLogoIcon} className="coord-nav-logo-icon">
+              <Text style={styles.coordNavLogoRay}>⚡</Text>
             </View>
-
-            {isMobile && (
-              <View style={[styles.coordNavButtonsGroup, { gap: 6 }]}>
-                <TouchableOpacity
-                  style={[styles.coordNavNotificationBtn, { width: 32, height: 32 }]}
-                  onPress={() => setActiveTab('popups')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ fontSize: 14 }}>🔔</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.coordNavVoltarBtn, { paddingHorizontal: 10, paddingVertical: 5 }]}
-                  onPress={() => router.push('/')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.coordNavVoltarBtnText, { fontSize: 10 }]}>VOLTAR</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.coordNavSairBtn, { paddingHorizontal: 10, paddingVertical: 5 }]}
-                  onPress={handleBloquearPainel}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.coordNavSairBtnText, { fontSize: 10 }]}>SAIR</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <Text style={styles.coordNavLogoText} className="coord-nav-logo-text">COORDENAÇÃO</Text>
           </View>
 
-          {/* Linha 2 Mobile: Nome do Usuário + Data/Hora */}
-          {isMobile && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingTop: 4, borderTopWidth: 1, borderTopColor: '#f1f5f9' }}>
-              <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '700' }} numberOfLines={1}>
-                Olá, <Text style={{ color: '#0f172a' }}>{userSession?.user?.user_metadata?.name || inputUsuarioPainel || 'Ítalo Gabriel'}</Text>
-              </Text>
-              <Text style={{ fontSize: 10, color: '#94a3b8', fontWeight: '600' }}>
-                {dataHoraAtual}
-              </Text>
-            </View>
-          )}
-
-          {/* Lado Direito Desktop: Data/Hora, IP, Usuário, Notificação, Voltar e Sair */}
-          {!isMobile && (
-            <View style={styles.coordNavRight}>
-              <View style={styles.coordNavDateTimeGroup}>
+          {/* Direita: IP / Data-Hora, Usuário, Notificação, Voltar e Sair (Alinhados no Top Right) */}
+          <View style={styles.coordNavRight} className="coord-nav-right">
+            {!isMobile && (
+              <View style={styles.coordNavDateTimeGroup} className="coord-nav-datetime-group">
                 <Text style={styles.coordNavDateTimeText}>{dataHoraAtual}</Text>
                 <Text style={styles.coordNavIpText}>IP Conectado: {userIp}</Text>
               </View>
+            )}
 
-              <View style={styles.coordNavUserGroup}>
-                <Text style={styles.coordNavUserGreeting}>
-                  Olá, <Text style={styles.coordNavUserName}>{userSession?.user?.user_metadata?.name || inputUsuarioPainel || 'italogabriel'}</Text>
-                </Text>
+            <View style={styles.coordNavUserGroup} className="coord-nav-user-group">
+              <Text style={styles.coordNavUserGreeting}>
+                Olá, <Text style={styles.coordNavUserName}>{userSession?.user?.user_metadata?.name || inputUsuarioPainel || 'Ítalo Gabriel'}</Text>
+              </Text>
 
-                <View style={styles.coordNavButtonsGroup}>
-                  <TouchableOpacity
-                    style={styles.coordNavNotificationBtn}
-                    onPress={() => setActiveTab('popups')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={{ fontSize: 18 }}>🔔</Text>
-                  </TouchableOpacity>
+              <View style={styles.coordNavButtonsGroup} className="coord-nav-buttons-group">
+                <TouchableOpacity
+                  style={styles.coordNavNotificationBtn}
+                  className="coord-nav-btn-notif"
+                  onPress={() => setActiveTab('popups')}
+                  activeOpacity={0.8}
+                  accessibilityLabel="Notificações"
+                >
+                  <Text style={{ fontSize: 16 }}>🔔</Text>
+                </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.coordNavVoltarBtn}
-                    onPress={() => router.push('/')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.coordNavVoltarBtnText}>VOLTAR</Text>
-                  </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.coordNavVoltarBtn}
+                  className="coord-nav-btn-voltar"
+                  onPress={() => router.push('/')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.coordNavVoltarBtnText}>VOLTAR</Text>
+                </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.coordNavSairBtn}
-                    onPress={handleBloquearPainel}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.coordNavSairBtnText}>SAIR</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  style={styles.coordNavSairBtn}
+                  className="coord-nav-btn-sair"
+                  onPress={handleBloquearPainel}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.coordNavSairBtnText}>SAIR</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          )}
+          </View>
         </View>
       </View>
 
@@ -1387,29 +1349,10 @@ export default function PainelCoordScreen() {
         </View>
 
         {/* Seção de 4 KPIs / Métricas Principais */}
-        <View style={styles.kpiCardsGrid}>
-          {/* Card 1: Neste Mês */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardMes]}>
-            <View style={styles.kpiMetricTopRow}>
-              <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>NESTE MÊS</Text>
-              <Text style={{ fontSize: 14 }}>📅</Text>
-            </View>
-            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{relatoriosMesCount}</Text>
-            <Text style={styles.kpiMetricFootnote}>Atendimentos no mês atual</Text>
-          </View>
-
-          {/* Card 2: Total Geral */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardTotal]}>
-            <View style={styles.kpiMetricTopRow}>
-              <Text style={[styles.kpiMetricLabel, { color: '#2563eb' }]}>TOTAL GERAL</Text>
-              <Text style={{ fontSize: 14 }}>📊</Text>
-            </View>
-            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{totalRelatoriosGeral}</Text>
-            <Text style={styles.kpiMetricFootnote}>Relatórios emitidos</Text>
-          </View>
-
-          {/* Card 3: Hoje */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardHoje]}>
+        {/* Seção de 4 KPIs / Métricas Principais */}
+        <View style={styles.kpiCardsGrid} className="coord-kpi-cards-grid">
+          {/* Card 1: Hoje (Relatórios gerados hoje em primeiro) */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardHoje]} className="coord-interactive-card">
             <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#ea580c' }]}>HOJE</Text>
               <Text style={{ fontSize: 14 }}>⚡</Text>
@@ -1418,8 +1361,28 @@ export default function PainelCoordScreen() {
             <Text style={styles.kpiMetricFootnote}>Relatórios gerados hoje</Text>
           </View>
 
+          {/* Card 2: Neste Mês */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardMes]} className="coord-interactive-card">
+            <View style={styles.kpiMetricTopRow}>
+              <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>NESTE MÊS</Text>
+              <Text style={{ fontSize: 14 }}>📅</Text>
+            </View>
+            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{relatoriosMesCount}</Text>
+            <Text style={styles.kpiMetricFootnote}>Atendimentos no mês atual</Text>
+          </View>
+
+          {/* Card 3: Total Geral */}
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardTotal]} className="coord-interactive-card">
+            <View style={styles.kpiMetricTopRow}>
+              <Text style={[styles.kpiMetricLabel, { color: '#2563eb' }]}>TOTAL GERAL</Text>
+              <Text style={{ fontSize: 14 }}>📊</Text>
+            </View>
+            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{totalRelatoriosGeral}</Text>
+            <Text style={styles.kpiMetricFootnote}>Relatórios emitidos</Text>
+          </View>
+
           {/* Card 4: Usuários */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardUsuarios]}>
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardUsuarios]} className="coord-interactive-card">
             <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#7c3aed' }]}>USUÁRIOS</Text>
               <Text style={{ fontSize: 14 }}>👥</Text>
@@ -4675,48 +4638,49 @@ const styles = StyleSheet.create({
     paddingBottom: 64,
   },
 
-  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO (TEMA CLARO PHP - FIXO / STICKY NO TOPO) ─── */
+  /* ─── NAVBAR SUPERIOR DE COORDENAÇÃO (TEMA ESCURO IGUAL INDEX.TSX - FIXO / STICKY NO TOPO) ─── */
   coordNavbar: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0f172a',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#1e293b',
     width: '100%',
     position: (Platform.OS === 'web' ? 'sticky' : 'relative') as any,
     top: 0,
     zIndex: 1000,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 4,
   },
   coordNavbarInner: {
     maxWidth: 1600,
     width: '100%',
     alignSelf: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 12,
+    flexWrap: 'nowrap',
+    gap: 14,
   },
   coordNavLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+    flexShrink: 0,
   },
   coordNavLogoIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: '#2563eb',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.45,
     shadowRadius: 8,
     elevation: 3,
   },
@@ -4726,50 +4690,53 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   coordNavLogoText: {
-    color: '#0f172a',
-    fontSize: 18,
+    color: '#ffffff',
+    fontSize: 17,
     fontWeight: '900',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
     fontFamily: modernFont,
   },
   coordNavRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 16,
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
+    flexShrink: 1,
   },
   coordNavDateTimeGroup: {
     alignItems: 'flex-end',
     borderRightWidth: 1,
-    borderRightColor: '#e2e8f0',
+    borderRightColor: 'rgba(255, 255, 255, 0.14)',
     paddingRight: 16,
   },
   coordNavDateTimeText: {
-    color: '#334155',
+    color: '#f1f5f9',
     fontSize: 12,
     fontWeight: '700',
     fontFamily: modernFont,
   },
   coordNavIpText: {
-    color: '#64748b',
+    color: '#94a3b8',
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: '600',
     fontFamily: modernFont,
   },
   coordNavUserGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flexWrap: 'nowrap',
   },
   coordNavUserGreeting: {
-    color: '#475569',
-    fontSize: 13,
+    color: '#94a3b8',
+    fontSize: 12,
     fontWeight: '500',
     fontFamily: modernFont,
   },
   coordNavUserName: {
-    color: '#0f172a',
+    color: '#ffffff',
     fontWeight: '800',
   },
   coordNavButtonsGroup: {
@@ -4781,22 +4748,22 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: 'rgba(255, 255, 255, 0.16)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   coordNavVoltarBtn: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   coordNavVoltarBtnText: {
-    color: '#334155',
+    color: '#ffffff',
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.8,
