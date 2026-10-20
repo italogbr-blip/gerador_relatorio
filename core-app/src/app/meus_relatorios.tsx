@@ -1823,7 +1823,7 @@ const styles = StyleSheet.create({
   },
   paxDetailTitleEmbarque: {
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '500',
     color: '#047857',
     marginBottom: 6,
     fontFamily: modernFont,
@@ -1837,7 +1837,7 @@ const styles = StyleSheet.create({
   },
   paxDetailTitleDesembarque: {
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '500',
     color: '#be123c',
     marginBottom: 6,
     fontFamily: modernFont,

@@ -2438,9 +2438,14 @@ export default function ReportGenerator() {
       const fallbackUrl = Platform.OS === 'web' && typeof window !== 'undefined'
         ? (currentData.pdfUrl || window.location.href)
         : undefined;
-      await compartilharPdfRelatorio(dados, fallbackUrl, currentData.pdfUrl);
+      const res = await compartilharPdfRelatorio(dados, fallbackUrl, currentData.pdfUrl);
+      if (res.sucesso && res.metodo === 'clipboard') {
+        showCustomAlert('LINK COPIADO', 'O link do relatório foi copiado para sua área de transferência para compartilhamento.');
+      }
     } catch (e: any) {
-      showCustomAlert('COMPARTILHAR', e.message || 'Falha ao abrir menu de compartilhamento.');
+      if (e.name !== 'AbortError') {
+        showCustomAlert('COMPARTILHAR', e.message || 'Falha ao abrir menu de compartilhamento.');
+      }
     } finally {
       setIsExportingPdf(false);
     }
@@ -2869,10 +2874,7 @@ export default function ReportGenerator() {
           </View>
           <View style={styles.navBrandTextWrap} className="mms-navbar__brand-text">
             <View style={styles.navBrandTitleRow} className="mms-navbar__brand-title-row">
-              <Text style={styles.navBrandName} className="mms-navbar__brand-name">MMS</Text>
-              <View style={styles.navBrandBadge} className="mms-navbar__brand-badge">
-                <Text style={styles.navBrandBadgeText}>RELATÓRIOS</Text>
-              </View>
+              <Text style={styles.navBrandName} className="mms-navbar__brand-name">RELATÓRIOS</Text>
             </View>
           </View>
         </View>
@@ -3722,7 +3724,7 @@ export default function ReportGenerator() {
             <View style={styles.sectionHeaderBox}>
               <View style={styles.paxNoticeBox}>
                 <Text style={styles.paxNoticeText}>
-                  💡 Nos campos <Text style={{ fontWeight: 'bold' }}>EMBARCANDO</Text> e <Text style={{ fontWeight: 'bold' }}>DESEMBARCANDO</Text> colocar uma palavra entre *asteriscos* a deixará em <Text style={{ fontWeight: 'bold', color: colors.blue800 }}>Negrito</Text>.
+                  💡 Nos campos EMBARCANDO e DESEMBARCANDO colocar uma palavra entre *asteriscos* a deixará em <Text style={{ fontWeight: 'bold', color: colors.blue800 }}>Negrito</Text>.
                 </Text>
               </View>
 
@@ -5865,7 +5867,7 @@ const styles = StyleSheet.create({
   },
   paxTitleEmbarque: {
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '500',
     color: '#047857',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
@@ -5895,7 +5897,7 @@ const styles = StyleSheet.create({
   },
   paxTitleDesembarque: {
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '500',
     color: '#be123c',
     textTransform: 'uppercase',
     letterSpacing: 1.5,

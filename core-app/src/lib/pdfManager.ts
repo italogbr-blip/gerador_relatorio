@@ -39,24 +39,30 @@ export function gerarNomeArquivoPdf(dados: {
   return nomeArquivo;
 }
 
-/**
- * Carrega a biblioteca html2pdf.js dinamicamente no Web
- */
-let html2pdfInstance: any = null;
-async function getHtml2Pdf() {
+let jsPdfClass: any = null;
+let html2canvasFunc: any = null;
+
+async function getPdfEngines() {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
-  if (!html2pdfInstance) {
+  if (!jsPdfClass) {
     try {
-      const mod = await import('html2pdf.js');
-      html2pdfInstance = mod.default || mod;
+      const mod = await import('jspdf');
+      jsPdfClass = mod.jsPDF || mod.default || mod;
     } catch (e) {
-      console.warn('html2pdf load warning:', e);
+      console.warn('jspdf load warning:', e);
     }
   }
-  return html2pdfInstance;
+  if (!html2canvasFunc) {
+    try {
+      const mod = await import('html2canvas');
+      html2canvasFunc = mod.default || mod;
+    } catch (e) {
+      console.warn('html2canvas load warning:', e);
+    }
+  }
+  return { jsPDF: jsPdfClass, html2canvas: html2canvasFunc };
 }
 
-/**
 /**
  * Converte dados do relatório em documento HTML completo e nome de arquivo
  */
@@ -81,7 +87,8 @@ export async function gerarPdfBlob(
       const resp = await fetch(existingPdfUrl);
       if (resp.ok) {
         const srvBlob = await resp.blob();
-        if (srvBlob && srvBlob.size > 1000) {
+        const isPdf = srvBlob.type.includes('pdf') || (await srvBlob.slice(0, 5).text()).includes('%PDF');
+        if (isPdf && srvBlob.size > 1000) {
           return { blob: srvBlob, nomeArquivo };
         }
       }
@@ -90,25 +97,35 @@ export async function gerarPdfBlob(
     }
   }
 
-  // 2. Geração Web de Alta Resolução via html2pdf / html2canvas (sem offscreen negativo para não sair em branco)
+  // 2. Geração Web de Alta Resolução via jsPDF + html2canvas em iframe isolado (evita PDF em branco)
   if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
-    const html2pdf = await getHtml2Pdf();
-    if (html2pdf) {
-      const container = document.createElement('div');
-      container.id = 'mms-pdf-render-sandbox';
-      container.style.position = 'fixed';
-      container.style.top = '0';
-      container.style.left = '0';
-      container.style.width = '794px';
-      container.style.backgroundColor = '#ffffff';
-      container.style.zIndex = '-99999';
-      container.style.pointerEvents = 'none';
-      container.innerHTML = docHtml;
-      document.body.appendChild(container);
+    const engines = await getPdfEngines();
+    if (engines?.jsPDF && engines?.html2canvas) {
+      const { jsPDF: JsPdfConstructor, html2canvas: h2c } = engines;
+
+      const iframe = document.createElement('iframe');
+      iframe.id = 'mms-pdf-render-frame';
+      iframe.style.position = 'fixed';
+      iframe.style.top = '0';
+      iframe.style.left = '0';
+      iframe.style.width = '794px';
+      iframe.style.height = '1123px';
+      iframe.style.opacity = '0.01';
+      iframe.style.pointerEvents = 'none';
+      iframe.style.border = 'none';
+      iframe.style.zIndex = '99999';
+      document.body.appendChild(iframe);
 
       try {
+        const frameDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!frameDoc) throw new Error('Não foi possível inicializar iframe de impressão.');
+
+        frameDoc.open();
+        frameDoc.write(docHtml);
+        frameDoc.close();
+
         // Aguarda carregamento integral de imagens (logo institucional, background base64 e anexos)
-        const images = Array.from(container.querySelectorAll('img'));
+        const images = Array.from(frameDoc.images);
         await Promise.all(
           images.map(
             (img) =>
@@ -120,38 +137,52 @@ export async function gerarPdfBlob(
           )
         );
 
-        if ((document as any).fonts && (document as any).fonts.ready) {
-          await (document as any).fonts.ready;
+        if (frameDoc.fonts && frameDoc.fonts.ready) {
+          await frameDoc.fonts.ready;
         }
 
         // Aguarda estabilização do layout
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 200));
 
-        const opt = {
-          margin: 0,
-          filename: nomeArquivo,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
+        // Encontra todas as páginas .mms-pdf-page do documento
+        const pageElements = Array.from(frameDoc.querySelectorAll('.mms-pdf-page')) as HTMLElement[];
+        const targetPages = pageElements.length > 0 ? pageElements : [frameDoc.body];
+
+        const pdf = new JsPdfConstructor({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4',
+          compress: true,
+        });
+
+        for (let i = 0; i < targetPages.length; i++) {
+          const pageEl = targetPages[i];
+          if (i > 0) {
+            pdf.addPage('a4', 'portrait');
+          }
+
+          const canvas = await h2c(pageEl, {
             scale: 2,
             useCORS: true,
             allowTaint: true,
             letterRendering: true,
             logging: false,
+            backgroundColor: '#ffffff',
+            windowWidth: 794,
+            windowHeight: 1123,
             scrollX: 0,
             scrollY: 0,
-            windowWidth: 794,
-            x: 0,
-            y: 0,
-          },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] },
-        };
+          });
 
-        const pdfBlob: Blob = await html2pdf().set(opt).from(container).outputPdf('blob');
+          const imgData = canvas.toDataURL('image/jpeg', 0.96);
+          pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        }
+
+        const pdfBlob: Blob = pdf.output('blob');
         return { blob: pdfBlob, nomeArquivo };
       } finally {
-        if (container.parentNode) {
-          container.parentNode.removeChild(container);
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
         }
       }
     }
@@ -182,7 +213,7 @@ export async function baixarPdfRelatorio(
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
     return { sucesso: true, nomeArquivo };
   }
 
@@ -200,17 +231,17 @@ export async function baixarPdfRelatorio(
 }
 
 /**
- * Compartilha o PDF gerado (abre a navbar/sheet de compartilhamento nativa do dispositivo com o arquivo PDF,
- * idêntico à lógica de index.php)
+ * Compartilha o PDF gerado (abre a navbar/sheet de compartilhamento nativa do navegador/dispositivo,
+ * idêntico à lógica de index.php, eliminando abertura de link para WhatsApp)
  */
 export async function compartilharPdfRelatorio(
   dados: ReportPdfData,
   fallbackUrl?: string,
   existingPdfUrl?: string | null
-): Promise<{ sucesso: boolean; metodo: 'share_api' | 'whatsapp' | 'share_native' }> {
-  const { blob, nomeArquivo } = await gerarPdfBlob(dados, existingPdfUrl);
+): Promise<{ sucesso: boolean; metodo: 'share_api' | 'clipboard' | 'share_native' }> {
+  const nomeArquivo = gerarNomeArquivoPdf(dados);
 
-  // 1. Mobile Nativo (iOS / Android em compilação nativa)
+  // 1. Mobile Nativo (iOS / Android em runtime Expo nativo)
   if (Platform.OS !== 'web') {
     try {
       const { docHtml } = compilarHtmlRelatorio(dados);
@@ -228,18 +259,39 @@ export async function compartilharPdfRelatorio(
     }
   }
 
-  // 2. Web Browser (iOS Safari, Android Chrome, etc. - idêntico a index.php)
+  // 2. Web Browser: Abre o menu nativo de compartilhamento do dispositivo (navmenu do navegador)
   if (typeof window !== 'undefined') {
-    const file = new File([blob], nomeArquivo, { type: 'application/pdf' });
+    const shareUrl = fallbackUrl || existingPdfUrl || window.location.href;
 
-    // 2.1. Tenta compartilhar o arquivo físico via Web Share API
-    // Isso abre a navbar / menu nativo de compartilhamento do dispositivo (WhatsApp, AirDrop, etc.)
-    if (typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
+    // Se o navegador suporta Web Share API (menu nativo de compartilhamento do navegador)
+    if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        await (navigator as any).share({
-          files: [file],
-          title: nomeArquivo,
-          text: `Segue o relatório da MMS: ${nomeArquivo}`,
+        // Tenta compartilhar com arquivo físico se já houver URL existente para download rápido
+        if (existingPdfUrl && (navigator as any).canShare) {
+          try {
+            const resp = await fetch(existingPdfUrl);
+            if (resp.ok) {
+              const b = await resp.blob();
+              const f = new File([b], nomeArquivo, { type: 'application/pdf' });
+              if ((navigator as any).canShare({ files: [f] })) {
+                await (navigator as any).share({
+                  files: [f],
+                  title: nomeArquivo,
+                  text: `Segue o relatório da MMS: ${nomeArquivo}`,
+                });
+                return { sucesso: true, metodo: 'share_api' };
+              }
+            }
+          } catch (fileErr) {
+            console.log('Tentativa de compartilhar arquivo via share sheet falhou, usando link:', fileErr);
+          }
+        }
+
+        // Abre o menu de compartilhamento do navegador com o link do relatório
+        await navigator.share({
+          title: `Relatório MMS - ${dados.unidade || 'Relatório'}`,
+          text: `Acesse o relatório através deste link: ${nomeArquivo}`,
+          url: shareUrl,
         });
         return { sucesso: true, metodo: 'share_api' };
       } catch (err: any) {
@@ -247,35 +299,22 @@ export async function compartilharPdfRelatorio(
           // Usuário fechou ou cancelou o menu nativo de compartilhamento
           return { sucesso: true, metodo: 'share_api' };
         }
-        console.warn('Tentativa de compartilhar arquivo físico falhou, tentando link:', err);
-      }
-    }
-
-    // 2.2. Fallback de URL via Web Share API (se o navegador suportar compartilhamento nativo de texto/link)
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title: `Relatório MMS - ${dados.unidade}`,
-          text: `Acesse o relatório através deste link: ${nomeArquivo}`,
-          url: fallbackUrl || window.location.href,
-        });
-        return { sucesso: true, metodo: 'share_api' };
-      } catch (err: any) {
-        if (err.name === 'AbortError') return { sucesso: true, metodo: 'share_api' };
         console.warn('Navigator share de link falhou:', err);
       }
     }
 
-    // 2.3. Fallback WhatsApp (Desktop Chrome sem Web Share API)
-    const msg = encodeURIComponent(
-      `*MMS RELATÓRIO DE TROCA DE TURMA*\n📄 *Arquivo:* ${nomeArquivo}\n⚓ *Unidade:* ${dados.unidade}\n📅 *Data:* ${dados.data}\n📍 *Local:* ${dados.local}\n👤 *Preposto:* ${dados.preposto}` +
-        (fallbackUrl ? `\n🔗 *Acesse:* ${fallbackUrl}` : '')
-    );
-    window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
-    return { sucesso: true, metodo: 'whatsapp' };
+    // 2.1 Fallback Elegante: Copiar link para área de transferência (desktop browsers sem Web Share API)
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        return { sucesso: true, metodo: 'clipboard' };
+      }
+    } catch (clipErr) {
+      console.warn('Falha ao copiar para área de transferência:', clipErr);
+    }
   }
 
-  return { sucesso: false, metodo: 'whatsapp' };
+  return { sucesso: false, metodo: 'clipboard' };
 }
 
 /**
@@ -329,7 +368,7 @@ export function visualizarRelatorioHtml(dados: ReportPdfData): void {
       </style>
       <div class="mms-preview-toolbar">
         <div style="font-weight: 800; font-size: 14px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
-          <span>📄 MMS RELATÓRIO - VISUALIZAÇÃO</span>
+          <span>📄 RELATÓRIO - VISUALIZAÇÃO</span>
         </div>
         <div style="display: flex; gap: 10px;">
           <button class="mms-preview-toolbar-btn" onclick="window.print()">
