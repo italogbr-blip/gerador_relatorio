@@ -3987,171 +3987,241 @@ export default function ReportGenerator() {
         </View>
 
         {/* PREVIEW COMPLETO DO DOCUMENTO (RESPONSIVO COM ESCALA VETORIAL PARA MOBILES) */}
-        <Text style={styles.previewTitleMain} className="mms-preview-title-main">PREVIEW DO DOCUMENTO</Text>
+        {(() => {
+          const rawPax1 = (currentData.pax1 || '').replace(/\r/g, '');
+          const rawPax2 = (currentData.pax2 || '').replace(/\r/g, '');
+          const lines1 = rawPax1.trim() !== '' ? rawPax1.split('\n') : [];
+          const lines2 = rawPax2.trim() !== '' ? rawPax2.split('\n') : [];
+          const maxLines = Math.max(lines1.length, lines2.length);
 
-        <View
-          className="mms-preview-wrap"
-          style={[
-            styles.previewWrap,
-            previewScale < 1 && {
-              width: windowWidth < (a4BaseWidth + 24) ? windowWidth - 16 : a4BaseWidth,
-              height:
-                (a4BaseHeight * (1 + currentData.fotosAnexadas.length) +
-                  currentData.fotosAnexadas.length * 20) *
-                  previewScale +
-                40,
-              overflow: 'hidden',
-              alignItems: 'center',
-            },
-          ]}
-        >
-          <View
-            className="mms-preview-document"
-            style={[
-              styles.previewScaleContainer,
-              previewScale < 1 && {
-                transform: [{ scale: previewScale }],
-                transformOrigin: 'top center',
-              },
-            ]}
-          >
-            <View style={styles.pageA4} className="mms-preview-page">
-            {/* Imagem de Fundo Geométrico / Marca D'água */}
-            <Image
-              source={require('../../assets/images/background.png')}
-              style={StyleSheet.absoluteFill}
-              resizeMode="cover"
-            />
+          const LIMIT_PAGE_1 = 16;
+          const LIMIT_CONT_PAGE = 28;
 
-            {/* Header do PDF */}
-            <View style={styles.a4FixedLogo}>
-              <Image
-                source={require('../../assets/images/logo.png')}
-                style={{ width: 75, height: 75 }}
-                resizeMode="contain"
-              />
-            </View>
+          const p1Lines1 = lines1.slice(0, LIMIT_PAGE_1).join('\n');
+          const p1Lines2 = lines2.slice(0, LIMIT_PAGE_1).join('\n');
 
-            <Text style={styles.a4DocumentTitle}>RELATÓRIO DE TROCA DE TURMA</Text>
+          const paxContinuationPages: Array<{ pax1: string; pax2: string }> = [];
+          if (maxLines > LIMIT_PAGE_1) {
+            let idx = LIMIT_PAGE_1;
+            while (idx < maxLines) {
+              paxContinuationPages.push({
+                pax1: lines1.slice(idx, idx + LIMIT_CONT_PAGE).join('\n'),
+                pax2: lines2.slice(idx, idx + LIMIT_CONT_PAGE).join('\n'),
+              });
+              idx += LIMIT_CONT_PAGE;
+            }
+          }
 
-            {/* Informações Principais */}
-            <View style={styles.a4Row}>
-              <Text style={styles.a4Label}>Unidade: </Text>
-              <Text style={styles.a4Value}>{currentData.unidade || 'N/A'}</Text>
-            </View>
+          const totalPages = 1 + paxContinuationPages.length + currentData.fotosAnexadas.length;
 
-            <View style={styles.a4Row}>
-              <Text style={styles.a4Label}>Data: </Text>
-              <Text style={styles.a4Value}>{formatarData(currentData.data) || 'N/A'}</Text>
-            </View>
+          return (
+            <>
+              <Text style={styles.previewTitleMain} className="mms-preview-title-main">PREVIEW DO DOCUMENTO</Text>
 
-            <View style={styles.a4Row}>
-              <Text style={styles.a4Label}>Local: </Text>
-              <Text style={styles.a4Value}>{currentData.local || 'N/A'}</Text>
-            </View>
+              <View
+                className="mms-preview-wrap"
+                style={[
+                  styles.previewWrap,
+                  previewScale < 1 && {
+                    width: windowWidth < (a4BaseWidth + 24) ? windowWidth - 16 : a4BaseWidth,
+                    height: (a4BaseHeight * totalPages + (totalPages - 1) * 24) * previewScale + 40,
+                    overflow: 'hidden',
+                    alignItems: 'center',
+                  },
+                ]}
+              >
+                <View
+                  className="mms-preview-document"
+                  style={[
+                    styles.previewScaleContainer,
+                    previewScale < 1 && {
+                      transform: [{ scale: previewScale }],
+                      transformOrigin: 'top center',
+                    },
+                  ]}
+                >
+                  <View style={styles.pageA4} className="mms-preview-page">
+                    {/* Imagem de Fundo Geométrico / Marca D'água */}
+                    <Image
+                      source={require('../../assets/images/background.png')}
+                      style={styles.a4BgImage}
+                      resizeMode="stretch"
+                    />
 
-            <View style={styles.a4Row}>
-              <Text style={styles.a4Label}>Modal: </Text>
-              <Text style={styles.a4Value}>{currentData.modal || 'N/A'}</Text>
-            </View>
+                    {/* Header do PDF */}
+                    <View style={styles.a4FixedLogo}>
+                      <Image
+                        source={require('../../assets/images/logo.png')}
+                        style={{ width: 76, height: 76 }}
+                        resizeMode="contain"
+                      />
+                    </View>
 
-            {/* Horário de Saída do Hotel */}
-            <View style={[styles.a4Row, { marginTop: 6 }]}>
-              <Text style={styles.a4Label}>Horário de Saída do Hotel (Previsto e Real):</Text>
-            </View>
-            <View style={{ marginBottom: 4 }}>
-              {currentData.listaSaidas.map((item) => (
-                <View key={item.id} style={[styles.a4ContentBox, { flexWrap: 'wrap', marginBottom: 2 }]}>
-                  <Text style={styles.a4Label}>{item.label1 || 'Previsto'}: </Text>
-                  <Text style={styles.a4Value}>{fmtHoraA4(item.h1, item.m1)}</Text>
-                  <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
-                  <Text style={styles.a4Value}>{fmtHoraA4(item.h2, item.m2)}</Text>
+                    <Text style={styles.a4DocumentTitle}>RELATÓRIO DE TROCA DE TURMA</Text>
+
+                    {/* Informações Principais */}
+                    <View style={styles.a4Row}>
+                      <Text style={styles.a4Label}>Unidade: </Text>
+                      <Text style={styles.a4Value}>{currentData.unidade || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.a4Row}>
+                      <Text style={styles.a4Label}>Data: </Text>
+                      <Text style={styles.a4Value}>{formatarData(currentData.data) || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.a4Row}>
+                      <Text style={styles.a4Label}>Local: </Text>
+                      <Text style={styles.a4Value}>{currentData.local || 'N/A'}</Text>
+                    </View>
+
+                    <View style={styles.a4Row}>
+                      <Text style={styles.a4Label}>Modal: </Text>
+                      <Text style={styles.a4Value}>{currentData.modal || 'N/A'}</Text>
+                    </View>
+
+                    {/* Horário de Saída do Hotel */}
+                    <View style={[styles.a4Row, { marginTop: 6 }]}>
+                      <Text style={styles.a4Label}>Horário de Saída do Hotel (Previsto e Real):</Text>
+                    </View>
+                    <View style={{ marginBottom: 4 }}>
+                      {currentData.listaSaidas.map((item) => (
+                        <View key={item.id} style={[styles.a4ContentBox, { flexWrap: 'wrap', marginBottom: 2 }]}>
+                          <Text style={styles.a4Label}>{item.label1 || 'Previsto'}: </Text>
+                          <Text style={styles.a4Value}>{fmtHoraA4(item.h1, item.m1)}</Text>
+                          <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
+                          <Text style={styles.a4Value}>{fmtHoraA4(item.h2, item.m2)}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Horários de Embarque */}
+                    <View style={[styles.a4Row, { marginTop: 6 }]}>
+                      <Text style={styles.a4Label}>Horários de Embarque (Previsto e Real):</Text>
+                    </View>
+                    <View style={styles.a4ContentBox}>
+                      <Text style={styles.a4Label}>Previsto: </Text>
+                      <Text style={styles.a4Value}>{fmtHoraA4(currentData.h3, currentData.m3)}</Text>
+                      <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
+                      <Text style={styles.a4Value}>{fmtHoraA4(currentData.h4, currentData.m4)}</Text>
+                    </View>
+
+                    {/* Horário Inicial e de Finalização */}
+                    <View style={[styles.a4Row, { marginTop: 6 }]}>
+                      <Text style={styles.a4Label}>Horário Inicial e de finalização:</Text>
+                    </View>
+                    <View style={styles.a4ContentBox}>
+                      <Text style={styles.a4Label}>Início: </Text>
+                      <Text style={styles.a4Value}>{fmtHoraA4(currentData.h5, currentData.m5)}</Text>
+                      <Text style={styles.a4Value}> às </Text>
+                      <Text style={styles.a4Label}>Fim: </Text>
+                      <Text style={styles.a4Value}>{fmtHoraA4(currentData.h6, currentData.m6)}</Text>
+                    </View>
+
+                    {/* Preposto */}
+                    <View style={[styles.a4Row, { marginTop: 6 }]}>
+                      <Text style={styles.a4Label}>Nome do Preposto: </Text>
+                      <Text style={styles.a4Value}>{currentData.preposto || 'N/A'}</Text>
+                    </View>
+
+                    {/* Informações sobre a troca */}
+                    <View style={[styles.a4Row, { marginTop: 6 }]}>
+                      <Text style={styles.a4Label}>Informações sobre a troca de turma:</Text>
+                    </View>
+                    <View style={styles.a4InfoBox}>{renderFormattedText(currentData.info, currentData.alinhamentoInfo)}</View>
+
+                    {/* Tabela de Passageiros */}
+                    <View style={styles.a4PaxTable}>
+                      <View style={styles.a4PaxColLeft}>
+                        <Text style={styles.a4PaxTitle}>Nomes Passageiros Embarcando:</Text>
+                        <View>{renderFormattedText(p1Lines1)}</View>
+                      </View>
+                      <View style={styles.a4PaxColRight}>
+                        <Text style={styles.a4PaxTitle}>Nomes Passageiros Desembarcados:</Text>
+                        <View>{renderFormattedText(p1Lines2)}</View>
+                      </View>
+                    </View>
+
+                    {/* Footer Corporativo (fixo no rodapé da página) */}
+                    <View style={styles.a4Footer}>
+                      <Text style={styles.a4FooterText}>
+                        Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
+                        E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Páginas adicionais de passageiros em caso de quebra de página */}
+                  {paxContinuationPages.map((chunk, idx) => (
+                    <View key={`pax-cont-${idx}`} style={[styles.pageA4, { marginTop: 24 }]}>
+                      <Image
+                        source={require('../../assets/images/background.png')}
+                        style={styles.a4BgImage}
+                        resizeMode="stretch"
+                      />
+                      <View style={styles.a4FixedLogo}>
+                        <Image
+                          source={require('../../assets/images/logo.png')}
+                          style={{ width: 76, height: 76 }}
+                          resizeMode="contain"
+                        />
+                      </View>
+                      <Text style={styles.a4DocumentTitle}>RELATÓRIO DE TROCA DE TURMA (CONT.)</Text>
+
+                      <View style={[styles.a4PaxTable, { marginTop: 14 }]}>
+                        <View style={styles.a4PaxColLeft}>
+                          <Text style={styles.a4PaxTitle}>Nomes Passageiros Embarcando (Cont.):</Text>
+                          <View>{renderFormattedText(chunk.pax1)}</View>
+                        </View>
+                        <View style={styles.a4PaxColRight}>
+                          <Text style={styles.a4PaxTitle}>Nomes Passageiros Desembarcados (Cont.):</Text>
+                          <View>{renderFormattedText(chunk.pax2)}</View>
+                        </View>
+                      </View>
+
+                      <View style={styles.a4Footer}>
+                        <Text style={styles.a4FooterText}>
+                          Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
+                          E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+
+                  {/* Páginas A4 adicionais para anexos fotográficos */}
+                  {currentData.fotosAnexadas.map((foto) => (
+                    <View key={foto.id} style={[styles.pageA4, { marginTop: 24 }]}>
+                      <Image
+                        source={require('../../assets/images/background.png')}
+                        style={styles.a4BgImage}
+                        resizeMode="stretch"
+                      />
+                      <View style={styles.a4FixedLogo}>
+                        <Image
+                          source={require('../../assets/images/logo.png')}
+                          style={{ width: 76, height: 76 }}
+                          resizeMode="contain"
+                        />
+                      </View>
+                      <Text style={styles.a4DocumentTitle}>{foto.titulo || 'ANEXO FOTOGRÁFICO'}</Text>
+
+                      <View style={styles.a4PhotoContainer}>
+                        <Image source={{ uri: foto.uri }} style={styles.a4PhotoImage} resizeMode="contain" />
+                      </View>
+
+                      <View style={styles.a4Footer}>
+                        <Text style={styles.a4FooterText}>
+                          Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
+                          E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-
-            {/* Horários de Embarque */}
-            <View style={[styles.a4Row, { marginTop: 6 }]}>
-              <Text style={styles.a4Label}>Horários de Embarque (Previsto e Real):</Text>
-            </View>
-            <View style={styles.a4ContentBox}>
-              <Text style={styles.a4Label}>Previsto: </Text>
-              <Text style={styles.a4Value}>{fmtHoraA4(currentData.h3, currentData.m3)}</Text>
-              <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
-              <Text style={styles.a4Value}>{fmtHoraA4(currentData.h4, currentData.m4)}</Text>
-            </View>
-
-            {/* Horário Inicial e de Finalização */}
-            <View style={[styles.a4Row, { marginTop: 6 }]}>
-              <Text style={styles.a4Label}>Horário Inicial e de finalização:</Text>
-            </View>
-            <View style={styles.a4ContentBox}>
-              <Text style={styles.a4Label}>Início: </Text>
-              <Text style={styles.a4Value}>{fmtHoraA4(currentData.h5, currentData.m5)}</Text>
-              <Text style={styles.a4Value}> às </Text>
-              <Text style={styles.a4Label}>Fim: </Text>
-              <Text style={styles.a4Value}>{fmtHoraA4(currentData.h6, currentData.m6)}</Text>
-            </View>
-
-            {/* Preposto */}
-            <View style={[styles.a4Row, { marginTop: 6 }]}>
-              <Text style={styles.a4Label}>Nome do Preposto: </Text>
-              <Text style={styles.a4Value}>{currentData.preposto || 'N/A'}</Text>
-            </View>
-
-            {/* Informações sobre a troca */}
-            <View style={[styles.a4Row, { marginTop: 6 }]}>
-              <Text style={styles.a4Label}>Informações sobre a troca de turma:</Text>
-            </View>
-            <View style={styles.a4InfoBox}>{renderFormattedText(currentData.info, currentData.alinhamentoInfo)}</View>
-
-            {/* Tabela de Passageiros */}
-            <View style={styles.a4PaxTable}>
-              <View style={styles.a4PaxColLeft}>
-                <Text style={styles.a4PaxTitle}>Nomes Passageiros Embarcando:</Text>
-                <View>{renderFormattedText(currentData.pax1)}</View>
               </View>
-              <View style={styles.a4PaxColRight}>
-                <Text style={styles.a4PaxTitle}>Nomes Passageiros Desembarcados:</Text>
-                <View>{renderFormattedText(currentData.pax2)}</View>
-              </View>
-            </View>
-
-            {/* Footer Corporativo (fixo no rodapé da página) */}
-            <View style={styles.a4Footer}>
-              <Text style={styles.a4FooterText}>
-                Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
-                E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-              </Text>
-            </View>
-          </View>
-
-          {/* Páginas A4 adicionais para anexos fotográficos */}
-          {currentData.fotosAnexadas.map((foto) => (
-            <View key={foto.id} style={[styles.pageA4, { marginTop: 24 }]}>
-              <View style={styles.a4FixedLogo}>
-                <Image
-                  source={require('../../assets/images/logo.png')}
-                  style={{ width: 64, height: 64 }}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={styles.a4DocumentTitle}>{foto.titulo || 'ANEXO FOTOGRÁFICO'}</Text>
-
-              <View style={styles.a4PhotoContainer}>
-                <Image source={{ uri: foto.uri }} style={styles.a4PhotoImage} resizeMode="contain" />
-              </View>
-
-              <View style={styles.a4Footer}>
-                <Text style={styles.a4FooterText}>
-                  Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
-                  E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-                </Text>
-              </View>
-            </View>
-          ))}
-          </View>
-        </View>
+            </>
+          );
+        })()}
       </ScrollView>
 
       {/* Modal Autenticação Central da Plataforma */}
@@ -6436,12 +6506,13 @@ const styles = StyleSheet.create({
   pageA4: {
     backgroundColor: colors.white,
     width: 794,
+    height: 1123,
     minHeight: 1123,
-    aspectRatio: 1 / 1.414,
+    maxHeight: 1123,
     borderRadius: 4,
-    paddingHorizontal: 40,
-    paddingBottom: 120,
-    paddingTop: 110,
+    paddingHorizontal: 44,
+    paddingTop: 32,
+    paddingBottom: 28,
     borderWidth: 1,
     borderColor: colors.slate200,
     shadowColor: colors.black,
@@ -6452,98 +6523,121 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
-  a4FixedLogo: {
+  a4BgImage: {
     position: 'absolute',
-    top: 15,
-    left: 20,
-    zIndex: 10,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
+    // @ts-ignore
+    pointerEvents: 'none',
+  },
+  a4FixedLogo: {
+    width: '100%',
+    alignItems: 'flex-start',
+    marginBottom: 2,
+    marginTop: -4,
+    zIndex: 2,
   },
   a4DocumentTitle: {
     textAlign: 'center',
     fontWeight: 'bold',
-    fontSize: 20,
+    fontSize: 17,
     textDecorationLine: 'underline',
     textTransform: 'uppercase',
-    marginBottom: 16,
-    marginTop: 0,
+    marginTop: -6,
+    marginBottom: 12,
     color: colors.black,
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
+    zIndex: 2,
   },
   a4Row: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 6,
+    zIndex: 2,
   },
   a4Label: {
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 14,
     color: colors.black,
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
   },
   a4Value: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.black,
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
   },
   a4ContentBox: {
-    marginLeft: 16,
-    marginBottom: 4,
+    marginLeft: 20,
+    marginTop: 4,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    zIndex: 2,
   },
   a4InfoBox: {
-    minHeight: 60,
-    padding: 6,
-    fontSize: 16,
+    minHeight: 40,
+    marginTop: 4,
+    marginBottom: 12,
+    marginLeft: 20,
+    fontSize: 14,
     color: colors.black,
-    lineHeight: 22,
+    lineHeight: 20,
+    zIndex: 2,
   },
   a4PaxTable: {
     flexDirection: 'row',
-    marginTop: 32,
-    paddingTop: 4,
+    marginTop: 14,
+    zIndex: 2,
   },
   a4PaxColLeft: {
-    width: '46%',
+    width: '48%',
     paddingRight: 15,
-    borderRightWidth: 1,
-    borderRightColor: '#ccc',
+    borderRightWidth: 1.5,
+    borderRightColor: '#d1d5db',
   },
   a4PaxColRight: {
-    width: '54%',
-    paddingLeft: 25,
+    width: '48%',
+    paddingLeft: 15,
   },
   a4PaxTitle: {
     fontWeight: 'bold',
-    fontSize: 17,
-    marginBottom: 12,
+    fontSize: 15,
+    marginBottom: 8,
     color: colors.black,
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
   },
   a4Footer: {
     position: 'absolute',
-    left: 40,
-    right: 40,
-    bottom: 48,
+    left: 44,
+    right: 44,
+    bottom: 24,
     alignItems: 'center',
+    zIndex: 5,
   },
   a4FooterText: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: 'bold',
     color: colors.black,
     textAlign: 'center',
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
   },
   a4PhotoContainer: {
-    height: 380,
+    flex: 1,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 12,
+    marginVertical: 8,
+    zIndex: 2,
   },
   a4PhotoImage: {
     width: '100%',
     height: '100%',
+    maxHeight: 720,
   },
   modalOverlay: {
     flex: 1,

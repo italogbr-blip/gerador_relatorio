@@ -69,13 +69,10 @@ function formatarTextoInfo(text: string): string {
     .replace(/\n/g, '<br>');
 
   return clean;
-}
-
-function formatarPax(text: string): string {
-  if (!text || text.trim() === '') {
+}function formatarLinhasPax(lines: string[]): string {
+  if (!lines || lines.length === 0) {
     return '<i>Nenhum passageiro</i>';
   }
-  const lines = text.split('\n');
   return lines
     .map((l) => {
       const trimmed = l.trim();
@@ -140,9 +137,62 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       ? `${atFimRaw.split(':')[0]} h ${atFimRaw.split(':')[1]} min`
       : atFimRaw;
 
-  // Passageiros
-  const pax1Html = formatarPax(data.pax_embarcando || data.pax1 || '');
-  const pax2Html = formatarPax(data.pax_desembarcando || data.pax2 || '');
+  // Passageiros: paginação limpa entre Página 1 e continuações
+  const rawPax1 = (data.pax_embarcando || data.pax1 || '').replace(/\r/g, '');
+  const rawPax2 = (data.pax_desembarcando || data.pax2 || '').replace(/\r/g, '');
+
+  const lines1 = rawPax1.trim() !== '' ? rawPax1.split('\n') : [];
+  const lines2 = rawPax2.trim() !== '' ? rawPax2.split('\n') : [];
+  const maxLines = Math.max(lines1.length, lines2.length);
+
+  // Limite na página 1 (pois há cabeçalho completo, caixas de horários, preposto e info de troca)
+  const LIMIT_PAGE_1 = 16;
+  const LIMIT_CONT_PAGE = 28;
+
+  const page1Lines1 = lines1.slice(0, LIMIT_PAGE_1);
+  const page1Lines2 = lines2.slice(0, LIMIT_PAGE_1);
+  const pax1Html = formatarLinhasPax(page1Lines1);
+  const pax2Html = formatarLinhasPax(page1Lines2);
+
+  // Páginas adicionais de passageiros caso haja quebra de página
+  let paxContinuationPagesHtml = '';
+  if (maxLines > LIMIT_PAGE_1) {
+    let currentIdx = LIMIT_PAGE_1;
+    while (currentIdx < maxLines) {
+      const chunk1 = lines1.slice(currentIdx, currentIdx + LIMIT_CONT_PAGE);
+      const chunk2 = lines2.slice(currentIdx, currentIdx + LIMIT_CONT_PAGE);
+      const chunk1Html = formatarLinhasPax(chunk1);
+      const chunk2Html = formatarLinhasPax(chunk2);
+
+      paxContinuationPagesHtml += `
+        <div class="mms-pdf-page">
+          <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
+          <div class="page-content">
+            <div class="header-logo">
+              <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
+            </div>
+            <div class="titulo-pdf">RELATÓRIO DE TROCA DE TURMA (CONT.)</div>
+            <div class="pax-container" style="margin-top: 14px;">
+              <div class="pax-col-left">
+                <div class="pax-title">Nomes Passageiros Embarcando (Cont.):</div>
+                <div>${chunk1Html}</div>
+              </div>
+              <div class="pax-col-right">
+                <div class="pax-title">Nomes Passageiros Desembarcados (Cont.):</div>
+                <div>${chunk2Html}</div>
+              </div>
+              <div style="clear: both;"></div>
+            </div>
+            <div class="footer">
+              Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
+              E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+            </div>
+          </div>
+        </div>
+      `;
+      currentIdx += LIMIT_CONT_PAGE;
+    }
+  }
 
   // Fotos
   let fotosHtml = '';
@@ -153,17 +203,17 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       const titulo = (foto.titulo || `ANEXO FOTOGRÁFICO ${idx + 1}`).toUpperCase();
       if (src) {
         fotosHtml += `
-          <div class="mms-pdf-page" style="page-break-before: always;">
+          <div class="mms-pdf-page">
             <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
             <div class="page-content">
               <div class="header-logo">
                 <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
               </div>
-              <div style="padding-top: 10px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 14px; text-decoration: underline; font-family: 'Times New Roman', Times, serif;">
+              <div style="padding-top: 8px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 12px; text-decoration: underline; font-family: 'Times New Roman', Times, serif;">
                 ${titulo}
               </div>
-              <div style="text-align: center; width: 100%; margin-top: 10px;">
-                <img src="${src}" style="max-width: 100%; max-height: 750px; object-fit: contain; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+              <div style="flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; overflow: hidden;">
+                <img src="${src}" style="max-width: 100%; max-height: 720px; object-fit: contain; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
               </div>
               <div class="footer">
                 Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
@@ -203,12 +253,15 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
     .mms-pdf-page {
       position: relative;
       width: 794px;
+      height: 1123px;
       min-height: 1123px;
-      padding: 36px 44px 30px 44px;
+      max-height: 1123px;
+      padding: 32px 44px 28px 44px;
       background-color: #ffffff;
       box-sizing: border-box;
       overflow: hidden;
       page-break-after: always;
+      page-break-inside: avoid;
       margin: 0 auto;
     }
     .mms-pdf-page:last-child {
@@ -218,39 +271,46 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       position: absolute;
       top: 0;
       left: 0;
-      width: 794px;
-      height: 1123px;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
       object-fit: fill;
       z-index: 1;
       pointer-events: none;
-      opacity: 0.96;
     }
     .page-content {
       position: relative;
       z-index: 2;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
     }
     .header-logo {
       width: 100%;
       margin-bottom: 2px;
-      margin-top: -6px;
+      margin-top: -4px;
+      text-align: left;
     }
     .header-logo img {
       width: 76px;
       height: 76px;
       object-fit: contain;
+      display: block;
     }
     .titulo-pdf {
       text-align: center;
       font-weight: bold;
       font-size: 17px;
       text-decoration: underline;
-      margin-top: -8px;
+      margin-top: -6px;
       margin-bottom: 12px;
       text-transform: uppercase;
       font-family: "Times New Roman", Times, serif;
     }
     .row { 
-      margin-bottom: 7px; 
+      margin-bottom: 6px; 
       font-size: 14px;
     }
     .label { 
@@ -258,19 +318,19 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
     }
     .content-box { 
       margin-left: 20px; 
-      margin-top: 5px; 
-      margin-bottom: 10px; 
+      margin-top: 4px; 
+      margin-bottom: 8px; 
     }
     .info-box { 
       margin-top: 4px; 
-      margin-bottom: 14px; 
-      margin-left: 20px;
-      line-height: 1.45;
+      margin-bottom: 12px; 
+      margin-left: 20px; 
+      line-height: 1.4;
     }
     .pax-container {
       width: 100%; 
       overflow: hidden; 
-      margin-top: 20px;
+      margin-top: 14px;
     }
     .pax-col-left {
       box-sizing: border-box; 
@@ -295,13 +355,14 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       margin-bottom: 8px;
     }
     .footer {
-      margin-top: 26px;
+      margin-top: auto;
       text-align: center;
       font-size: 12px;
       font-weight: bold;
       color: #000000;
       line-height: 1.35;
       font-family: "Times New Roman", Times, serif;
+      padding-bottom: 4px;
     }
     @media print {
       body { background: transparent !important; }
@@ -323,7 +384,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       <div class="row"><span class="label">Local:</span> ${local}</div>
       <div class="row"><span class="label">Modal:</span> ${modal}</div>
 
-      <div style="margin-top: 8px; margin-bottom: 3px;"><span class="label">Horário de Saída do Hotel (Previsto e Real):</span></div>
+      <div style="margin-top: 6px; margin-bottom: 3px;"><span class="label">Horário de Saída do Hotel (Previsto e Real):</span></div>
       <div class="content-box">
         ${saidasHtml}
       </div>
@@ -340,7 +401,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
 
       <div class="row" style="margin-top: 6px;"><span class="label">Nome do Preposto:</span> ${preposto}</div>
 
-      <div style="margin-top: 8px; margin-bottom: 3px;"><span class="label">Informações sobre a troca de turma:</span></div>
+      <div style="margin-top: 6px; margin-bottom: 3px;"><span class="label">Informações sobre a troca de turma:</span></div>
       <div class="info-box" style="text-align: ${alinhamento};">
         ${info}
       </div>
@@ -363,6 +424,8 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       </div>
     </div>
   </div>
+
+  ${paxContinuationPagesHtml}
 
   ${fotosHtml}
 </body>
