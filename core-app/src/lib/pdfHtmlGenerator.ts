@@ -256,7 +256,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       height: 1123px;
       min-height: 1123px;
       max-height: 1123px;
-      padding: 32px 44px 28px 44px;
+      padding: 0;
       background-color: #ffffff;
       box-sizing: border-box;
       overflow: hidden;
@@ -273,8 +273,8 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       left: 0;
       right: 0;
       bottom: 0;
-      width: 100%;
-      height: 100%;
+      width: 794px;
+      height: 1123px;
       object-fit: fill;
       z-index: 1;
       pointer-events: none;
@@ -284,6 +284,8 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       z-index: 2;
       width: 100%;
       height: 100%;
+      padding: 32px 44px 28px 44px;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
     }
