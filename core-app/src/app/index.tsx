@@ -682,18 +682,20 @@ const InfoBoxEditor = ({
 
       {Platform.OS === 'web' ? (
         <div
+          id="in-info"
           ref={webEditorRef}
           contentEditable
           onInput={handleWebInput}
           onBlur={handleWebInput}
           onKeyUp={handleWebInput}
+          className="mms-info-editor-web"
           style={{
             minHeight: '280px',
             padding: '14px',
             fontSize: '14px',
             color: '#1e293b',
             backgroundColor: '#ffffff',
-            fontFamily: corporateFont || '"Times New Roman", Times, serif',
+            fontFamily: 'Tahoma, sans-serif',
             outline: 'none',
             textAlign: alignment === 'justify' ? 'justify' : 'left',
             lineHeight: '1.5',
@@ -5813,7 +5815,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.slate800,
     backgroundColor: colors.white,
-    fontFamily: corporateFont,
+    fontFamily: 'Tahoma',
     lineHeight: 22,
   },
   hintInfoText: {
