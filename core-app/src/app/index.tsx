@@ -2396,6 +2396,9 @@ export default function ReportGenerator() {
     preposto: currentData.preposto,
     observacao: currentData.observacao,
     observacao_nome_arquivo: currentData.observacao,
+    semSaida: currentData.semSaida,
+    semEmbarquePrev: currentData.semEmbarquePrev,
+    semEmbarque: currentData.semEmbarque,
     horarios: {
       saida_hotel: currentData.listaSaidas,
       embarque_previsto: currentData.semEmbarquePrev ? 'N/A' : `${currentData.h3}:${currentData.m3}`,
@@ -4082,33 +4085,53 @@ export default function ReportGenerator() {
                       </View>
 
                       {/* Horário de Saída do Hotel */}
-                      <View style={[styles.a4Row, { marginTop: 6 }]}>
+                      <View style={[styles.a4Row, { marginBottom: 0, marginTop: 4 }]}>
                         <Text style={styles.a4Label}>Horário de Saída do Hotel (Previsto e Real):</Text>
                       </View>
-                      <View style={{ marginBottom: 4 }}>
-                        {currentData.listaSaidas.map((item) => (
-                          <View key={item.id} style={[styles.a4ContentBox, { flexWrap: 'wrap', marginBottom: 2 }]}>
-                            <Text style={styles.a4Label}>{item.label1 || 'Previsto'}: </Text>
-                            <Text style={styles.a4Value}>{fmtHoraA4(item.h1, item.m1)}</Text>
-                            <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
-                            <Text style={styles.a4Value}>{fmtHoraA4(item.h2, item.m2)}</Text>
-                          </View>
-                        ))}
-                      </View>
+                      {currentData.semSaida || !currentData.listaSaidas || currentData.listaSaidas.length === 0 ? (
+                        <View style={styles.a4ContentBox}>
+                          <Text style={styles.a4Value}>N/A</Text>
+                        </View>
+                      ) : (
+                        <View style={{ marginBottom: 6, marginTop: 2 }}>
+                          {currentData.listaSaidas.map((item, idx) => (
+                            <View
+                              key={item.id}
+                              style={[
+                                styles.a4ContentBox,
+                                {
+                                  flexWrap: 'wrap',
+                                  marginTop: 0,
+                                  marginBottom: idx === currentData.listaSaidas.length - 1 ? 0 : 2,
+                                },
+                              ]}
+                            >
+                              <Text style={styles.a4Label}>{item.label1 || 'Previsto'}: </Text>
+                              <Text style={styles.a4Value}>{fmtHoraA4(item.h1, item.m1)}</Text>
+                              <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
+                              <Text style={styles.a4Value}>{fmtHoraA4(item.h2, item.m2)}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
 
                       {/* Horários de Embarque */}
-                      <View style={[styles.a4Row, { marginTop: 6 }]}>
+                      <View style={[styles.a4Row, { marginBottom: 0, marginTop: 4 }]}>
                         <Text style={styles.a4Label}>Horários de Embarque (Previsto e Real):</Text>
                       </View>
                       <View style={styles.a4ContentBox}>
                         <Text style={styles.a4Label}>Previsto: </Text>
-                        <Text style={styles.a4Value}>{fmtHoraA4(currentData.h3, currentData.m3)}</Text>
+                        <Text style={styles.a4Value}>
+                          {currentData.semEmbarquePrev ? 'N/A' : fmtHoraA4(currentData.h3, currentData.m3)}
+                        </Text>
                         <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
-                        <Text style={styles.a4Value}>{fmtHoraA4(currentData.h4, currentData.m4)}</Text>
+                        <Text style={styles.a4Value}>
+                          {currentData.semEmbarque ? 'N/A' : fmtHoraA4(currentData.h4, currentData.m4)}
+                        </Text>
                       </View>
 
                       {/* Horário Inicial e de Finalização */}
-                      <View style={[styles.a4Row, { marginTop: 6 }]}>
+                      <View style={[styles.a4Row, { marginBottom: 0, marginTop: 4 }]}>
                         <Text style={styles.a4Label}>Horário Inicial e de finalização:</Text>
                       </View>
                       <View style={styles.a4ContentBox}>
@@ -4120,13 +4143,13 @@ export default function ReportGenerator() {
                       </View>
 
                       {/* Preposto */}
-                      <View style={[styles.a4Row, { marginTop: 6 }]}>
+                      <View style={[styles.a4Row, { marginTop: 4 }]}>
                         <Text style={styles.a4Label}>Nome do Preposto: </Text>
                         <Text style={styles.a4Value}>{currentData.preposto || 'N/A'}</Text>
                       </View>
 
                       {/* Informações sobre a troca */}
-                      <View style={[styles.a4Row, { marginTop: 6 }]}>
+                      <View style={[styles.a4Row, { marginBottom: 0, marginTop: 4 }]}>
                         <Text style={styles.a4Label}>Informações sobre a troca de turma:</Text>
                       </View>
                       <View style={styles.a4InfoBox}>{renderFormattedText(currentData.info, currentData.alinhamentoInfo)}</View>
@@ -6585,16 +6608,16 @@ const styles = StyleSheet.create({
   },
   a4ContentBox: {
     marginLeft: 20,
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 2,
+    marginBottom: 6,
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 2,
   },
   a4InfoBox: {
     minHeight: 40,
-    marginTop: 4,
-    marginBottom: 12,
+    marginTop: 2,
+    marginBottom: 10,
     marginLeft: 20,
     fontSize: 14,
     color: colors.black,
