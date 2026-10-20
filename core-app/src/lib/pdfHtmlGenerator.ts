@@ -9,6 +9,9 @@ export interface ReportPdfData {
   preposto: string;
   observacao?: string;
   observacao_nome_arquivo?: string;
+  semSaida?: boolean;
+  semEmbarquePrev?: boolean;
+  semEmbarque?: boolean;
   horarios?: {
     saida_hotel?: Array<{
       id?: string;
@@ -69,7 +72,9 @@ function formatarTextoInfo(text: string): string {
     .replace(/\n/g, '<br>');
 
   return clean;
-}function formatarLinhasPax(lines: string[]): string {
+}
+
+function formatarLinhasPax(lines: string[]): string {
   if (!lines || lines.length === 0) {
     return '<i>Nenhum passageiro</i>';
   }
@@ -95,46 +100,65 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
   // Horários de Saída do Hotel
   let saidasHtml = '';
   const saidasList = data.horarios?.saida_hotel || [];
-  if (saidasList.length > 0) {
+  if (data.semSaida || saidasList.length === 0) {
+    saidasHtml = 'N/A';
+  } else {
     saidasHtml = saidasList
-      .map((item) => {
+      .map((item, idx) => {
         const l1 = item.label1 || 'Previsto';
         const l2 = item.label2 || 'Real';
-        const h1 = item.h1 || '00';
-        const m1 = item.m1 || '00';
-        const h2 = item.h2 || '00';
-        const m2 = item.m2 || '00';
-        const part1 = h1 === 'N/A' ? 'N/A' : `${h1} h ${m1} min`;
-        const part2 = h2 === 'N/A' ? 'N/A' : `${h2} h ${m2} min`;
-        return `<div style='margin-bottom: 4px;'><span class='label'>${l1}:</span> ${part1} &nbsp;&nbsp;&nbsp;&nbsp; <span class='label'>${l2}:</span> ${part2}</div>`;
+        const h1 = item.h1 || '';
+        const m1 = item.m1 || '';
+        const h2 = item.h2 || '';
+        const m2 = item.m2 || '';
+        const part1 =
+          h1.toUpperCase() === 'N/A' || h1.toUpperCase() === 'N'
+            ? 'N/A'
+            : h1
+            ? `${h1} h ${m1} min`
+            : '&nbsp;&nbsp;&nbsp; h &nbsp;&nbsp;&nbsp; min';
+        const part2 =
+          h2.toUpperCase() === 'N/A' || h2.toUpperCase() === 'N'
+            ? 'N/A'
+            : h2
+            ? `${h2} h ${m2} min`
+            : '&nbsp;&nbsp;&nbsp; h &nbsp;&nbsp;&nbsp; min';
+        const mb = idx === saidasList.length - 1 ? '0px' : '2px';
+        return `<div style='margin-bottom: ${mb};'><span class='label'>${l1}:</span> ${part1} &nbsp;&nbsp;&nbsp;&nbsp; <span class='label'>${l2}:</span> ${part2}</div>`;
       })
       .join('');
-  } else {
-    saidasHtml = 'N/A';
   }
 
   // Embarque Previsto e Real
-  const embPrevRaw = data.horarios?.embarque_previsto || 'N/A';
-  const embRealRaw = data.horarios?.embarque_real || 'N/A';
+  const embPrevRaw = data.semEmbarquePrev ? 'N/A' : (data.horarios?.embarque_previsto || 'N/A');
+  const embRealRaw = data.semEmbarque ? 'N/A' : (data.horarios?.embarque_real || 'N/A');
   const embPrevFormatado =
-    embPrevRaw !== 'N/A' && embPrevRaw.includes(':')
-      ? `${embPrevRaw.split(':')[0]} h ${embPrevRaw.split(':')[1]} min`
+    embPrevRaw === 'N/A'
+      ? 'N/A'
+      : embPrevRaw.includes(':')
+      ? `${embPrevRaw.split(':')[0] || '&nbsp;&nbsp;&nbsp;'} h ${embPrevRaw.split(':')[1] || '&nbsp;&nbsp;&nbsp;'} min`
       : embPrevRaw;
   const embRealFormatado =
-    embRealRaw !== 'N/A' && embRealRaw.includes(':')
-      ? `${embRealRaw.split(':')[0]} h ${embRealRaw.split(':')[1]} min`
+    embRealRaw === 'N/A'
+      ? 'N/A'
+      : embRealRaw.includes(':')
+      ? `${embRealRaw.split(':')[0] || '&nbsp;&nbsp;&nbsp;'} h ${embRealRaw.split(':')[1] || '&nbsp;&nbsp;&nbsp;'} min`
       : embRealRaw;
 
   // Atendimento
   const atIniRaw = data.horarios?.atendimento_inicio || 'N/A';
   const atFimRaw = data.horarios?.atendimento_fim || 'N/A';
   const atIniFormatado =
-    atIniRaw !== 'N/A' && atIniRaw.includes(':')
-      ? `${atIniRaw.split(':')[0]} h ${atIniRaw.split(':')[1]} min`
+    atIniRaw === 'N/A'
+      ? 'N/A'
+      : atIniRaw.includes(':')
+      ? `${atIniRaw.split(':')[0] || '&nbsp;&nbsp;&nbsp;'} h ${atIniRaw.split(':')[1] || '&nbsp;&nbsp;&nbsp;'} min`
       : atIniRaw;
   const atFimFormatado =
-    atFimRaw !== 'N/A' && atFimRaw.includes(':')
-      ? `${atFimRaw.split(':')[0]} h ${atFimRaw.split(':')[1]} min`
+    atFimRaw === 'N/A'
+      ? 'N/A'
+      : atFimRaw.includes(':')
+      ? `${atFimRaw.split(':')[0] || '&nbsp;&nbsp;&nbsp;'} h ${atFimRaw.split(':')[1] || '&nbsp;&nbsp;&nbsp;'} min`
       : atFimRaw;
 
   // Passageiros: paginação limpa entre Página 1 e continuações
@@ -320,12 +344,12 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
     }
     .content-box { 
       margin-left: 20px; 
-      margin-top: 4px; 
-      margin-bottom: 8px; 
+      margin-top: 2px; 
+      margin-bottom: 6px; 
     }
     .info-box { 
-      margin-top: 4px; 
-      margin-bottom: 12px; 
+      margin-top: 2px; 
+      margin-bottom: 10px; 
       margin-left: 20px; 
       line-height: 1.4;
     }
@@ -386,24 +410,24 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       <div class="row"><span class="label">Local:</span> ${local}</div>
       <div class="row"><span class="label">Modal:</span> ${modal}</div>
 
-      <div style="margin-top: 6px; margin-bottom: 3px;"><span class="label">Horário de Saída do Hotel (Previsto e Real):</span></div>
+      <div class="row" style="margin-top: 4px; margin-bottom: 2px;"><span class="label">Horário de Saída do Hotel (Previsto e Real):</span></div>
       <div class="content-box">
         ${saidasHtml}
       </div>
 
-      <div style="margin-bottom: 3px;"><span class="label">Horários de Embarque (Previsto e Real):</span></div>
+      <div class="row" style="margin-top: 4px; margin-bottom: 2px;"><span class="label">Horários de Embarque (Previsto e Real):</span></div>
       <div class="content-box">
         <span class="label">Previsto:</span> ${embPrevFormatado} &nbsp;&nbsp;&nbsp;&nbsp; <span class="label">Real:</span> ${embRealFormatado}
       </div>
 
-      <div style="margin-bottom: 3px;"><span class="label">Horário Inicial e de Finalização do Atendimento:</span></div>
+      <div class="row" style="margin-top: 4px; margin-bottom: 2px;"><span class="label">Horário Inicial e de Finalização:</span></div>
       <div class="content-box">
         <span class="label">Início:</span> ${atIniFormatado} &nbsp;&nbsp; às &nbsp;&nbsp; <span class="label">Fim:</span> ${atFimFormatado}
       </div>
 
-      <div class="row" style="margin-top: 6px;"><span class="label">Nome do Preposto:</span> ${preposto}</div>
+      <div class="row" style="margin-top: 4px;"><span class="label">Nome do Preposto:</span> ${preposto}</div>
 
-      <div style="margin-top: 6px; margin-bottom: 3px;"><span class="label">Informações sobre a troca de turma:</span></div>
+      <div class="row" style="margin-top: 4px; margin-bottom: 2px;"><span class="label">Informações sobre a troca de turma:</span></div>
       <div class="info-box" style="text-align: ${alinhamento};">
         ${info}
       </div>
