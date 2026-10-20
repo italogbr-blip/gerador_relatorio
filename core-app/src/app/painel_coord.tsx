@@ -789,67 +789,6 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // Compartilhar Resumo do Relatório via WhatsApp
-  const shareWhatsApp = (report: any) => {
-    if (!report) return;
-    const parsed = parseReportData(report);
-    const dataFormatada = report.data_criacao
-      ? new Date(report.data_criacao).toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-      : new Date().toLocaleDateString('pt-BR');
-
-    const preposto = parsed?.preposto || report.preposto || 'Não informado';
-    const empresa = (report.empresa || 'N/A').toUpperCase();
-    const unidade = report.unidade || 'N/A';
-    const local = report.local_atendimento || 'N/A';
-
-    let embCount = 0;
-    let desCount = 0;
-    if (parsed?.embarcando && Array.isArray(parsed.embarcando)) {
-      embCount = parsed.embarcando.length;
-    }
-    if (parsed?.desembarcando && Array.isArray(parsed.desembarcando)) {
-      desCount = parsed.desembarcando.length;
-    }
-
-    const rawPdf = report.pdf_url || report.caminho_pdf;
-    const pdfUrl = formatReportPdfUrl(rawPdf) || `${PHP_SERVER_URL}/download_pdf.php?id=${report.id}`;
-
-    let msg = `📋 *RESUMO DO ATENDIMENTO OPERACIONAL*\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `🏢 *Empresa:* ${empresa}\n`;
-    msg += `⚓ *Unidade:* ${unidade}\n`;
-    msg += `📍 *Local:* ${local}\n`;
-    msg += `👤 *Preposto:* ${preposto}\n`;
-    msg += `📅 *Data/Hora:* ${dataFormatada}\n`;
-
-    if (embCount > 0 || desCount > 0) {
-      msg += `👥 *Passageiros (PAX):* 🟢 ${embCount} Emb. | 🔴 ${desCount} Des.\n`;
-    }
-
-    if (parsed?.info_troca) {
-      msg += `📝 *Observação:* ${parsed.info_troca}\n`;
-    }
-
-    msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    if (pdfUrl) {
-      msg += `📄 *Acessar PDF:* ${pdfUrl}\n`;
-    }
-    msg += `🌐 *Portal:* https://relatorios.atmai.com.br`;
-
-    const encoded = encodeURIComponent(msg);
-    const waUrl = `https://api.whatsapp.com/send?text=${encoded}`;
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.open(waUrl, '_blank');
-    } else {
-      Linking.openURL(waUrl);
-    }
-  };
 
   // Parser dos dados JSON
   const parseReportData = (report: any) => {
@@ -922,7 +861,7 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // 2. Compartilhar PDF ou Resumo via App Menu nativo com nome de arquivo exato
+  // 2. Compartilhar Relatório via menu nativo de compartilhamento do navegador (navmenu)
   const handleCompartilharRelatorio = async (report: any) => {
     if (!report) return;
     try {
@@ -930,11 +869,16 @@ export default function PainelCoordScreen() {
       const rawUrl = report.pdf_url || report.caminho_pdf;
       const formattedUrl = formatReportPdfUrl(rawUrl);
       const fallbackUrl = Platform.OS === 'web' && typeof window !== 'undefined'
-        ? (formattedUrl || `${window.location.origin}/?id=${report.id}`)
+        ? (formattedUrl || `${window.location.origin}/ver_relatorio.php?id=${report.id}`)
         : undefined;
-      await compartilharPdfRelatorio(pdfData, fallbackUrl, formattedUrl);
+      const res = await compartilharPdfRelatorio(pdfData, fallbackUrl, formattedUrl);
+      if (res.sucesso && res.metodo === 'clipboard') {
+        showCustomAlert('LINK COPIADO', 'O link do relatório foi copiado para sua área de transferência para compartilhamento.');
+      }
     } catch (e: any) {
-      showCustomAlert('COMPARTILHAR', e.message || 'Falha ao abrir menu de compartilhamento.');
+      if (e.name !== 'AbortError') {
+        showCustomAlert('COMPARTILHAR', e.message || 'Falha ao abrir menu de compartilhamento.');
+      }
     }
   };
 
@@ -1738,7 +1682,7 @@ export default function PainelCoordScreen() {
                             onPress={() => handleCompartilharRelatorio(item)}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.actionPillCompartilharText}>💬 COMPARTILHAR</Text>
+                            <Text style={styles.actionPillCompartilharText}>📤 COMPARTILHAR</Text>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -2665,7 +2609,7 @@ export default function PainelCoordScreen() {
                   <View style={styles.detailSectionLight}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981' }} />
-                      <Text style={[styles.detailSectionTitle, { color: '#047857' }]}>
+                      <Text style={[styles.detailSectionTitle, { color: '#047857', fontWeight: '500' }]}>
                         EMBARCANDO ({embList.length})
                       </Text>
                     </View>
@@ -2687,7 +2631,7 @@ export default function PainelCoordScreen() {
                   <View style={styles.detailSectionLight}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#f43f5e' }} />
-                      <Text style={[styles.detailSectionTitle, { color: '#be123c' }]}>
+                      <Text style={[styles.detailSectionTitle, { color: '#be123c', fontWeight: '500' }]}>
                         DESEMBARCANDO ({desList.length})
                       </Text>
                     </View>
@@ -2732,7 +2676,7 @@ export default function PainelCoordScreen() {
                       style={styles.modalWhatsAppBtn}
                       onPress={() => handleCompartilharRelatorio(selectedReport)}
                     >
-                      <Text style={styles.modalWhatsAppBtnText}>💬 COMPARTILHAR</Text>
+                      <Text style={styles.modalWhatsAppBtnText}>📤 COMPARTILHAR</Text>
                     </TouchableOpacity>
                   </View>
                 </ScrollView>
