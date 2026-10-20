@@ -3,7 +3,7 @@
    Portado e otimizado com fidelidade 100% ao ecossistema original
    ========================================================================== */
 
-/* ─── NAVBAR SUPERIOR (FIXO / STICKY NO TOPO) ─── */
+/* ─── NAVBAR SUPERIOR (FIXO / STICKY NO TOPO - TEMA ESCURO IGUAL INDEX.TSX) ─── */
 .coord-navbar-sticky,
 .coord-navbar {
   position: -webkit-sticky !important;
@@ -11,9 +11,182 @@
   top: 0 !important;
   z-index: 1000 !important;
   width: 100% !important;
-  background-color: #ffffff !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+  min-height: 60px !important;
+  background-color: #0f172a !important;
+  border-bottom: 1px solid #1e293b !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+.coord-navbar-inner {
+  max-width: 1600px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding: 10px 20px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 16px !important;
+}
+
+.coord-nav-left {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-shrink: 0 !important;
+}
+
+.coord-nav-logo-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.45) !important;
+}
+
+.coord-nav-logo-text {
+  color: #ffffff !important;
+  font-size: 17px !important;
+  font-weight: 900 !important;
+  letter-spacing: 1.2px !important;
+  text-transform: uppercase !important;
+}
+
+.coord-nav-badge-live {
+  background: rgba(56, 189, 248, 0.15) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+}
+
+.coord-nav-badge-live-text {
+  color: #38bdf8 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+}
+
+/* ─── CONTEÚDO ALINHADO NO TOPO À DIREITA ─── */
+.coord-nav-right {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 16px !important;
+  flex-wrap: nowrap !important;
+}
+
+.coord-nav-datetime-group {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.14) !important;
+  padding-right: 16px !important;
+}
+
+.coord-nav-datetime-text {
+  color: #f1f5f9 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.coord-nav-ip-text {
+  color: #94a3b8 !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+}
+
+.coord-nav-user-group {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.coord-nav-user-greeting {
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+.coord-nav-user-name {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+.coord-nav-buttons-group {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.coord-nav-btn-notif {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 8px !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.coord-nav-btn-notif:hover {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.coord-nav-btn-voltar {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  padding: 8px 14px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.coord-nav-btn-voltar:hover {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+.coord-nav-btn-voltar-text {
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
+}
+
+.coord-nav-btn-sair {
+  background-color: #e11d48 !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.3) !important;
+}
+
+.coord-nav-btn-sair:hover {
+  background-color: #be123c !important;
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.45) !important;
+}
+
+.coord-nav-btn-sair-text {
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.8px !important;
+  text-transform: uppercase !important;
 }
 
 /* ─── SCROLL HORIZONTAL PARA TABELAS RESPONSIVAS ─── */
@@ -79,10 +252,17 @@
 
 /* ─── MEDIA QUERIES PARA MOBILE (< 768px) ─── */
 @media (max-width: 768px) {
-  .coord-navbar-mobile-col {
-    flex-direction: column !important;
-    align-items: stretch !important;
+  .coord-navbar-inner {
+    padding: 8px 12px !important;
     gap: 8px !important;
+  }
+
+  .coord-nav-datetime-group {
+    display: none !important;
+  }
+
+  .coord-nav-user-greeting {
+    display: none !important;
   }
 
   .coord-kpi-grid-mobile {

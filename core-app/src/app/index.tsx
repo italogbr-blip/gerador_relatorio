@@ -873,6 +873,7 @@ export default function ReportGenerator() {
   const [editingReportId, setEditingReportId] = useState<number | null>(null);
   const [isLoadingReportEdit, setIsLoadingReportEdit] = useState<boolean>(false);
   const [pdfGenerated, setPdfGenerated] = useState<boolean>(false);
+  const [isDateInputFocused, setIsDateInputFocused] = useState<boolean>(false);
   const [footerConfig, setFooterConfig] = useState<FooterConfig>(() => getLocalFooterConfig());
   const [appVersao, setAppVersao] = useState<string>(() => {
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
@@ -3322,65 +3323,35 @@ export default function ReportGenerator() {
               />
             </View>
 
-            {/* Data */}
-            <View style={styles.inputGroup} className="mms-field-group">
-              <Text style={styles.label} className="mms-field-label">DATA:</Text>
-              {Platform.OS === 'web' ? (
-                <View style={[styles.dateInputContainer, { position: 'relative', width: '100%' }]} className="mms-date-input-container">
-                  <input
-                    id="field-data"
-                    type="date"
-                    value={currentData.data || ''}
-                    onChange={(e: any) => updateCurrentTab({ data: e.target.value })}
-                    className="mms-input-control mms-input-date"
-                    style={{
-                      border: fieldErrors.data ? '2px solid #f87171' : '1px solid #cbd5e1',
-                      borderRadius: 12,
-                      height: 48,
-                      minHeight: 48,
-                      padding: '0 12px',
-                      fontSize: 14,
-                      fontFamily: corporateFont,
-                      backgroundColor: fieldErrors.data ? '#ffe4e6' : '#f8fafc',
-                      color: currentData.data ? '#1e293b' : 'transparent',
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      outline: 'none',
-                      cursor: 'pointer',
-                      boxSizing: 'border-box',
-                      textAlign: 'center',
-                    }}
-                  />
-                  {!currentData.data && (
-                    <View
-                      pointerEvents="none"
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        flexDirection: 'row',
-                        zIndex: 5,
+              {/* Data */}
+              <View style={styles.inputGroup} className="mms-field-group">
+                <Text style={styles.label} className="mms-field-label">DATA:</Text>
+                {Platform.OS === 'web' ? (
+                  <View style={styles.dateInputContainer} className="mms-date-input-container">
+                    <input
+                      id="field-data"
+                      name="data"
+                      type={currentData.data || isDateInputFocused ? 'date' : 'text'}
+                      value={currentData.data || ''}
+                      placeholder="Selecione a data aqui 📅"
+                      onChange={(e: any) => updateCurrentTab({ data: e.target.value })}
+                      onFocus={(e: any) => {
+                        setIsDateInputFocused(true);
+                        try {
+                          if (e.target.showPicker) e.target.showPicker();
+                        } catch (err) {}
                       }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          color: '#94a3b8',
-                          fontFamily: corporateFont,
-                          textAlign: 'center',
-                        }}
-                      >
-                        Selecione a data aqui 📅
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              ) : (
+                      onClick={(e: any) => {
+                        setIsDateInputFocused(true);
+                        try {
+                          if (e.target.showPicker) e.target.showPicker();
+                        } catch (err) {}
+                      }}
+                      onBlur={() => setIsDateInputFocused(false)}
+                      className={`mms-date-input-field ${fieldErrors.data ? 'mms-date-input-error' : ''}`}
+                    />
+                  </View>
+                ) : (
                 <TextInput
                   nativeID="field-data"
                   id="field-data"
