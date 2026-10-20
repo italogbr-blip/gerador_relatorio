@@ -4048,106 +4048,108 @@ export default function ReportGenerator() {
                       resizeMode="stretch"
                     />
 
-                    {/* Header do PDF */}
-                    <View style={styles.a4FixedLogo}>
-                      <Image
-                        source={require('../../assets/images/logo.png')}
-                        style={{ width: 76, height: 76 }}
-                        resizeMode="contain"
-                      />
-                    </View>
+                    <View style={styles.a4PageContent}>
+                      {/* Header do PDF */}
+                      <View style={styles.a4FixedLogo}>
+                        <Image
+                          source={require('../../assets/images/logo.png')}
+                          style={{ width: 76, height: 76 }}
+                          resizeMode="contain"
+                        />
+                      </View>
 
-                    <Text style={styles.a4DocumentTitle}>RELATÓRIO DE TROCA DE TURMA</Text>
+                      <Text style={styles.a4DocumentTitle}>RELATÓRIO DE TROCA DE TURMA</Text>
 
-                    {/* Informações Principais */}
-                    <View style={styles.a4Row}>
-                      <Text style={styles.a4Label}>Unidade: </Text>
-                      <Text style={styles.a4Value}>{currentData.unidade || 'N/A'}</Text>
-                    </View>
+                      {/* Informações Principais */}
+                      <View style={styles.a4Row}>
+                        <Text style={styles.a4Label}>Unidade: </Text>
+                        <Text style={styles.a4Value}>{currentData.unidade || 'N/A'}</Text>
+                      </View>
 
-                    <View style={styles.a4Row}>
-                      <Text style={styles.a4Label}>Data: </Text>
-                      <Text style={styles.a4Value}>{formatarData(currentData.data) || 'N/A'}</Text>
-                    </View>
+                      <View style={styles.a4Row}>
+                        <Text style={styles.a4Label}>Data: </Text>
+                        <Text style={styles.a4Value}>{formatarData(currentData.data) || 'N/A'}</Text>
+                      </View>
 
-                    <View style={styles.a4Row}>
-                      <Text style={styles.a4Label}>Local: </Text>
-                      <Text style={styles.a4Value}>{currentData.local || 'N/A'}</Text>
-                    </View>
+                      <View style={styles.a4Row}>
+                        <Text style={styles.a4Label}>Local: </Text>
+                        <Text style={styles.a4Value}>{currentData.local || 'N/A'}</Text>
+                      </View>
 
-                    <View style={styles.a4Row}>
-                      <Text style={styles.a4Label}>Modal: </Text>
-                      <Text style={styles.a4Value}>{currentData.modal || 'N/A'}</Text>
-                    </View>
+                      <View style={styles.a4Row}>
+                        <Text style={styles.a4Label}>Modal: </Text>
+                        <Text style={styles.a4Value}>{currentData.modal || 'N/A'}</Text>
+                      </View>
 
-                    {/* Horário de Saída do Hotel */}
-                    <View style={[styles.a4Row, { marginTop: 6 }]}>
-                      <Text style={styles.a4Label}>Horário de Saída do Hotel (Previsto e Real):</Text>
-                    </View>
-                    <View style={{ marginBottom: 4 }}>
-                      {currentData.listaSaidas.map((item) => (
-                        <View key={item.id} style={[styles.a4ContentBox, { flexWrap: 'wrap', marginBottom: 2 }]}>
-                          <Text style={styles.a4Label}>{item.label1 || 'Previsto'}: </Text>
-                          <Text style={styles.a4Value}>{fmtHoraA4(item.h1, item.m1)}</Text>
-                          <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
-                          <Text style={styles.a4Value}>{fmtHoraA4(item.h2, item.m2)}</Text>
+                      {/* Horário de Saída do Hotel */}
+                      <View style={[styles.a4Row, { marginTop: 6 }]}>
+                        <Text style={styles.a4Label}>Horário de Saída do Hotel (Previsto e Real):</Text>
+                      </View>
+                      <View style={{ marginBottom: 4 }}>
+                        {currentData.listaSaidas.map((item) => (
+                          <View key={item.id} style={[styles.a4ContentBox, { flexWrap: 'wrap', marginBottom: 2 }]}>
+                            <Text style={styles.a4Label}>{item.label1 || 'Previsto'}: </Text>
+                            <Text style={styles.a4Value}>{fmtHoraA4(item.h1, item.m1)}</Text>
+                            <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
+                            <Text style={styles.a4Value}>{fmtHoraA4(item.h2, item.m2)}</Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      {/* Horários de Embarque */}
+                      <View style={[styles.a4Row, { marginTop: 6 }]}>
+                        <Text style={styles.a4Label}>Horários de Embarque (Previsto e Real):</Text>
+                      </View>
+                      <View style={styles.a4ContentBox}>
+                        <Text style={styles.a4Label}>Previsto: </Text>
+                        <Text style={styles.a4Value}>{fmtHoraA4(currentData.h3, currentData.m3)}</Text>
+                        <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
+                        <Text style={styles.a4Value}>{fmtHoraA4(currentData.h4, currentData.m4)}</Text>
+                      </View>
+
+                      {/* Horário Inicial e de Finalização */}
+                      <View style={[styles.a4Row, { marginTop: 6 }]}>
+                        <Text style={styles.a4Label}>Horário Inicial e de finalização:</Text>
+                      </View>
+                      <View style={styles.a4ContentBox}>
+                        <Text style={styles.a4Label}>Início: </Text>
+                        <Text style={styles.a4Value}>{fmtHoraA4(currentData.h5, currentData.m5)}</Text>
+                        <Text style={styles.a4Value}> às </Text>
+                        <Text style={styles.a4Label}>Fim: </Text>
+                        <Text style={styles.a4Value}>{fmtHoraA4(currentData.h6, currentData.m6)}</Text>
+                      </View>
+
+                      {/* Preposto */}
+                      <View style={[styles.a4Row, { marginTop: 6 }]}>
+                        <Text style={styles.a4Label}>Nome do Preposto: </Text>
+                        <Text style={styles.a4Value}>{currentData.preposto || 'N/A'}</Text>
+                      </View>
+
+                      {/* Informações sobre a troca */}
+                      <View style={[styles.a4Row, { marginTop: 6 }]}>
+                        <Text style={styles.a4Label}>Informações sobre a troca de turma:</Text>
+                      </View>
+                      <View style={styles.a4InfoBox}>{renderFormattedText(currentData.info, currentData.alinhamentoInfo)}</View>
+
+                      {/* Tabela de Passageiros */}
+                      <View style={styles.a4PaxTable}>
+                        <View style={styles.a4PaxColLeft}>
+                          <Text style={styles.a4PaxTitle}>Nomes Passageiros Embarcando:</Text>
+                          <View>{renderFormattedText(p1Lines1)}</View>
                         </View>
-                      ))}
-                    </View>
-
-                    {/* Horários de Embarque */}
-                    <View style={[styles.a4Row, { marginTop: 6 }]}>
-                      <Text style={styles.a4Label}>Horários de Embarque (Previsto e Real):</Text>
-                    </View>
-                    <View style={styles.a4ContentBox}>
-                      <Text style={styles.a4Label}>Previsto: </Text>
-                      <Text style={styles.a4Value}>{fmtHoraA4(currentData.h3, currentData.m3)}</Text>
-                      <Text style={[styles.a4Label, { marginLeft: 16 }]}>Real: </Text>
-                      <Text style={styles.a4Value}>{fmtHoraA4(currentData.h4, currentData.m4)}</Text>
-                    </View>
-
-                    {/* Horário Inicial e de Finalização */}
-                    <View style={[styles.a4Row, { marginTop: 6 }]}>
-                      <Text style={styles.a4Label}>Horário Inicial e de finalização:</Text>
-                    </View>
-                    <View style={styles.a4ContentBox}>
-                      <Text style={styles.a4Label}>Início: </Text>
-                      <Text style={styles.a4Value}>{fmtHoraA4(currentData.h5, currentData.m5)}</Text>
-                      <Text style={styles.a4Value}> às </Text>
-                      <Text style={styles.a4Label}>Fim: </Text>
-                      <Text style={styles.a4Value}>{fmtHoraA4(currentData.h6, currentData.m6)}</Text>
-                    </View>
-
-                    {/* Preposto */}
-                    <View style={[styles.a4Row, { marginTop: 6 }]}>
-                      <Text style={styles.a4Label}>Nome do Preposto: </Text>
-                      <Text style={styles.a4Value}>{currentData.preposto || 'N/A'}</Text>
-                    </View>
-
-                    {/* Informações sobre a troca */}
-                    <View style={[styles.a4Row, { marginTop: 6 }]}>
-                      <Text style={styles.a4Label}>Informações sobre a troca de turma:</Text>
-                    </View>
-                    <View style={styles.a4InfoBox}>{renderFormattedText(currentData.info, currentData.alinhamentoInfo)}</View>
-
-                    {/* Tabela de Passageiros */}
-                    <View style={styles.a4PaxTable}>
-                      <View style={styles.a4PaxColLeft}>
-                        <Text style={styles.a4PaxTitle}>Nomes Passageiros Embarcando:</Text>
-                        <View>{renderFormattedText(p1Lines1)}</View>
+                        <View style={styles.a4PaxColRight}>
+                          <Text style={styles.a4PaxTitle}>Nomes Passageiros Desembarcados:</Text>
+                          <View>{renderFormattedText(p1Lines2)}</View>
+                        </View>
                       </View>
-                      <View style={styles.a4PaxColRight}>
-                        <Text style={styles.a4PaxTitle}>Nomes Passageiros Desembarcados:</Text>
-                        <View>{renderFormattedText(p1Lines2)}</View>
-                      </View>
-                    </View>
 
-                    {/* Footer Corporativo (fixo no rodapé da página) */}
-                    <View style={styles.a4Footer}>
-                      <Text style={styles.a4FooterText}>
-                        Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
-                        E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-                      </Text>
+                      {/* Footer Corporativo (fixo no rodapé da página) */}
+                      <View style={styles.a4Footer}>
+                        <Text style={styles.a4FooterText}>
+                          Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
+                          E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+                        </Text>
+                      </View>
                     </View>
                   </View>
 
@@ -4159,31 +4161,33 @@ export default function ReportGenerator() {
                         style={styles.a4BgImage}
                         resizeMode="stretch"
                       />
-                      <View style={styles.a4FixedLogo}>
-                        <Image
-                          source={require('../../assets/images/logo.png')}
-                          style={{ width: 76, height: 76 }}
-                          resizeMode="contain"
-                        />
-                      </View>
-                      <Text style={styles.a4DocumentTitle}>RELATÓRIO DE TROCA DE TURMA (CONT.)</Text>
-
-                      <View style={[styles.a4PaxTable, { marginTop: 14 }]}>
-                        <View style={styles.a4PaxColLeft}>
-                          <Text style={styles.a4PaxTitle}>Nomes Passageiros Embarcando (Cont.):</Text>
-                          <View>{renderFormattedText(chunk.pax1)}</View>
+                      <View style={styles.a4PageContent}>
+                        <View style={styles.a4FixedLogo}>
+                          <Image
+                            source={require('../../assets/images/logo.png')}
+                            style={{ width: 76, height: 76 }}
+                            resizeMode="contain"
+                          />
                         </View>
-                        <View style={styles.a4PaxColRight}>
-                          <Text style={styles.a4PaxTitle}>Nomes Passageiros Desembarcados (Cont.):</Text>
-                          <View>{renderFormattedText(chunk.pax2)}</View>
-                        </View>
-                      </View>
+                        <Text style={styles.a4DocumentTitle}>RELATÓRIO DE TROCA DE TURMA (CONT.)</Text>
 
-                      <View style={styles.a4Footer}>
-                        <Text style={styles.a4FooterText}>
-                          Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
-                          E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-                        </Text>
+                        <View style={[styles.a4PaxTable, { marginTop: 14 }]}>
+                          <View style={styles.a4PaxColLeft}>
+                            <Text style={styles.a4PaxTitle}>Nomes Passageiros Embarcando (Cont.):</Text>
+                            <View>{renderFormattedText(chunk.pax1)}</View>
+                          </View>
+                          <View style={styles.a4PaxColRight}>
+                            <Text style={styles.a4PaxTitle}>Nomes Passageiros Desembarcados (Cont.):</Text>
+                            <View>{renderFormattedText(chunk.pax2)}</View>
+                          </View>
+                        </View>
+
+                        <View style={styles.a4Footer}>
+                          <Text style={styles.a4FooterText}>
+                            Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
+                            E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   ))}
@@ -4196,24 +4200,26 @@ export default function ReportGenerator() {
                         style={styles.a4BgImage}
                         resizeMode="stretch"
                       />
-                      <View style={styles.a4FixedLogo}>
-                        <Image
-                          source={require('../../assets/images/logo.png')}
-                          style={{ width: 76, height: 76 }}
-                          resizeMode="contain"
-                        />
-                      </View>
-                      <Text style={styles.a4DocumentTitle}>{foto.titulo || 'ANEXO FOTOGRÁFICO'}</Text>
+                      <View style={styles.a4PageContent}>
+                        <View style={styles.a4FixedLogo}>
+                          <Image
+                            source={require('../../assets/images/logo.png')}
+                            style={{ width: 76, height: 76 }}
+                            resizeMode="contain"
+                          />
+                        </View>
+                        <Text style={styles.a4DocumentTitle}>{foto.titulo || 'ANEXO FOTOGRÁFICO'}</Text>
 
-                      <View style={styles.a4PhotoContainer}>
-                        <Image source={{ uri: foto.uri }} style={styles.a4PhotoImage} resizeMode="contain" />
-                      </View>
+                        <View style={styles.a4PhotoContainer}>
+                          <Image source={{ uri: foto.uri }} style={styles.a4PhotoImage} resizeMode="contain" />
+                        </View>
 
-                      <View style={styles.a4Footer}>
-                        <Text style={styles.a4FooterText}>
-                          Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
-                          E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-                        </Text>
+                        <View style={styles.a4Footer}>
+                          <Text style={styles.a4FooterText}>
+                            Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
+                            E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   ))}
@@ -6510,9 +6516,7 @@ const styles = StyleSheet.create({
     minHeight: 1123,
     maxHeight: 1123,
     borderRadius: 4,
-    paddingHorizontal: 44,
-    paddingTop: 32,
-    paddingBottom: 28,
+    padding: 0,
     borderWidth: 1,
     borderColor: colors.slate200,
     shadowColor: colors.black,
@@ -6523,14 +6527,23 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
+  a4PageContent: {
+    position: 'relative',
+    zIndex: 2,
+    width: '100%',
+    height: '100%',
+    paddingHorizontal: 44,
+    paddingTop: 32,
+    paddingBottom: 28,
+  },
   a4BgImage: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    width: '100%',
-    height: '100%',
+    width: 794,
+    height: 1123,
     zIndex: 1,
     // @ts-ignore
     pointerEvents: 'none',
