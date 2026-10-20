@@ -153,12 +153,22 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       const titulo = (foto.titulo || `ANEXO FOTOGRÁFICO ${idx + 1}`).toUpperCase();
       if (src) {
         fotosHtml += `
-          <div style='page-break-before: always; position: relative; page-break-inside: avoid; min-height: 250mm;'>
-            <div style='padding-top: 10px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 14px; text-decoration: underline; font-family: "Times New Roman", Times, serif;'>
-              ${titulo}
-            </div>
-            <div style='text-align: center; width: 100%;'>
-              <img src='${src}' style='max-width: 100%; max-height: 650px; object-fit: contain; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);' />
+          <div class="mms-pdf-page" style="page-break-before: always;">
+            <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
+            <div class="page-content">
+              <div class="header-logo">
+                <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
+              </div>
+              <div style="padding-top: 10px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 14px; text-decoration: underline; font-family: 'Times New Roman', Times, serif;">
+                ${titulo}
+              </div>
+              <div style="text-align: center; width: 100%; margin-top: 10px;">
+                <img src="${src}" style="max-width: 100%; max-height: 750px; object-fit: contain; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+              </div>
+              <div class="footer">
+                Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
+                E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+              </div>
             </div>
           </div>
         `;
@@ -174,45 +184,65 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
   <style>
     @page { 
       size: A4 portrait;
-      margin: 30mm 15mm 20mm 15mm; 
+      margin: 0; 
     }
     * { 
       box-sizing: border-box; 
     }
-    body { 
+    html, body { 
       font-family: "Times New Roman", Times, "Times-Roman", serif; 
       font-size: 14px; 
-      color: #000;
+      color: #000000;
       margin: 0;
       padding: 0;
       background-color: #ffffff;
       line-height: 1.35;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .mms-pdf-page {
       position: relative;
+      width: 794px;
+      min-height: 1123px;
+      padding: 36px 44px 30px 44px;
+      background-color: #ffffff;
+      box-sizing: border-box;
+      overflow: hidden;
+      page-break-after: always;
+      margin: 0 auto;
+    }
+    .mms-pdf-page:last-child {
+      page-break-after: auto;
     }
     .fixed-bg {
-      position: fixed;
-      top: -30mm;
-      left: -15mm;
-      width: 210mm;
-      height: 297mm;
-      z-index: -1000;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 794px;
+      height: 1123px;
+      object-fit: fill;
+      z-index: 1;
       pointer-events: none;
+      opacity: 0.96;
+    }
+    .page-content {
+      position: relative;
+      z-index: 2;
     }
     .header-logo {
       width: 100%;
       margin-bottom: 2px;
-      margin-left: 0px;
-      margin-top: -18px;
+      margin-top: -6px;
     }
     .header-logo img {
-      width: 80px;
-      height: 80px;
+      width: 76px;
+      height: 76px;
       object-fit: contain;
     }
     .titulo-pdf {
       text-align: center;
       font-weight: bold;
-      font-size: 16px;
+      font-size: 17px;
       text-decoration: underline;
       margin-top: -8px;
       margin-bottom: 12px;
@@ -233,14 +263,14 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
     }
     .info-box { 
       margin-top: 4px; 
-      margin-bottom: 12px; 
+      margin-bottom: 14px; 
       margin-left: 20px;
       line-height: 1.45;
     }
     .pax-container {
       width: 100%; 
       overflow: hidden; 
-      margin-top: 25px;
+      margin-top: 20px;
     }
     .pax-col-left {
       box-sizing: border-box; 
@@ -265,14 +295,11 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       margin-bottom: 8px;
     }
     .footer {
-      position: fixed;
-      bottom: -10mm;
-      left: 0;
-      right: 0;
+      margin-top: 26px;
       text-align: center;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: bold;
-      color: #000;
+      color: #000000;
       line-height: 1.35;
       font-family: "Times New Roman", Times, serif;
     }
@@ -283,70 +310,60 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
   </style>
 </head>
 <body>
-  <!-- Background Institucional MMS Fixo -->
-  <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
+  <div class="mms-pdf-page">
+    <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
+    <div class="page-content">
+      <div class="header-logo">
+        <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
+      </div>
+      <div class="titulo-pdf">RELATÓRIO DE TROCA DE TURMA</div>
 
-  <!-- Logo Institucional MMS -->
-  <div class="header-logo">
-    <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
-  </div>
+      <div class="row"><span class="label">Unidade:</span> ${unidade}</div>
+      <div class="row"><span class="label">Data:</span> ${dataFormatada}</div>
+      <div class="row"><span class="label">Local:</span> ${local}</div>
+      <div class="row"><span class="label">Modal:</span> ${modal}</div>
 
-  <!-- Título Principal -->
-  <div class="titulo-pdf">RELATÓRIO DE TROCA DE TURMA</div>
+      <div style="margin-top: 8px; margin-bottom: 3px;"><span class="label">Horário de Saída do Hotel (Previsto e Real):</span></div>
+      <div class="content-box">
+        ${saidasHtml}
+      </div>
 
-  <!-- Campos Principais da Operação -->
-  <div class="row"><span class="label">Unidade:</span> ${unidade}</div>
-  <div class="row"><span class="label">Data:</span> ${dataFormatada}</div>
-  <div class="row"><span class="label">Local:</span> ${local}</div>
-  <div class="row"><span class="label">Modal:</span> ${modal}</div>
+      <div style="margin-bottom: 3px;"><span class="label">Horários de Embarque (Previsto e Real):</span></div>
+      <div class="content-box">
+        <span class="label">Previsto:</span> ${embPrevFormatado} &nbsp;&nbsp;&nbsp;&nbsp; <span class="label">Real:</span> ${embRealFormatado}
+      </div>
 
-  <!-- Horários de Saída do Hotel -->
-  <div style="margin-top: 8px; margin-bottom: 3px;"><span class="label">Horário de Saída do Hotel (Previsto e Real):</span></div>
-  <div class="content-box">
-    ${saidasHtml}
-  </div>
+      <div style="margin-bottom: 3px;"><span class="label">Horário Inicial e de Finalização do Atendimento:</span></div>
+      <div class="content-box">
+        <span class="label">Início:</span> ${atIniFormatado} &nbsp;&nbsp; às &nbsp;&nbsp; <span class="label">Fim:</span> ${atFimFormatado}
+      </div>
 
-  <!-- Horários de Embarque -->
-  <div style="margin-bottom: 3px;"><span class="label">Horários de Embarque (Previsto e Real):</span></div>
-  <div class="content-box">
-    <span class="label">Previsto:</span> ${embPrevFormatado} &nbsp;&nbsp;&nbsp;&nbsp; <span class="label">Real:</span> ${embRealFormatado}
-  </div>
+      <div class="row" style="margin-top: 6px;"><span class="label">Nome do Preposto:</span> ${preposto}</div>
 
-  <!-- Horário de Atendimento -->
-  <div style="margin-bottom: 3px;"><span class="label">Horário Inicial e de Finalização do Atendimento:</span></div>
-  <div class="content-box">
-    <span class="label">Início:</span> ${atIniFormatado} &nbsp;&nbsp; às &nbsp;&nbsp; <span class="label">Fim:</span> ${atFimFormatado}
-  </div>
+      <div style="margin-top: 8px; margin-bottom: 3px;"><span class="label">Informações sobre a troca de turma:</span></div>
+      <div class="info-box" style="text-align: ${alinhamento};">
+        ${info}
+      </div>
 
-  <!-- Preposto Responsável -->
-  <div class="row" style="margin-top: 6px;"><span class="label">Nome do Preposto:</span> ${preposto}</div>
+      <div class="pax-container">
+        <div class="pax-col-left">
+          <div class="pax-title">Nomes Passageiros Embarcando:</div>
+          <div>${pax1Html}</div>
+        </div>
+        <div class="pax-col-right">
+          <div class="pax-title">Nomes Passageiros Desembarcados:</div>
+          <div>${pax2Html}</div>
+        </div>
+        <div style="clear: both;"></div>
+      </div>
 
-  <!-- Informações sobre a Troca -->
-  <div style="margin-top: 8px; margin-bottom: 3px;"><span class="label">Informações sobre a troca de turma:</span></div>
-  <div class="info-box" style="text-align: ${alinhamento};">
-    ${info}
-  </div>
-
-  <!-- Passageiros Embarcando e Desembarcando lado a lado com divisória vertical cinza -->
-  <div class="pax-container">
-    <div class="pax-col-left">
-      <div class="pax-title">Nomes Passageiros Embarcando:</div>
-      <div>${pax1Html}</div>
+      <div class="footer">
+        Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
+        E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+      </div>
     </div>
-    <div class="pax-col-right">
-      <div class="pax-title">Nomes Passageiros Desembarcados:</div>
-      <div>${pax2Html}</div>
-    </div>
-    <div style="clear: both;"></div>
   </div>
 
-  <!-- Rodapé Institucional MMS -->
-  <div class="footer">
-    Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
-    E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-  </div>
-
-  <!-- Páginas de Anexos Fotográficos -->
   ${fotosHtml}
 </body>
 </html>`;

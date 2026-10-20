@@ -57,6 +57,7 @@ async function getHtml2Pdf() {
 }
 
 /**
+/**
  * Converte dados do relatório em documento HTML completo e nome de arquivo
  */
 export function compilarHtmlRelatorio(dados: ReportPdfData): { docHtml: string; nomeArquivo: string } {
@@ -66,86 +67,153 @@ export function compilarHtmlRelatorio(dados: ReportPdfData): { docHtml: string; 
 }
 
 /**
- * Executa o download automático do arquivo .pdf no dispositivo
+ * Gera o Blob do PDF real e completo (usando endpoint do servidor se disponível ou geração local de alta fidelidade)
  */
-export async function baixarPdfRelatorio(dados: ReportPdfData): Promise<{ sucesso: boolean; nomeArquivo: string }> {
+export async function gerarPdfBlob(
+  dados: ReportPdfData,
+  existingPdfUrl?: string | null
+): Promise<{ blob: Blob; nomeArquivo: string }> {
   const { docHtml, nomeArquivo } = compilarHtmlRelatorio(dados);
 
+  // 1. Se já houver uma URL do PDF no servidor, tenta baixar diretamente o arquivo oficial
+  if (existingPdfUrl && Platform.OS === 'web' && typeof window !== 'undefined') {
+    try {
+      const resp = await fetch(existingPdfUrl);
+      if (resp.ok) {
+        const srvBlob = await resp.blob();
+        if (srvBlob && srvBlob.size > 1000) {
+          return { blob: srvBlob, nomeArquivo };
+        }
+      }
+    } catch (err) {
+      console.warn('Endpoint do servidor indisponível para download direto do PDF, gerando via motor web local:', err);
+    }
+  }
+
+  // 2. Geração Web de Alta Resolução via html2pdf / html2canvas (sem offscreen negativo para não sair em branco)
   if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
     const html2pdf = await getHtml2Pdf();
     if (html2pdf) {
+      const container = document.createElement('div');
+      container.id = 'mms-pdf-render-sandbox';
+      container.style.position = 'fixed';
+      container.style.top = '0';
+      container.style.left = '0';
+      container.style.width = '794px';
+      container.style.backgroundColor = '#ffffff';
+      container.style.zIndex = '-99999';
+      container.style.pointerEvents = 'none';
+      container.innerHTML = docHtml;
+      document.body.appendChild(container);
+
       try {
-        const container = document.createElement('div');
-        container.style.position = 'fixed';
-        container.style.left = '-9999px';
-        container.style.top = '0';
-        container.style.width = '210mm';
-        container.style.background = '#ffffff';
-        container.innerHTML = docHtml;
-        document.body.appendChild(container);
+        // Aguarda carregamento integral de imagens (logo institucional, background base64 e anexos)
+        const images = Array.from(container.querySelectorAll('img'));
+        await Promise.all(
+          images.map(
+            (img) =>
+              new Promise<void>((resolve) => {
+                if (img.complete && img.naturalWidth !== 0) return resolve();
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+              })
+          )
+        );
+
+        if ((document as any).fonts && (document as any).fonts.ready) {
+          await (document as any).fonts.ready;
+        }
+
+        // Aguarda estabilização do layout
+        await new Promise((resolve) => setTimeout(resolve, 150));
 
         const opt = {
           margin: 0,
           filename: nomeArquivo,
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            letterRendering: true,
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: 794,
+            x: 0,
+            y: 0,
+          },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+          pagebreak: { mode: ['css', 'legacy'] },
         };
 
-        await html2pdf().set(opt).from(container).save();
-        document.body.removeChild(container);
-        return { sucesso: true, nomeArquivo };
-      } catch (err) {
-        console.warn('Erro ao gerar via html2pdf, acionando fallback de impressão:', err);
+        const pdfBlob: Blob = await html2pdf().set(opt).from(container).outputPdf('blob');
+        return { blob: pdfBlob, nomeArquivo };
+      } finally {
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
       }
     }
-
-    // Fallback Web: Abre janela de impressão formatada para salvar como PDF
-    const printWin = window.open('', '_blank');
-    if (printWin) {
-      printWin.document.write(docHtml);
-      printWin.document.close();
-      setTimeout(() => {
-        printWin.focus();
-        printWin.print();
-      }, 400);
-      return { sucesso: true, nomeArquivo };
-    } else {
-      window.print();
-      return { sucesso: true, nomeArquivo };
-    }
   }
 
-  // Native (iOS e Android): Usa expo-print e expo-sharing
-  try {
-    const { uri } = await Print.printToFileAsync({ html: docHtml });
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, {
-        dialogTitle: `Baixar Relatório ${nomeArquivo}`,
-        mimeType: 'application/pdf',
-        UTI: 'com.adobe.pdf',
-      });
-    }
-    return { sucesso: true, nomeArquivo };
-  } catch (err: any) {
-    console.error('Erro no printToFileAsync nativo:', err);
-    throw err;
-  }
+  // 3. Fallback Nativo (iOS / Android em runtime React Native)
+  const { uri } = await Print.printToFileAsync({ html: docHtml });
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  return { blob, nomeArquivo };
 }
 
 /**
- * Compartilha o PDF gerado (via Web Share API, WhatsApp ou Share nativo)
+ * Executa o download automático do arquivo .pdf no dispositivo
+ */
+export async function baixarPdfRelatorio(
+  dados: ReportPdfData,
+  existingPdfUrl?: string | null
+): Promise<{ sucesso: boolean; nomeArquivo: string }> {
+  const { blob, nomeArquivo } = await gerarPdfBlob(dados, existingPdfUrl);
+
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = nomeArquivo;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    return { sucesso: true, nomeArquivo };
+  }
+
+  // Native (iOS e Android): Usa expo-sharing para salvar ou exportar
+  if (await Sharing.isAvailableAsync()) {
+    const { docHtml } = compilarHtmlRelatorio(dados);
+    const { uri } = await Print.printToFileAsync({ html: docHtml });
+    await Sharing.shareAsync(uri, {
+      dialogTitle: `Baixar Relatório ${nomeArquivo}`,
+      mimeType: 'application/pdf',
+      UTI: 'com.adobe.pdf',
+    });
+  }
+  return { sucesso: true, nomeArquivo };
+}
+
+/**
+ * Compartilha o PDF gerado (abre a navbar/sheet de compartilhamento nativa do dispositivo com o arquivo PDF,
+ * idêntico à lógica de index.php)
  */
 export async function compartilharPdfRelatorio(
   dados: ReportPdfData,
-  fallbackUrl?: string
+  fallbackUrl?: string,
+  existingPdfUrl?: string | null
 ): Promise<{ sucesso: boolean; metodo: 'share_api' | 'whatsapp' | 'share_native' }> {
-  const { docHtml, nomeArquivo } = compilarHtmlRelatorio(dados);
+  const { blob, nomeArquivo } = await gerarPdfBlob(dados, existingPdfUrl);
 
-  // 1. Mobile Nativo (iOS / Android)
+  // 1. Mobile Nativo (iOS / Android em compilação nativa)
   if (Platform.OS !== 'web') {
     try {
+      const { docHtml } = compilarHtmlRelatorio(dados);
       const { uri } = await Print.printToFileAsync({ html: docHtml });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
@@ -160,60 +228,45 @@ export async function compartilharPdfRelatorio(
     }
   }
 
-  // 2. Web Browser
+  // 2. Web Browser (iOS Safari, Android Chrome, etc. - idêntico a index.php)
   if (typeof window !== 'undefined') {
-    // Tenta Web Share API nativa com arquivo PDF se o navegador suportar (Mobile Chrome / Safari)
-    const html2pdf = await getHtml2Pdf();
-    if (html2pdf && typeof navigator !== 'undefined' && (navigator as any).canShare) {
+    const file = new File([blob], nomeArquivo, { type: 'application/pdf' });
+
+    // 2.1. Tenta compartilhar o arquivo físico via Web Share API
+    // Isso abre a navbar / menu nativo de compartilhamento do dispositivo (WhatsApp, AirDrop, etc.)
+    if (typeof navigator !== 'undefined' && (navigator as any).canShare && (navigator as any).canShare({ files: [file] })) {
       try {
-        const container = document.createElement('div');
-        container.style.position = 'fixed';
-        container.style.left = '-9999px';
-        container.style.width = '210mm';
-        container.innerHTML = docHtml;
-        document.body.appendChild(container);
-
-        const pdfBlob: Blob = await html2pdf()
-          .set({
-            margin: 0,
-            image: { type: 'jpeg', quality: 0.95 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          })
-          .from(container)
-          .outputPdf('blob');
-
-        document.body.removeChild(container);
-
-        const file = new File([pdfBlob], nomeArquivo, { type: 'application/pdf' });
-        if ((navigator as any).canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: nomeArquivo,
-            text: `Segue o relatório da MMS: ${nomeArquivo}`,
-          });
+        await (navigator as any).share({
+          files: [file],
+          title: nomeArquivo,
+          text: `Segue o relatório da MMS: ${nomeArquivo}`,
+        });
+        return { sucesso: true, metodo: 'share_api' };
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          // Usuário fechou ou cancelou o menu nativo de compartilhamento
           return { sucesso: true, metodo: 'share_api' };
         }
-      } catch (e) {
-        console.warn('Tentativa de compartilhar arquivo via Web Share falhou:', e);
+        console.warn('Tentativa de compartilhar arquivo físico falhou, tentando link:', err);
       }
     }
 
-    // Se suportar apenas share de link/texto
+    // 2.2. Fallback de URL via Web Share API (se o navegador suportar compartilhamento nativo de texto/link)
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
           title: `Relatório MMS - ${dados.unidade}`,
-          text: `Segue o relatório da MMS: ${nomeArquivo}`,
+          text: `Acesse o relatório através deste link: ${nomeArquivo}`,
           url: fallbackUrl || window.location.href,
         });
         return { sucesso: true, metodo: 'share_api' };
-      } catch (e) {
-        console.warn('Navigator share cancelado ou indisponível:', e);
+      } catch (err: any) {
+        if (err.name === 'AbortError') return { sucesso: true, metodo: 'share_api' };
+        console.warn('Navigator share de link falhou:', err);
       }
     }
 
-    // Fallback direto: WhatsApp
+    // 2.3. Fallback WhatsApp (Desktop Chrome sem Web Share API)
     const msg = encodeURIComponent(
       `*MMS RELATÓRIO DE TROCA DE TURMA*\n📄 *Arquivo:* ${nomeArquivo}\n⚓ *Unidade:* ${dados.unidade}\n📅 *Data:* ${dados.data}\n📍 *Local:* ${dados.local}\n👤 *Preposto:* ${dados.preposto}` +
         (fallbackUrl ? `\n🔗 *Acesse:* ${fallbackUrl}` : '')

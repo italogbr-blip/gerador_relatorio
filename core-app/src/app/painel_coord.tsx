@@ -911,7 +911,9 @@ export default function PainelCoordScreen() {
     if (!report) return;
     try {
       const pdfData = extractReportPdfData(report);
-      const res = await baixarPdfRelatorio(pdfData);
+      const rawUrl = report.pdf_url || report.caminho_pdf;
+      const formattedUrl = formatReportPdfUrl(rawUrl);
+      const res = await baixarPdfRelatorio(pdfData, formattedUrl);
       if (res.sucesso && Platform.OS !== 'web') {
         showCustomAlert('DOWNLOAD CONCLUÍDO', `Arquivo ${res.nomeArquivo} baixado com sucesso!`);
       }
@@ -925,10 +927,12 @@ export default function PainelCoordScreen() {
     if (!report) return;
     try {
       const pdfData = extractReportPdfData(report);
+      const rawUrl = report.pdf_url || report.caminho_pdf;
+      const formattedUrl = formatReportPdfUrl(rawUrl);
       const fallbackUrl = Platform.OS === 'web' && typeof window !== 'undefined'
-        ? `${window.location.origin}/?id=${report.id}`
+        ? (formattedUrl || `${window.location.origin}/?id=${report.id}`)
         : undefined;
-      await compartilharPdfRelatorio(pdfData, fallbackUrl);
+      await compartilharPdfRelatorio(pdfData, fallbackUrl, formattedUrl);
     } catch (e: any) {
       showCustomAlert('COMPARTILHAR', e.message || 'Falha ao abrir menu de compartilhamento.');
     }

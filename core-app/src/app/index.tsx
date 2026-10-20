@@ -451,6 +451,8 @@ interface TabData {
   semEmbarquePrev: boolean;
   semEmbarque: boolean;
   alinhamentoInfo: 'left' | 'justify';
+  pdfUrl?: string | null;
+  pdfNomeArquivo?: string | null;
 }
 
 const createDefaultTab = (prepostoDefault = ''): TabData => ({
@@ -478,6 +480,8 @@ const createDefaultTab = (prepostoDefault = ''): TabData => ({
   semEmbarquePrev: false,
   semEmbarque: false,
   alinhamentoInfo: 'left',
+  pdfUrl: null,
+  pdfNomeArquivo: null,
 });
 
 const getRotatedBase64 = (imageUri: string, angle: number): Promise<string> => {
@@ -2410,7 +2414,7 @@ export default function ReportGenerator() {
     setIsExportingPdf(true);
     try {
       const dados = obterDadosRelatorioAtual();
-      const res = await baixarPdfRelatorio(dados);
+      const res = await baixarPdfRelatorio(dados, currentData.pdfUrl);
       if (res.sucesso && Platform.OS !== 'web') {
         showCustomAlert('DOWNLOAD CONCLUÍDO', `Arquivo ${res.nomeArquivo} gerado com sucesso!`);
       }
@@ -2425,7 +2429,10 @@ export default function ReportGenerator() {
     setIsExportingPdf(true);
     try {
       const dados = obterDadosRelatorioAtual();
-      await compartilharPdfRelatorio(dados);
+      const fallbackUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? (currentData.pdfUrl || window.location.href)
+        : undefined;
+      await compartilharPdfRelatorio(dados, fallbackUrl, currentData.pdfUrl);
     } catch (e: any) {
       showCustomAlert('COMPARTILHAR', e.message || 'Falha ao abrir menu de compartilhamento.');
     } finally {
@@ -2499,6 +2506,7 @@ export default function ReportGenerator() {
           const phpData = await phpResp.json();
           if (phpData?.sucesso && phpData?.pdf_url) {
             pdfUrlResult = formatReportPdfUrl(phpData.pdf_url);
+            updateCurrentTab({ pdfUrl: pdfUrlResult, pdfNomeArquivo: phpData?.nome_arquivo || null });
           }
         }
       } catch (phpErr) {
