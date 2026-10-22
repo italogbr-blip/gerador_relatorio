@@ -841,12 +841,17 @@ export default function PainelCoordScreen() {
         ? (formattedUrl || `${window.location.origin}/ver_relatorio.php?id=${report.id}`)
         : undefined;
       const res = await compartilharPdfRelatorio(pdfData, fallbackUrl, formattedUrl);
-      if (res.sucesso && res.metodo === 'clipboard') {
+      if (!res.sucesso && res.metodo === 'not_supported') {
+        showCustomAlert(
+          'COMPARTILHAR',
+          'Função de compartilhar não suportada neste navegador. Use o botão Baixar.\n(O link foi copiado para a área de transferência).'
+        );
+      } else if (res.sucesso && res.metodo === 'clipboard') {
         showCustomAlert('LINK COPIADO', 'O link do relatório foi copiado para sua área de transferência para compartilhamento.');
       }
     } catch (e: any) {
-      if (e.name !== 'AbortError') {
-        showCustomAlert('COMPARTILHAR', e.message || 'Falha ao abrir menu de compartilhamento.');
+      if (e?.name !== 'AbortError') {
+        showCustomAlert('COMPARTILHAR', e?.message || 'Falha ao abrir menu de compartilhamento.');
       }
     }
   };

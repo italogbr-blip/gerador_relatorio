@@ -268,8 +268,9 @@ export async function baixarPdfRelatorio(
 export async function compartilharPdfRelatorio(
   dados: ReportPdfData,
   fallbackUrl?: string,
-  existingPdfUrl?: string | null
-): Promise<{ sucesso: boolean; metodo: 'share_api' | 'clipboard' | 'share_native' }> {
+  existingPdfUrl?: string | null,
+  preloadedBlob?: Blob | null
+): Promise<{ sucesso: boolean; metodo: 'share_api' | 'clipboard' | 'share_native' | 'not_supported' }> {
   const nomeArquivo = gerarNomeArquivoPdf(dados);
 
   // 1. Mobile Nativo (iOS / Android em runtime Expo nativo)
@@ -285,67 +286,74 @@ export async function compartilharPdfRelatorio(
         });
         return { sucesso: true, metodo: 'share_native' };
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return { sucesso: true, metodo: 'share_native' };
       console.warn('Erro no sharing nativo:', e);
     }
   }
 
-  // 2. Web Browser: Abre o menu nativo de compartilhamento do dispositivo (navmenu do navegador)
+  // 2. Web Browser: Abre a barra de compartilhamento nativa do sistema/navegador (Web Share API) conforme index.php
   if (typeof window !== 'undefined') {
-    const shareUrl = fallbackUrl || existingPdfUrl || window.location.href;
+    let linkParaCompartilhar = fallbackUrl || existingPdfUrl || window.location.href;
+    try {
+      const absoluteUrl = new URL(linkParaCompartilhar, window.location.href).href;
+      linkParaCompartilhar = absoluteUrl;
+    } catch {}
 
-    // Se o navegador suporta Web Share API (menu nativo de compartilhamento do navegador)
+    const shareDataUrl = {
+      title: `Relatório MMS - ${dados.unidade || 'Relatório'}`,
+      text: 'Acesse o relatório através deste link: ' + nomeArquivo,
+      url: linkParaCompartilhar,
+    };
+
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        // Tenta compartilhar com arquivo físico se já houver URL existente para download rápido
-        if (existingPdfUrl && (navigator as any).canShare) {
+        // Se temos o blob em memória (ou pré-carregado), tenta compartilhar o arquivo físico direto
+        if (preloadedBlob && (navigator as any).canShare) {
           try {
-            const resp = await fetch(existingPdfUrl);
-            if (resp.ok) {
-              const b = await resp.blob();
-              const f = new File([b], nomeArquivo, { type: 'application/pdf' });
-              if ((navigator as any).canShare({ files: [f] })) {
-                await (navigator as any).share({
-                  files: [f],
-                  title: nomeArquivo,
-                  text: `Segue o relatório da MMS: ${nomeArquivo}`,
-                });
-                return { sucesso: true, metodo: 'share_api' };
-              }
+            const file = new File([preloadedBlob], nomeArquivo, {
+              type: 'application/pdf',
+              lastModified: Date.now(),
+            });
+            if ((navigator as any).canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: nomeArquivo,
+                text: 'Acesse o relatório através deste link: ' + nomeArquivo,
+              });
+              return { sucesso: true, metodo: 'share_api' };
             }
-          } catch (fileErr) {
-            console.log('Tentativa de compartilhar arquivo via share sheet falhou, usando link:', fileErr);
+          } catch (fileErr: any) {
+            if (fileErr?.name === 'AbortError') return { sucesso: true, metodo: 'share_api' };
+            console.log('Compartilhamento de arquivo falhou, caindo para link direto:', fileErr);
           }
         }
 
-        // Abre o menu de compartilhamento do navegador com o link do relatório
-        await navigator.share({
-          title: `Relatório MMS - ${dados.unidade || 'Relatório'}`,
-          text: `Acesse o relatório através deste link: ${nomeArquivo}`,
-          url: shareUrl,
-        });
+        // Compartilha o link diretamente na barra nativa sem delay de rede para não expirar o gesto do usuário
+        await navigator.share(shareDataUrl);
         return { sucesso: true, metodo: 'share_api' };
       } catch (err: any) {
-        if (err.name === 'AbortError') {
-          // Usuário fechou ou cancelou o menu nativo de compartilhamento
+        if (err?.name === 'AbortError') {
           return { sucesso: true, metodo: 'share_api' };
         }
-        console.warn('Navigator share de link falhou:', err);
+        console.warn('Navigator share falhou:', err);
+        throw new Error('Erro ao compartilhar: ' + (err?.message || 'Falha ao acionar compartilhamento') + '\nPor favor, use o botão Baixar.');
       }
     }
 
-    // 2.1 Fallback Elegante: Copiar link para área de transferência (desktop browsers sem Web Share API)
+    // 3. Fallback: Se o navegador não suporta navigator.share (ex: navegadores desktop)
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-        return { sucesso: true, metodo: 'clipboard' };
+        await navigator.clipboard.writeText(linkParaCompartilhar);
+        return { sucesso: false, metodo: 'not_supported' };
       }
     } catch (clipErr) {
       console.warn('Falha ao copiar para área de transferência:', clipErr);
     }
+    return { sucesso: false, metodo: 'not_supported' };
   }
 
-  return { sucesso: false, metodo: 'clipboard' };
+  return { sucesso: false, metodo: 'not_supported' };
 }
 
 /**

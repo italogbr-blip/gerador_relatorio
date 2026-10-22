@@ -26,6 +26,7 @@ import {
   baixarPdfRelatorio,
   compartilharPdfRelatorio,
   gerarNomeArquivoPdf,
+  gerarPdfBlob,
   visualizarRelatorioHtml,
 } from '../lib/pdfManager';
 import {
@@ -2293,6 +2294,20 @@ export default function ReportGenerator() {
     setFirstErrorField(null);
     setPdfGenerated(true);
 
+    // Pré-carrega o Blob do PDF em segundo plano para o botão Compartilhar abrir a navbar de compartilhamento instantaneamente
+    if (Platform.OS === 'web') {
+      try {
+        const dadosPreload = obterDadosRelatorioAtual();
+        gerarPdfBlob(dadosPreload, currentData.pdfUrl)
+          .then((res) => {
+            cachedPdfBlobRef.current = res;
+          })
+          .catch((err) => {
+            console.warn('Pré-carregamento do PDF Blob em background:', err);
+          });
+      } catch (err) {}
+    }
+
     // Salva automaticamente o relatório gerado na nuvem Supabase
     salvarRelatorioNoSupabase();
 
@@ -2303,6 +2318,7 @@ export default function ReportGenerator() {
 
   // Handlers para Baixar, Compartilhar e Editar Relatório
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const cachedPdfBlobRef = useRef<{ blob: Blob; nomeArquivo: string } | null>(null);
 
   const obterDadosRelatorioAtual = () => ({
     grupo: currentData.grupo,
@@ -2346,22 +2362,33 @@ export default function ReportGenerator() {
   };
 
   const handleCompartilharRelatorio = async () => {
-    setIsExportingPdf(true);
+    // Aciona a folha/navbar nativa de compartilhamento imediatamente no clique sem delay
     try {
       const dados = obterDadosRelatorioAtual();
       const fallbackUrl = Platform.OS === 'web' && typeof window !== 'undefined'
         ? (currentData.pdfUrl || window.location.href)
         : undefined;
-      const res = await compartilharPdfRelatorio(dados, fallbackUrl, currentData.pdfUrl);
-      if (res.sucesso && res.metodo === 'clipboard') {
-        showCustomAlert('LINK COPIADO', 'O link do relatório foi copiado para sua área de transferência para compartilhamento.');
+      const res = await compartilharPdfRelatorio(
+        dados,
+        fallbackUrl,
+        currentData.pdfUrl,
+        cachedPdfBlobRef.current?.blob
+      );
+      if (!res.sucesso && res.metodo === 'not_supported') {
+        showCustomAlert(
+          'COMPARTILHAR',
+          'Função de compartilhar não suportada neste navegador. Use o botão Baixar.\n(O link foi copiado para a área de transferência).'
+        );
+      } else if (res.sucesso && res.metodo === 'clipboard') {
+        showCustomAlert(
+          'LINK COPIADO',
+          'O link do relatório foi copiado para sua área de transferência para compartilhamento.'
+        );
       }
     } catch (e: any) {
-      if (e.name !== 'AbortError') {
-        showCustomAlert('COMPARTILHAR', e.message || 'Falha ao abrir menu de compartilhamento.');
+      if (e?.name !== 'AbortError') {
+        showCustomAlert('COMPARTILHAR', e?.message || 'Falha ao abrir menu de compartilhamento.');
       }
-    } finally {
-      setIsExportingPdf(false);
     }
   };
 
