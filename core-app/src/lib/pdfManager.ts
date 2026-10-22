@@ -280,7 +280,6 @@ export async function compartilharPdfRelatorio(
       const { uri } = await Print.printToFileAsync({ html: docHtml });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
-          dialogTitle: `Compartilhar Relatório ${nomeArquivo}`,
           mimeType: 'application/pdf',
           UTI: 'com.adobe.pdf',
         });
@@ -301,14 +300,12 @@ export async function compartilharPdfRelatorio(
     } catch {}
 
     const shareDataUrl = {
-      title: `Relatório MMS - ${dados.unidade || 'Relatório'}`,
-      text: 'Acesse o relatório através deste link: ' + nomeArquivo,
       url: linkParaCompartilhar,
     };
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        // Se temos o blob em memória (ou pré-carregado), tenta compartilhar o arquivo físico direto
+        // Se temos o blob em memória (ou pré-carregado), compartilha o arquivo físico direto (sem título/texto conforme index.php:2608)
         if (preloadedBlob && (navigator as any).canShare) {
           try {
             const file = new File([preloadedBlob], nomeArquivo, {
@@ -318,8 +315,6 @@ export async function compartilharPdfRelatorio(
             if ((navigator as any).canShare({ files: [file] })) {
               await navigator.share({
                 files: [file],
-                title: nomeArquivo,
-                text: 'Acesse o relatório através deste link: ' + nomeArquivo,
               });
               return { sucesso: true, metodo: 'share_api' };
             }
@@ -329,7 +324,7 @@ export async function compartilharPdfRelatorio(
           }
         }
 
-        // Compartilha o link diretamente na barra nativa sem delay de rede para não expirar o gesto do usuário
+        // Compartilha o link diretamente na barra nativa sem título ou legenda
         await navigator.share(shareDataUrl);
         return { sucesso: true, metodo: 'share_api' };
       } catch (err: any) {
