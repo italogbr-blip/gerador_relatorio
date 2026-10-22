@@ -3978,16 +3978,15 @@ export default function ReportGenerator() {
                       resizeMode="stretch"
                     />
 
-                    <View style={styles.a4PageContent}>
-                      {/* Header do PDF */}
-                      <View style={styles.a4FixedLogo}>
-                        <Image
-                          source={require('../../assets/images/logo2.jpg')}
-                          style={{ width: 76, height: 76 }}
-                          resizeMode="contain"
-                        />
-                      </View>
+                    <View style={styles.a4FixedLogo}>
+                      <Image
+                        source={require('../../assets/images/logo2.jpg')}
+                        style={{ width: 80, height: 80 }}
+                        resizeMode="contain"
+                      />
+                    </View>
 
+                    <View style={styles.a4PageContent}>
                       <Text style={styles.a4DocumentTitle}>RELATÓRIO DE TROCA DE TURMA</Text>
 
                       {/* Informações Principais */}
@@ -4092,14 +4091,14 @@ export default function ReportGenerator() {
                           <View>{renderFormattedText(p1Lines2)}</View>
                         </View>
                       </View>
+                    </View>
 
-                      {/* Footer Corporativo (fixo no rodapé da página) */}
-                      <View style={styles.a4Footer}>
-                        <Text style={styles.a4FooterText}>
-                          Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
-                          E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-                        </Text>
-                      </View>
+                    {/* Footer Corporativo (fixo no rodapé da página) */}
+                    <View style={styles.a4Footer}>
+                      <Text style={styles.a4FooterText}>
+                        Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
+                        E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+                      </Text>
                     </View>
                   </View>
 
@@ -4111,14 +4110,14 @@ export default function ReportGenerator() {
                         style={styles.a4BgImage}
                         resizeMode="stretch"
                       />
+                      <View style={styles.a4FixedLogo}>
+                        <Image
+                          source={require('../../assets/images/logo2.jpg')}
+                          style={{ width: 80, height: 80 }}
+                          resizeMode="contain"
+                        />
+                      </View>
                       <View style={styles.a4PageContent}>
-                        <View style={styles.a4FixedLogo}>
-                          <Image
-                            source={require('../../assets/images/logo2.jpg')}
-                            style={{ width: 76, height: 76 }}
-                            resizeMode="contain"
-                          />
-                        </View>
                         <Text style={styles.a4DocumentTitle}>RELATÓRIO DE TROCA DE TURMA (CONT.)</Text>
 
                         <View style={[styles.a4PaxTable, { marginTop: 14 }]}>
@@ -4131,13 +4130,12 @@ export default function ReportGenerator() {
                             <View>{renderFormattedText(chunk.pax2)}</View>
                           </View>
                         </View>
-
-                        <View style={styles.a4Footer}>
-                          <Text style={styles.a4FooterText}>
-                            Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
-                            E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-                          </Text>
-                        </View>
+                      </View>
+                      <View style={styles.a4Footer}>
+                        <Text style={styles.a4FooterText}>
+                          Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
+                          E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+                        </Text>
                       </View>
                     </View>
                   ))}
@@ -4150,26 +4148,25 @@ export default function ReportGenerator() {
                         style={styles.a4BgImage}
                         resizeMode="stretch"
                       />
+                      <View style={styles.a4FixedLogo}>
+                        <Image
+                          source={require('../../assets/images/logo2.jpg')}
+                          style={{ width: 80, height: 80 }}
+                          resizeMode="contain"
+                        />
+                      </View>
                       <View style={styles.a4PageContent}>
-                        <View style={styles.a4FixedLogo}>
-                          <Image
-                            source={require('../../assets/images/logo2.jpg')}
-                            style={{ width: 76, height: 76 }}
-                            resizeMode="contain"
-                          />
-                        </View>
                         <Text style={styles.a4DocumentTitle}>{foto.titulo || 'ANEXO FOTOGRÁFICO'}</Text>
 
                         <View style={styles.a4PhotoContainer}>
                           <Image source={{ uri: foto.uri }} style={styles.a4PhotoImage} resizeMode="contain" />
                         </View>
-
-                        <View style={styles.a4Footer}>
-                          <Text style={styles.a4FooterText}>
-                            Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
-                            E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-                          </Text>
-                        </View>
+                      </View>
+                      <View style={styles.a4Footer}>
+                        <Text style={styles.a4FooterText}>
+                          Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072{'\n'}
+                          E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
+                        </Text>
                       </View>
                     </View>
                   ))}
@@ -6485,7 +6482,6 @@ const styles = StyleSheet.create({
     minHeight: 1123,
     maxHeight: 1123,
     borderRadius: 4,
-    padding: 0,
     borderWidth: 1,
     borderColor: colors.slate200,
     shadowColor: colors.black,
@@ -6495,15 +6491,15 @@ const styles = StyleSheet.create({
     elevation: 6,
     position: 'relative',
     overflow: 'hidden',
+    paddingTop: 114, // 30mm conforme index.php (.page-a4: padding: 30mm 15mm 18mm 15mm)
+    paddingHorizontal: 57, // 15mm conforme index.php
+    paddingBottom: 68, // 18mm conforme index.php
   },
   a4PageContent: {
     position: 'relative',
     zIndex: 2,
     width: '100%',
-    height: '100%',
-    paddingHorizontal: 44,
-    paddingTop: 32,
-    paddingBottom: 28,
+    flex: 1,
   },
   a4BgImage: {
     position: 'absolute',
@@ -6519,10 +6515,10 @@ const styles = StyleSheet.create({
   },
   a4FixedLogo: {
     position: 'absolute',
-    top: 24,
-    left: 44,
-    width: 76,
-    height: 76,
+    top: 19, // 5mm conforme index.php (.fixed-logo: top: 5mm; left: 15mm;)
+    left: 57, // 15mm conforme index.php
+    width: 80, // 80px conforme index.php
+    height: 80, // 80px conforme index.php
     zIndex: 5,
   },
   a4DocumentTitle: {
@@ -6531,8 +6527,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textDecorationLine: 'underline',
     textTransform: 'uppercase',
-    marginTop: 6,
-    marginBottom: 48,
+    marginTop: -8, // -2mm conforme index.php (.titulo-pdf: margin-top: -2mm; margin-bottom: 5mm;)
+    marginBottom: 19, // 5mm conforme index.php
     color: colors.black,
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
     letterSpacing: 0.5,
@@ -6596,15 +6592,15 @@ const styles = StyleSheet.create({
   },
   a4Footer: {
     position: 'absolute',
-    left: 44,
-    right: 44,
-    bottom: 24,
+    left: 57, // 15mm conforme index.php (.footer: bottom: 10mm; left: 15mm; right: 15mm;)
+    right: 57, // 15mm conforme index.php
+    bottom: 38, // 10mm conforme index.php
     alignItems: 'center',
     zIndex: 5,
   },
   a4FooterText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: 'bold',
     color: colors.black,
     textAlign: 'center',
