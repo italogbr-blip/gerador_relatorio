@@ -33,6 +33,7 @@ import {
   saveSessionLocal,
   logoutUserSession,
   isUserCoordinator,
+  authenticateUser,
   AppUserSession,
 } from '../lib/auth';
 import {
@@ -1800,122 +1801,30 @@ export default function ReportGenerator() {
       if (authMode === 'login') {
         const inputStr = authEmail.trim();
 
-        // 1. Busca na tabela de usuários migrados do MySQL (public.usuarios) com suporte a ilike e fallback
-        let dbUser: any = null;
-        const { data: matchedDbUser } = await supabase
-          .from('usuarios')
-          .select('*')
-          .or(`email.ilike.${inputStr},username.ilike.${inputStr}`)
-          .maybeSingle();
+        // Senha conferida no servidor (RPC login_usuario) ou no Supabase Auth
+        const result = await authenticateUser(inputStr, authPassword);
 
-        if (matchedDbUser) {
-          dbUser = matchedDbUser;
-        } else {
-          // Fallback case-insensitive se houver acento ou formato especial
-          const { data: allUsers } = await supabase.from('usuarios').select('*');
-          if (allUsers) {
-            const lowInput = inputStr.toLowerCase();
-            dbUser = allUsers.find(
-              (u) =>
-                u.username?.trim().toLowerCase() === lowInput ||
-                u.email?.trim().toLowerCase() === lowInput ||
-                u.nome?.trim().toLowerCase() === lowInput
-            );
+        if (!result.success || !result.session) {
+          recordFailedAttempt(inputStr);
+          setAuthMsg({ type: 'erro', text: result.error || 'Usuário não encontrado ou senha incorreta.' });
+          return;
+        }
+
+        const session = result.session;
+        setUserSession(session);
+
+        const userName = session.user.user_metadata?.name || inputStr.split('@')[0];
+        updateCurrentTab({ preposto: userName });
+
+        recordSuccessfulLogin(session.user.id, userName);
+
+        setAuthMsg({ type: 'sucesso', text: 'Login realizado com sucesso!' });
+        setTimeout(() => {
+          setIsAuthModalVisible(false);
+          if (typeof window !== 'undefined') {
+            window.scrollTo(0, 0);
           }
-        }
-
-        if (dbUser) {
-          // Usuário encontrado na base migrada! Login aprovado e sessão gerada instantaneamente.
-          const userSessionObj: AppUserSession = {
-            user: {
-              id: dbUser.id,
-              email: dbUser.email || `${dbUser.username}@app.local`,
-              user_metadata: {
-                name: dbUser.nome || dbUser.username,
-                username: dbUser.username,
-                nivel_autoridade: Number(dbUser.nivel_autoridade || 1),
-              },
-            },
-          };
-
-          saveSessionLocal(userSessionObj);
-          setUserSession(userSessionObj);
-
-          const userName = dbUser.nome || dbUser.username;
-          updateCurrentTab({ preposto: userName });
-
-          recordSuccessfulLogin(dbUser.id, userName);
-
-          setAuthMsg({ type: 'sucesso', text: 'Login realizado com sucesso!' });
-          setTimeout(() => {
-            setIsAuthModalVisible(false);
-            if (typeof window !== 'undefined') {
-              window.scrollTo(0, 0);
-            }
-          }, 600);
-          setAuthLoading(false);
-          return;
-        }
-
-        // 2. Se o usuário digitado não é e-mail, evita chamar Supabase Auth para prevenir o erro HTTP 400 no console
-        if (!inputStr.includes('@')) {
-          recordFailedAttempt(inputStr);
-          setAuthMsg({ type: 'erro', text: 'Usuário não encontrado ou senha incorreta.' });
-          setAuthLoading(false);
-          return;
-        }
-
-        // 3. Se for e-mail, tenta no Supabase Auth nativo
-        const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
-          email: inputStr,
-          password: authPassword,
-        });
-
-        if (authErr) {
-          recordFailedAttempt(inputStr);
-          setAuthMsg({
-            type: 'erro',
-            text: authErr.message === 'Invalid login credentials'
-              ? 'E-mail ou senha incorretos.'
-              : (authErr.message || 'Erro ao realizar login.'),
-          });
-        } else if (authData.session) {
-          // Busca o nivel_autoridade e nome em public.usuarios
-          const { data: dbUser } = await supabase
-            .from('usuarios')
-            .select('*')
-            .eq('email', inputStr.toLowerCase())
-            .maybeSingle();
-
-          const nivel = Number(dbUser?.nivel_autoridade ?? authData.session.user.user_metadata?.nivel_autoridade ?? 1);
-          const userName = dbUser?.nome || authData.session.user.user_metadata?.name || inputStr.split('@')[0];
-
-          const enrichedSession: AppUserSession = {
-            user: {
-              id: dbUser?.id || authData.session.user.id,
-              email: inputStr.toLowerCase(),
-              user_metadata: {
-                name: userName,
-                username: dbUser?.username || authData.session.user.user_metadata?.username || inputStr.split('@')[0],
-                nivel_autoridade: nivel,
-              },
-            },
-          };
-
-          saveSessionLocal(enrichedSession);
-          setUserSession(enrichedSession);
-          updateCurrentTab({ preposto: userName });
-
-          recordSuccessfulLogin(dbUser?.id || authData.session.user.id, userName);
-
-          setAuthMsg({ type: 'sucesso', text: 'Login realizado com sucesso!' });
-          setTimeout(() => {
-            setIsAuthModalVisible(false);
-            if (typeof window !== 'undefined') {
-              window.scrollTo(0, 0);
-            }
-          }, 600);
-        }
+        }, 600);
       } else {
         const cleanName = authName.trim();
         const cleanEmail = authEmail.trim().toLowerCase();
@@ -1957,7 +1866,11 @@ export default function ReportGenerator() {
           },
         });
 
-        if (!dbErr || !authErr || signUpData?.user) {
+        // Só considera a conta criada se o Supabase Auth aceitou o cadastro
+        if (!authErr && signUpData?.user) {
+          if (dbErr) {
+            console.warn('Conta criada no Auth, mas falhou ao gravar em public.usuarios:', dbErr.message);
+          }
           const userSessionObj: AppUserSession = {
             user: {
               id: signUpData?.user?.id || Date.now(),

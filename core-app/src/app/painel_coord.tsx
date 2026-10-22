@@ -23,7 +23,7 @@ import {
   visualizarRelatorioHtml,
 } from '../lib/pdfManager';
 import { ReportPdfData } from '../lib/pdfHtmlGenerator';
-import { verifyCoordinatorAccess, logoutUserSession, saveSessionLocal, getSavedSessionSync, AppUserSession } from '../lib/auth';
+import { verifyCoordinatorAccess, logoutUserSession, saveSessionLocal, getSavedSessionSync, AppUserSession, unlockCoordinatorPanel, escapeOrValue } from '../lib/auth';
 import {
   fetchFooterConfig,
   saveFooterConfig,
@@ -212,60 +212,16 @@ export default function PainelCoordScreen() {
     setErroSenhaPainel(null);
 
     try {
-      // 1. Consulta o usuário na tabela usuarios do Supabase
-      const { data: userRows } = await supabase
-        .from('usuarios')
-        .select('*')
-        .or(`username.ilike.${usuarioDigitado},email.ilike.${usuarioDigitado}`);
+      // Credenciais conferidas no servidor (RPC desbloquear_painel_coord): só Usuários Nível 2
+      const result = await unlockCoordinatorPanel(usuarioDigitado, senhaDigitada);
 
-      const matchedUser = userRows && userRows.length > 0 ? userRows[0] : null;
-
-      // 2. Consulta a tabela coord_senha no Supabase
-      const { data: rows } = await supabase
-        .from('coord_senha')
-        .select('*')
-        .limit(1);
-
-      let senhaHashDb = '';
-      if (rows && rows.length > 0 && rows[0].senha_hash) {
-        senhaHashDb = rows[0].senha_hash;
-      }
-
-      // Senhas aceitas: 253095 (solicitada), a senha do banco, ou senhas padrão
-      const isSenhaCorreta =
-        senhaDigitada === '253095' ||
-        senhaDigitada === senhaHashDb ||
-        (senhaHashDb && senhaHashDb.includes(senhaDigitada)) ||
-        senhaDigitada === 'mms2024' ||
-        senhaDigitada === 'coord2024' ||
-        senhaDigitada === 'admin2024';
-
-      // Validação de Usuário (italogabriel ou qualquer usuário Nível 2)
-      const isUsuarioValido =
-        usuarioDigitado === 'italogabriel' ||
-        (matchedUser && (matchedUser.nivel_autoridade >= 2 || matchedUser.nivel_autoridade === '2'));
-
-      if (isSenhaCorreta && isUsuarioValido) {
-        const coordUser = matchedUser || {
-          id: 1,
-          username: 'italogabriel',
-          nome: 'Ítalo Gabriel',
-          email: 'italogabriel1503@gmail.com',
-          nivel_autoridade: 2,
+      if (result.success && result.session) {
+        const sessionPayload = result.session;
+        const coordUser = {
+          id: sessionPayload.user.id,
+          username: sessionPayload.user.user_metadata.username,
         };
 
-        const sessionPayload: AppUserSession = {
-          user: {
-            ...coordUser,
-            user_metadata: {
-              name: coordUser.nome || coordUser.username || 'Ítalo Gabriel',
-              username: coordUser.username || 'italogabriel',
-              nivel_autoridade: 2,
-            },
-          },
-        };
-
-        await saveSessionLocal(sessionPayload);
         setUserSession(sessionPayload);
         setIsAuthorized(true);
         setIsPanelUnlocked(true);
@@ -309,7 +265,7 @@ export default function PainelCoordScreen() {
         // Grava tentativa falha em coord_acessos_falhos (com redundância local imediata)
         const falhaObj = {
           id: Date.now(),
-          usuario_id: matchedUser?.id ? Number(matchedUser.id) : null,
+          usuario_id: null,
           username: usuarioDigitado || 'desconhecido',
           ip: userIp || '127.0.0.1',
           user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 500) : 'App',
@@ -329,11 +285,7 @@ export default function PainelCoordScreen() {
           await supabase.from('coord_acessos_falhos').insert([falhaObj]);
         } catch (e) { }
 
-        if (!isUsuarioValido && isSenhaCorreta) {
-          setErroSenhaPainel('Usuário sem autorização de Coordenação (Nível 2). Tentativa registrada.');
-        } else {
-          setErroSenhaPainel('Usuário ou senha incorretos. Tentativa registrada.');
-        }
+        setErroSenhaPainel(`${result.error || 'Usuário ou senha incorretos.'} Tentativa registrada.`);
       }
     } catch (e) {
       setErroSenhaPainel('Erro ao validar credenciais no banco de dados.');
@@ -615,7 +567,7 @@ export default function PainelCoordScreen() {
       }
 
       if (filtroBusca.trim()) {
-        const term = `%${filtroBusca.trim()}%`;
+        const term = escapeOrValue(`%${filtroBusca.trim()}%`);
         query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term}`);
       }
 
@@ -690,7 +642,7 @@ export default function PainelCoordScreen() {
     try {
       const { data, error } = await supabase
         .from('usuarios')
-        .select('*')
+        .select('id, nome, username, email, nivel_autoridade, data_cadastro, last_activity')
         .order('id', { ascending: false });
 
       if (!error && data) {

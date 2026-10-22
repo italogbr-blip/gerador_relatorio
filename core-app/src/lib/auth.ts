@@ -187,7 +187,66 @@ export async function verifyCoordinatorAccess(): Promise<{
 }
 
 /**
+ * Escapa um valor para uso seguro dentro de filtros `.or()` do PostgREST.
+ * Sem isso, vírgulas, parênteses e outros caracteres digitados pelo usuário
+ * quebram a sintaxe e geram HTTP 400.
+ */
+export function escapeOrValue(value: string): string {
+  return `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/** Converte a linha retornada pelas RPCs de login em sessão do app. */
+function sessionFromDbUser(dbUser: any, forceNivel?: number): AppUserSession {
+  return {
+    user: {
+      id: dbUser.id,
+      email: dbUser.email || `${dbUser.username}@app.local`,
+      user_metadata: {
+        name: dbUser.nome || dbUser.username || 'Usuário',
+        username: dbUser.username || '',
+        nivel_autoridade: forceNivel ?? Number(dbUser.nivel_autoridade || 1),
+      },
+    },
+  };
+}
+
+/**
+ * Desbloqueio do Painel de Coordenação.
+ * A senha é conferida no servidor (RPC desbloquear_painel_coord) e só retorna
+ * sucesso para usuários Nível 2.
+ */
+export async function unlockCoordinatorPanel(
+  userOrEmail: string,
+  pass: string
+): Promise<{ success: boolean; session?: AppUserSession; error?: string }> {
+  const login = userOrEmail.trim();
+  if (!login || !pass) {
+    return { success: false, error: 'Preencha o usuário e a senha.' };
+  }
+  try {
+    const { data, error } = await supabase.rpc('desbloquear_painel_coord', {
+      p_login: login,
+      p_senha: pass,
+    });
+    if (error) {
+      return { success: false, error: 'Erro ao validar credenciais no servidor.' };
+    }
+    const dbUser = Array.isArray(data) ? data[0] : data;
+    if (!dbUser) {
+      return { success: false, error: 'Usuário ou senha incorretos, ou sem autorização Nível 2.' };
+    }
+    const session = sessionFromDbUser(dbUser, 2);
+    saveSessionLocal(session);
+    return { success: true, session };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Erro inesperado ao validar credenciais.' };
+  }
+}
+
+/**
  * Autentica usuário pelo Supabase e base de usuários migrados.
+ * 1. Usuários migrados do PHP: senha conferida no servidor (RPC login_usuario).
+ * 2. Contas novas (e-mail): Supabase Auth nativo.
  */
 export async function authenticateUser(
   userOrEmail: string,
@@ -199,41 +258,18 @@ export async function authenticateUser(
   }
 
   try {
-    // 1. Busca na base de usuários public.usuarios
-    let dbUser: any = null;
-    const { data: matchedDbUser } = await supabase
-      .from('usuarios')
-      .select('*')
-      .or(`email.ilike.${inputStr},username.ilike.${inputStr}`)
-      .maybeSingle();
-
-    if (matchedDbUser) {
-      dbUser = matchedDbUser;
-    } else {
-      const { data: allUsers } = await supabase.from('usuarios').select('*');
-      if (allUsers) {
-        const lowInput = inputStr.toLowerCase();
-        dbUser = allUsers.find(
-          (u) =>
-            u.username?.trim().toLowerCase() === lowInput ||
-            u.email?.trim().toLowerCase() === lowInput ||
-            u.nome?.trim().toLowerCase() === lowInput
-        );
-      }
+    // 1. Usuário migrado: confere a senha no servidor, nunca no navegador
+    const { data: rpcData, error: rpcErr } = await supabase.rpc('login_usuario', {
+      p_login: inputStr,
+      p_senha: pass,
+    });
+    if (rpcErr) {
+      console.warn('Erro na RPC login_usuario:', rpcErr.message);
     }
+    const dbUser = Array.isArray(rpcData) ? rpcData[0] : rpcData;
 
     if (dbUser) {
-      const userSessionObj: AppUserSession = {
-        user: {
-          id: dbUser.id,
-          email: dbUser.email || `${dbUser.username}@app.local`,
-          user_metadata: {
-            name: dbUser.nome || dbUser.username,
-            username: dbUser.username,
-            nivel_autoridade: Number(dbUser.nivel_autoridade || 1),
-          },
-        },
-      };
+      const userSessionObj = sessionFromDbUser(dbUser);
       saveSessionLocal(userSessionObj);
       return { success: true, session: userSessionObj };
     }
@@ -258,7 +294,7 @@ export async function authenticateUser(
       if (authData.session) {
         const { data: dbUserEmail } = await supabase
           .from('usuarios')
-          .select('*')
+          .select('id, nome, username, email, nivel_autoridade')
           .eq('email', inputStr.toLowerCase())
           .maybeSingle();
 

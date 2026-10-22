@@ -17,7 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
-import { getSavedSessionSync, getValidatedUserSession, authenticateUser, AppUserSession } from '../lib/auth';
+import { getSavedSessionSync, getValidatedUserSession, authenticateUser, escapeOrValue, AppUserSession } from '../lib/auth';
 import { gerarHtmlPdfFidelidade } from '../lib/pdfHtmlGenerator';
 
 const modernFont = Platform.OS === 'web'
@@ -141,7 +141,7 @@ export default function MeusRelatoriosScreen() {
 
       // Se houver busca por texto (unidade ou local)
       if (filtroBusca.trim()) {
-        const term = `%${filtroBusca.trim()}%`;
+        const term = escapeOrValue(`%${filtroBusca.trim()}%`);
         query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term}`);
       }
 
