@@ -179,7 +179,7 @@ export async function gerarPdfBlob(
           }
 
           const canvas = await h2c(pageEl, {
-            scale: 2,
+            scale: 1.4,
             useCORS: true,
             allowTaint: true,
             letterRendering: true,
@@ -195,7 +195,7 @@ export async function gerarPdfBlob(
             y: 0,
           });
 
-          const imgData = canvas.toDataURL('image/jpeg', 0.96);
+          const imgData = canvas.toDataURL('image/jpeg', 0.75);
           pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
         }
 

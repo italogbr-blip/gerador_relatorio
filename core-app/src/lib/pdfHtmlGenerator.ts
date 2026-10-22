@@ -192,7 +192,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
         <div class="mms-pdf-page">
           <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
           <div class="page-content">
-            <div class="header-logo">
+            <div class="fixed-logo">
               <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
             </div>
             <div class="titulo-pdf">RELATÓRIO DE TROCA DE TURMA (CONT.)</div>
@@ -230,14 +230,14 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
           <div class="mms-pdf-page">
             <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
             <div class="page-content">
-              <div class="header-logo">
+              <div class="fixed-logo">
                 <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
               </div>
-              <div style="padding-top: 8px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 12px; text-decoration: underline; font-family: 'Times New Roman', Times, serif;">
+              <div style="padding-top: 8px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 12px; text-decoration: underline; text-underline-offset: 4px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase;">
                 ${titulo}
               </div>
-              <div style="flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; overflow: hidden;">
-                <img src="${src}" style="max-width: 100%; max-height: 720px; object-fit: contain; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+              <div style="text-align: center; width: 100%; margin-top: 8px; margin-bottom: 10px;">
+                <img src="${src}" style="max-width: 100%; max-height: 650px; object-fit: contain; border-radius: 4px; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.08);" />
               </div>
               <div class="footer">
                 Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
@@ -313,13 +313,15 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       display: flex;
       flex-direction: column;
     }
-    .header-logo {
-      width: 100%;
-      margin-bottom: 2px;
-      margin-top: -4px;
-      text-align: left;
+    .fixed-logo {
+      position: absolute;
+      top: 24px;
+      left: 44px;
+      width: 76px;
+      height: 76px;
+      z-index: 5;
     }
-    .header-logo img {
+    .fixed-logo img {
       width: 76px;
       height: 76px;
       object-fit: contain;
@@ -328,12 +330,14 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
     .titulo-pdf {
       text-align: center;
       font-weight: bold;
-      font-size: 17px;
+      font-size: 16px;
       text-decoration: underline;
-      margin-top: -6px;
-      margin-bottom: 12px;
+      text-underline-offset: 4px;
+      margin-top: 6px;
+      margin-bottom: 20px;
       text-transform: uppercase;
-      font-family: "Times New Roman", Times, serif;
+      font-family: "Times New Roman", Times, "Times-Roman", serif;
+      letter-spacing: 0.5px;
     }
     .row { 
       margin-bottom: 6px; 
@@ -400,7 +404,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
   <div class="mms-pdf-page">
     <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
     <div class="page-content">
-      <div class="header-logo">
+      <div class="fixed-logo">
         <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
       </div>
       <div class="titulo-pdf">RELATÓRIO DE TROCA DE TURMA</div>
