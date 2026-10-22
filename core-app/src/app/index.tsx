@@ -3982,7 +3982,7 @@ export default function ReportGenerator() {
                       {/* Header do PDF */}
                       <View style={styles.a4FixedLogo}>
                         <Image
-                          source={require('../../assets/images/logo.png')}
+                          source={require('../../assets/images/logo2.jpg')}
                           style={{ width: 76, height: 76 }}
                           resizeMode="contain"
                         />
@@ -4114,7 +4114,7 @@ export default function ReportGenerator() {
                       <View style={styles.a4PageContent}>
                         <View style={styles.a4FixedLogo}>
                           <Image
-                            source={require('../../assets/images/logo.png')}
+                            source={require('../../assets/images/logo2.jpg')}
                             style={{ width: 76, height: 76 }}
                             resizeMode="contain"
                           />
@@ -4153,7 +4153,7 @@ export default function ReportGenerator() {
                       <View style={styles.a4PageContent}>
                         <View style={styles.a4FixedLogo}>
                           <Image
-                            source={require('../../assets/images/logo.png')}
+                            source={require('../../assets/images/logo2.jpg')}
                             style={{ width: 76, height: 76 }}
                             resizeMode="contain"
                           />
