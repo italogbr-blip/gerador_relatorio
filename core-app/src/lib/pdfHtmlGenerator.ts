@@ -196,7 +196,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
               <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
             </div>
             <div class="titulo-pdf">RELATÓRIO DE TROCA DE TURMA (CONT.)</div>
-            <div class="pax-container" style="margin-top: 14px;">
+            <div class="pax-container" style="margin-top: 0px;">
               <div class="pax-col-left">
                 <div class="pax-title">Nomes Passageiros Embarcando (Cont.):</div>
                 <div>${chunk1Html}</div>
@@ -233,7 +233,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
               <div class="fixed-logo">
                 <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
               </div>
-              <div style="padding-top: 8px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 12px; text-decoration: underline; text-underline-offset: 4px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase;">
+              <div style="padding-top: 8px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 42px; text-decoration: underline; text-underline-offset: 4px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase;">
                 ${titulo}
               </div>
               <div style="text-align: center; width: 100%; margin-top: 8px; margin-bottom: 10px;">
@@ -334,7 +334,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       text-decoration: underline;
       text-underline-offset: 4px;
       margin-top: 6px;
-      margin-bottom: 20px;
+      margin-bottom: 48px;
       text-transform: uppercase;
       font-family: "Times New Roman", Times, "Times-Roman", serif;
       letter-spacing: 0.5px;
