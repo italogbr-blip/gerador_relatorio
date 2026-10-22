@@ -92,6 +92,7 @@ O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/U
 - [x] **Deploy de Produção & Domínio Próprio:** Online em `relatorios.atmai.com.br` com SSL.
 - [x] **Compartilhamento WhatsApp:** Resumo de atendimento e link direto para o WhatsApp.
 - [x] **Controle Estrito de Acesso Nível 2 & Refinamento de Auth:** Isolamento de menus e bloqueio da rota do painel.
+- [x] **Autenticação Segura via RPCs no Supabase:** Validação de senhas bcrypt no servidor via `pgcrypto` (`login_usuario` e `desbloquear_painel_coord`), remoção de senhas em hardcode e bloqueio de colunas sensíveis via permissões PostgREST.
 
 ---
 
