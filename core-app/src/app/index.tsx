@@ -6532,7 +6532,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     textTransform: 'uppercase',
     marginTop: 6,
-    marginBottom: 20,
+    marginBottom: 48,
     color: colors.black,
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
     letterSpacing: 0.5,
