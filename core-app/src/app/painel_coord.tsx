@@ -170,7 +170,7 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // Controle de Usuário e Senha do Painel de Coordenação (italogabriel / 253095)
+  // Controle de Acesso e Desbloqueio do Painel de Coordenação (Nível 2 via RPC)
   const [isPanelUnlocked, setIsPanelUnlocked] = useState<boolean>(() => {
     if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
       return sessionStorage.getItem('mms_coord_unlocked') === 'true';
@@ -865,11 +865,23 @@ export default function PainelCoordScreen() {
     visualizarRelatorioHtml(pdfData);
   };
 
+  const handleVoltarAoGerador = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = '/';
+    } else {
+      router.replace('/');
+    }
+  };
+
   // 4. Editar relatório na coordenação (redireciona para o gerador com todos os campos desbloqueados)
   const handleEditarRelatorio = (report: any) => {
     if (!report) return;
     setSelectedReport(null);
-    router.push(`/?editId=${report.id}`);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = `/?editId=${report.id}`;
+    } else {
+      router.push(`/?editId=${report.id}`);
+    }
   };
 
   // Cores de Badge de Empresa idênticas ao coord/index.php
@@ -1080,7 +1092,7 @@ export default function PainelCoordScreen() {
     );
   }
 
-  // 2. Verificação de Acesso / Senha do Painel (Usuário italogabriel e Senha 253095)
+  // 2. Verificação de Acesso / Desbloqueio do Painel com Credenciais de Coordenador (Nível 2)
   if (!isAuthorized || !isPanelUnlocked) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
@@ -1095,12 +1107,7 @@ export default function PainelCoordScreen() {
             <View style={styles.coordNavRight}>
               <TouchableOpacity
                 style={styles.coordNavVoltarBtn}
-                onPress={() => {
-                  router.replace('/');
-                  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }
-                }}
+                onPress={handleVoltarAoGerador}
                 activeOpacity={0.8}
               >
                 <Text style={styles.coordNavVoltarBtnText}>VOLTAR</Text>
@@ -1170,12 +1177,7 @@ export default function PainelCoordScreen() {
 
             <TouchableOpacity
               style={styles.btnVoltarGeradorLock}
-              onPress={() => {
-                router.replace('/');
-                if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
+              onPress={handleVoltarAoGerador}
               activeOpacity={0.7}
             >
               <Text style={styles.btnVoltarGeradorLockText}>← Voltar ao Gerador de Relatórios</Text>
@@ -1228,12 +1230,7 @@ export default function PainelCoordScreen() {
                 <TouchableOpacity
                   style={styles.coordNavVoltarBtn}
                   className="coord-nav-btn-voltar"
-                  onPress={() => {
-                    router.replace('/');
-                    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                  }}
+                  onPress={handleVoltarAoGerador}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.coordNavVoltarBtnText}>VOLTAR</Text>

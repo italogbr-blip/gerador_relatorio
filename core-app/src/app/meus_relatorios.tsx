@@ -17,7 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
-import { getSavedSessionSync, getValidatedUserSession, authenticateUser, escapeOrValue, AppUserSession } from '../lib/auth';
+import { getSavedSessionSync, getValidatedUserSession, authenticateUser, escapeOrValue, isUserCoordinator, AppUserSession } from '../lib/auth';
 import { gerarHtmlPdfFidelidade, ReportPdfData } from '../lib/pdfHtmlGenerator';
 import { baixarPdfRelatorio, visualizarRelatorioHtml } from '../lib/pdfManager';
 
@@ -116,10 +116,22 @@ export default function MeusRelatoriosScreen() {
     fetchRelatorios(res.session);
   };
 
+  const handleVoltarAoGerador = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = '/';
+    } else {
+      router.replace('/');
+    }
+  };
+
   const handleEditarRelatorio = (report: any) => {
     if (!report) return;
     setSelectedReport(null);
-    router.push({ pathname: '/', params: { editId: String(report.id) } });
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = `/?editId=${report.id}`;
+    } else {
+      router.push({ pathname: '/', params: { editId: String(report.id) } });
+    }
   };
 
   // Carregar Relatórios do Supabase
@@ -223,7 +235,11 @@ export default function MeusRelatoriosScreen() {
       onConfirm: async () => {
         setCustomDialog((prev) => ({ ...prev, visible: false }));
         setLoading(true);
-        const { error } = await supabase.from('relatorios').delete().eq('id', id);
+        let deleteQuery = supabase.from('relatorios').delete().eq('id', id);
+        if (userSession?.user?.id && !isUserCoordinator(userSession)) {
+          deleteQuery = deleteQuery.eq('usuario_id', userSession.user.id);
+        }
+        const { error } = await deleteQuery;
         if (error) {
           alert('Erro ao excluir relatório: ' + error.message);
         } else {
@@ -375,12 +391,7 @@ export default function MeusRelatoriosScreen() {
           <View style={styles.navRight}>
             <TouchableOpacity
               style={styles.btnVoltar}
-              onPress={() => {
-                router.replace('/');
-                if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
+              onPress={handleVoltarAoGerador}
               activeOpacity={0.8}
             >
               <Text style={styles.btnVoltarText}>VOLTAR</Text>
@@ -561,12 +572,8 @@ export default function MeusRelatoriosScreen() {
                   paddingVertical: 10,
                   alignItems: 'center',
                 }}
-                onPress={() => {
-                  router.replace('/');
-                  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }
-                }}
+                onPress={handleVoltarAoGerador}
+                activeOpacity={0.7}
               >
                 <Text style={{ color: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12, fontWeight: '700' }}>
                   ← Voltar
@@ -590,12 +597,7 @@ export default function MeusRelatoriosScreen() {
         <View style={styles.navRight}>
           <TouchableOpacity
             style={styles.btnVoltar}
-            onPress={() => {
-              router.replace('/');
-              if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }
-            }}
+            onPress={handleVoltarAoGerador}
             activeOpacity={0.8}
           >
             <Text style={styles.btnVoltarText}>VOLTAR</Text>
