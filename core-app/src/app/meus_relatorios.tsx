@@ -373,11 +373,17 @@ export default function MeusRelatoriosScreen() {
             <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>HISTÓRICO DE RELATÓRIOS</Text>
           </View>
           <View style={styles.navRight}>
-            <TouchableOpacity style={styles.btnThemeToggle} onPress={toggleTheme}>
-              <Text style={styles.btnThemeToggleText}>{isDarkMode ? '🌙' : '☀️'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.btnVoltar} onPress={() => router.push('/')}>
-              <Text style={styles.btnVoltarText}>← GERADOR</Text>
+            <TouchableOpacity
+              style={styles.btnVoltar}
+              onPress={() => {
+                router.replace('/');
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.btnVoltarText}>VOLTAR</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -555,10 +561,15 @@ export default function MeusRelatoriosScreen() {
                   paddingVertical: 10,
                   alignItems: 'center',
                 }}
-                onPress={() => router.push('/')}
+                onPress={() => {
+                  router.replace('/');
+                  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
               >
                 <Text style={{ color: isDarkMode ? '#94a3b8' : '#64748b', fontSize: 12, fontWeight: '700' }}>
-                  ← Voltar para o Gerador
+                  ← Voltar
                 </Text>
               </TouchableOpacity>
             </View>
@@ -577,24 +588,17 @@ export default function MeusRelatoriosScreen() {
           <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>MEUS RELATÓRIOS</Text>
         </View>
         <View style={styles.navRight}>
-          {/* Switch de Tema */}
-          <TouchableOpacity
-            style={styles.btnThemeToggle}
-            onPress={toggleTheme}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.btnThemeToggleText}>{isDarkMode ? '🌙' : '☀️'}</Text>
-          </TouchableOpacity>
-
-          <Text style={[styles.navUserGreeting, !isDarkMode && { color: '#475569' }]}>
-            Olá, <Text style={{ fontWeight: 'bold' }}>{username}</Text>
-          </Text>
           <TouchableOpacity
             style={styles.btnVoltar}
-            onPress={() => router.push('/')}
+            onPress={() => {
+              router.replace('/');
+              if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
             activeOpacity={0.8}
           >
-            <Text style={styles.btnVoltarText}>← VOLTAR AO GERADOR</Text>
+            <Text style={styles.btnVoltarText}>VOLTAR</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -181,26 +181,43 @@ export default function PainelCoordScreen() {
     try {
       const syncSession = getSavedSessionSync();
       if (syncSession?.user) {
-        return syncSession.user.user_metadata?.name || syncSession.user.email?.split('@')[0] || 'italogabriel';
+        return syncSession.user.user_metadata?.name || syncSession.user.user_metadata?.username || syncSession.user.email?.split('@')[0] || '';
       }
     } catch (e) {}
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem('mms_last_coord_user');
       if (saved) return saved;
     }
-    return 'italogabriel';
+    return '';
   });
   const [inputSenhaPainel, setInputSenhaPainel] = useState<string>('');
   const [erroSenhaPainel, setErroSenhaPainel] = useState<string | null>(null);
   const [validandoSenhaPainel, setValidandoSenhaPainel] = useState<boolean>(false);
   const [isEmpresaDropdownOpen, setIsEmpresaDropdownOpen] = useState<boolean>(false);
 
+  // Sincroniza o campo USUÁRIO com o nome do usuário logado no momento
+  useEffect(() => {
+    if (userSession?.user) {
+      const nomeAtual =
+        userSession.user.user_metadata?.name ||
+        userSession.user.user_metadata?.username ||
+        userSession.user.email?.split('@')[0];
+      if (nomeAtual) {
+        setInputUsuarioPainel(nomeAtual);
+      }
+    }
+  }, [userSession]);
+
   const handleDesbloquearPainel = async () => {
-    const usuarioDigitado = inputUsuarioPainel.trim().toLowerCase();
+    const loginParaValidar = (
+      userSession?.user?.user_metadata?.username ||
+      userSession?.user?.email ||
+      inputUsuarioPainel
+    ).trim();
     const senhaDigitada = inputSenhaPainel.trim();
 
-    if (!usuarioDigitado) {
-      setErroSenhaPainel('Por favor, digite o nome de usuário.');
+    if (!loginParaValidar) {
+      setErroSenhaPainel('Por favor, informe o usuário.');
       return;
     }
     if (!senhaDigitada) {
@@ -213,7 +230,7 @@ export default function PainelCoordScreen() {
 
     try {
       // Credenciais conferidas no servidor (RPC desbloquear_painel_coord): só Usuários Nível 2
-      const result = await unlockCoordinatorPanel(usuarioDigitado, senhaDigitada);
+      const result = await unlockCoordinatorPanel(loginParaValidar, senhaDigitada);
 
       if (result.success && result.session) {
         const sessionPayload = result.session;
@@ -1076,8 +1093,17 @@ export default function PainelCoordScreen() {
               <Text style={styles.coordNavLogoText}>PAINEL DE COORDENAÇÃO</Text>
             </View>
             <View style={styles.coordNavRight}>
-              <TouchableOpacity style={styles.coordNavVoltarBtn} onPress={() => router.push('/')} activeOpacity={0.8}>
-                <Text style={styles.coordNavVoltarBtnText}>← VOLTAR</Text>
+              <TouchableOpacity
+                style={styles.coordNavVoltarBtn}
+                onPress={() => {
+                  router.replace('/');
+                  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.coordNavVoltarBtnText}>VOLTAR</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1144,7 +1170,12 @@ export default function PainelCoordScreen() {
 
             <TouchableOpacity
               style={styles.btnVoltarGeradorLock}
-              onPress={() => router.push('/')}
+              onPress={() => {
+                router.replace('/');
+                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
               activeOpacity={0.7}
             >
               <Text style={styles.btnVoltarGeradorLockText}>← Voltar ao Gerador de Relatórios</Text>
@@ -1197,7 +1228,12 @@ export default function PainelCoordScreen() {
                 <TouchableOpacity
                   style={styles.coordNavVoltarBtn}
                   className="coord-nav-btn-voltar"
-                  onPress={() => router.push('/')}
+                  onPress={() => {
+                    router.replace('/');
+                    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.coordNavVoltarBtnText}>VOLTAR</Text>
