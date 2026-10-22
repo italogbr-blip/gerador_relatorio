@@ -97,7 +97,7 @@ export async function gerarPdfBlob(
     }
   }
 
-  // 2. Geração Web de Alta Resolução via jsPDF + html2canvas em iframe isolado (evita PDF em branco)
+  // 2. Geração Web de Alta Resolução via jsPDF + html2canvas em iframe isolado
   if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
     const engines = await getPdfEngines();
     if (engines?.jsPDF && engines?.html2canvas) {
@@ -110,10 +110,11 @@ export async function gerarPdfBlob(
       iframe.style.left = '0';
       iframe.style.width = '794px';
       iframe.style.height = '1123px';
-      iframe.style.opacity = '0.01';
+      iframe.style.opacity = '1'; // 100% opaco para html2canvas capturar com fidelidade total (NUNCA 0.01)
       iframe.style.pointerEvents = 'none';
       iframe.style.border = 'none';
-      iframe.style.zIndex = '99999';
+      iframe.style.zIndex = '-9999'; // Posicionado atrás do layout da aplicação (invisível ao usuário)
+      iframe.style.visibility = 'visible';
       document.body.appendChild(iframe);
 
       try {
@@ -133,6 +134,7 @@ export async function gerarPdfBlob(
                 if (img.complete && img.naturalWidth !== 0) return resolve();
                 img.onload = () => resolve();
                 img.onerror = () => resolve();
+                setTimeout(resolve, 2000);
               })
           )
         );
@@ -142,7 +144,7 @@ export async function gerarPdfBlob(
         }
 
         // Aguarda estabilização do layout
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 250));
 
         // Encontra todas as páginas .mms-pdf-page do documento
         const pageElements = Array.from(frameDoc.querySelectorAll('.mms-pdf-page')) as HTMLElement[];
@@ -161,6 +163,21 @@ export async function gerarPdfBlob(
             pdf.addPage('a4', 'portrait');
           }
 
+          // Isola a página atual para que ela fique no topo exato (0,0) do viewport do iframe
+          targetPages.forEach((p, idx) => {
+            p.style.display = idx === i ? 'block' : 'none';
+            if (idx === i) {
+              p.style.position = 'relative';
+              p.style.top = '0';
+              p.style.left = '0';
+              p.style.margin = '0 auto';
+            }
+          });
+
+          if (iframe.contentWindow) {
+            iframe.contentWindow.scrollTo(0, 0);
+          }
+
           const canvas = await h2c(pageEl, {
             scale: 2,
             useCORS: true,
@@ -168,10 +185,14 @@ export async function gerarPdfBlob(
             letterRendering: true,
             logging: false,
             backgroundColor: '#ffffff',
+            width: 794,
+            height: 1123,
             windowWidth: 794,
             windowHeight: 1123,
             scrollX: 0,
             scrollY: 0,
+            x: 0,
+            y: 0,
           });
 
           const imgData = canvas.toDataURL('image/jpeg', 0.96);
@@ -202,32 +223,42 @@ export async function baixarPdfRelatorio(
   dados: ReportPdfData,
   existingPdfUrl?: string | null
 ): Promise<{ sucesso: boolean; nomeArquivo: string }> {
-  const { blob, nomeArquivo } = await gerarPdfBlob(dados, existingPdfUrl);
+  try {
+    const { blob, nomeArquivo } = await gerarPdfBlob(dados, existingPdfUrl);
 
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = nomeArquivo;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = nomeArquivo;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+      return { sucesso: true, nomeArquivo };
+    }
+
+    // Native (iOS e Android): Usa expo-sharing para salvar ou exportar
+    if (await Sharing.isAvailableAsync()) {
+      const { docHtml } = compilarHtmlRelatorio(dados);
+      const { uri } = await Print.printToFileAsync({ html: docHtml });
+      await Sharing.shareAsync(uri, {
+        dialogTitle: `Baixar Relatório ${nomeArquivo}`,
+        mimeType: 'application/pdf',
+        UTI: 'com.adobe.pdf',
+      });
+    }
     return { sucesso: true, nomeArquivo };
+  } catch (err: any) {
+    console.error('Erro na geração direta do PDF via motor gráfico:', err);
+    // Fallback Web: abre tela de visualização em alta fidelidade com impressão/salvamento PDF imediato
+    if (Platform.OS === 'web') {
+      visualizarRelatorioHtml(dados);
+      return { sucesso: true, nomeArquivo: gerarNomeArquivoPdf(dados) };
+    }
+    throw err;
   }
-
-  // Native (iOS e Android): Usa expo-sharing para salvar ou exportar
-  if (await Sharing.isAvailableAsync()) {
-    const { docHtml } = compilarHtmlRelatorio(dados);
-    const { uri } = await Print.printToFileAsync({ html: docHtml });
-    await Sharing.shareAsync(uri, {
-      dialogTitle: `Baixar Relatório ${nomeArquivo}`,
-      mimeType: 'application/pdf',
-      UTI: 'com.adobe.pdf',
-    });
-  }
-  return { sucesso: true, nomeArquivo };
 }
 
 /**
