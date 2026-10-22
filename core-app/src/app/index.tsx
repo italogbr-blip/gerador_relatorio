@@ -92,7 +92,7 @@ const colors = {
   amber800: '#92400e',
 };
 
-const corporateFont = Platform.OS === 'web' 
+const corporateFont = Platform.OS === 'web'
   ? '"Times New Roman", Times, serif'
   : undefined;
 
@@ -850,7 +850,7 @@ export default function ReportGenerator() {
           try {
             initial[i] = JSON.parse(item);
             foundAny = true;
-          } catch (e) {}
+          } catch (e) { }
         }
       }
       if (foundAny) return initial;
@@ -882,7 +882,7 @@ export default function ReportGenerator() {
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
       try {
         return localStorage.getItem('mms_cached_app_version') || 'V1.2.4';
-      } catch (e) {}
+      } catch (e) { }
     }
     return 'V1.2.4';
   });
@@ -959,7 +959,7 @@ export default function ReportGenerator() {
       }
       try {
         localStorage.setItem('app_theme_dark', String(isDarkMode));
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [isDarkMode]);
 
@@ -1027,7 +1027,7 @@ export default function ReportGenerator() {
           allNotifs = pops;
           popupAtivo = pops.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // Fallback local para comunicados/popups
       if (typeof localStorage !== 'undefined') {
@@ -1044,7 +1044,7 @@ export default function ReportGenerator() {
               }
             });
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Se houver comunicado ativo, aciona o pop-up modal na tela se ainda não visto
@@ -1070,7 +1070,7 @@ export default function ReportGenerator() {
           .order('data_envio', { ascending: false })
           .limit(20);
         if (dbMsgs) msgs = dbMsgs;
-      } catch (e) {}
+      } catch (e) { }
 
       // Fallback e sincronização com localStorage de mensagens
       if (typeof localStorage !== 'undefined') {
@@ -1083,15 +1083,15 @@ export default function ReportGenerator() {
             msgs.forEach((m: any) => map.set(String(m.id || m.data_envio || m.titulo), m));
             msgs = Array.from(map.values());
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // 3. INTEGRAÇÃO CRÍTICA: Insere também todos os comunicados da coordenação na lista do sininho 🔔
       // Garante que mesmo quando abre em pop-up, o preposto encontra o histórico no menu de notificações
       if (allNotifs.length > 0) {
         allNotifs.forEach((n: any) => {
-          const exists = msgs.some((m: any) => 
-            (m.notif_id && m.notif_id === n.id) || 
+          const exists = msgs.some((m: any) =>
+            (m.notif_id && m.notif_id === n.id) ||
             (m.titulo === n.titulo && m.mensagem === n.mensagem)
           );
           if (!exists) {
@@ -1119,7 +1119,7 @@ export default function ReportGenerator() {
         try {
           const rawLidas = localStorage.getItem('mms_mensagens_lidas');
           if (rawLidas) lidas = JSON.parse(rawLidas);
-        } catch (e) {}
+        } catch (e) { }
       }
       const naoLidas = msgs.filter((m) => !lidas.includes(m.id) && !lidas.includes(m.notif_id));
       setUnreadCount(naoLidas.length);
@@ -1445,7 +1445,7 @@ export default function ReportGenerator() {
       }
       try {
         supabase.removeChannel(realtimeChannel);
-      } catch (e) {}
+      } catch (e) { }
       subscription.unsubscribe();
     };
   }, []);
@@ -1456,13 +1456,13 @@ export default function ReportGenerator() {
     setTabStore((prev) => {
       const existing = prev[activeTab] || createDefaultTab();
       const nextData = typeof updater === 'function' ? updater(existing) : { ...existing, ...updater };
-      
+
       // Persistência automática idêntica ao index.php
       if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         try {
           localStorage.setItem('mms_tab_' + activeTab, JSON.stringify(nextData));
           localStorage.setItem('mms_active_tab', String(activeTab));
-        } catch (e) {}
+        } catch (e) { }
       }
 
       mostrarToastSalvo();
@@ -1562,10 +1562,10 @@ export default function ReportGenerator() {
       // Fotos
       const fotosAnexadas: FotoItem[] = Array.isArray(parsed.fotos)
         ? parsed.fotos.map((f: any, idx: number) => ({
-            id: f.id || Date.now() + idx,
-            uri: f.uri || f.url || f.base64 || '',
-            titulo: f.titulo || `ANEXO ${idx + 1}`,
-          }))
+          id: f.id || Date.now() + idx,
+          uri: f.uri || f.url || f.base64 || '',
+          titulo: f.titulo || `ANEXO ${idx + 1}`,
+        }))
         : [];
 
       // Data
@@ -1661,7 +1661,7 @@ export default function ReportGenerator() {
         try {
           localStorage.setItem('mms_tab_' + nextId, JSON.stringify(newTabState));
           localStorage.setItem('mms_active_tab', String(nextId));
-        } catch (e) {}
+        } catch (e) { }
       }
       mostrarToastSalvo();
     }
@@ -1687,7 +1687,7 @@ export default function ReportGenerator() {
       if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         try {
           localStorage.setItem('mms_tab_' + tabIndex, JSON.stringify(defaultState));
-        } catch (e) {}
+        } catch (e) { }
       }
       mostrarToastSalvo();
       return;
@@ -1702,7 +1702,7 @@ export default function ReportGenerator() {
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
       try {
         localStorage.removeItem('mms_tab_' + tabIndex);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (activeTab === tabIndex) {
@@ -1711,7 +1711,7 @@ export default function ReportGenerator() {
       if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         try {
           localStorage.setItem('mms_active_tab', String(nextActive));
-        } catch (e) {}
+        } catch (e) { }
       }
     }
     mostrarToastSalvo();
@@ -1727,7 +1727,7 @@ export default function ReportGenerator() {
       if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         try {
           localStorage.setItem('mms_tab_' + activeTab, JSON.stringify(defaultState));
-        } catch (e) {}
+        } catch (e) { }
       }
     };
 
@@ -1756,11 +1756,11 @@ export default function ReportGenerator() {
         const list = raw ? JSON.parse(raw) : [];
         list.unshift(attempt);
         localStorage.setItem('mms_coord_acessos_falhos', JSON.stringify(list.slice(0, 100)));
-      } catch (e) {}
+      } catch (e) { }
     }
     try {
       await supabase.from('coord_acessos_falhos').insert([attempt]);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const recordSuccessfulLogin = async (userId: any, username: string) => {
@@ -1777,7 +1777,7 @@ export default function ReportGenerator() {
         const list = raw ? JSON.parse(raw) : [];
         list.unshift(logItem);
         localStorage.setItem('mms_registro_logins', JSON.stringify(list.slice(0, 50)));
-      } catch (e) {}
+      } catch (e) { }
     }
     try {
       await supabase.from('registro_logins').insert([{
@@ -1785,7 +1785,7 @@ export default function ReportGenerator() {
         ip: logItem.ip,
         data_login: logItem.data_login,
       }]);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Auth Functions
@@ -1925,7 +1925,7 @@ export default function ReportGenerator() {
         }
         keysToRemove.forEach((k) => localStorage.removeItem(k));
         window.location.reload();
-      } catch (e) {}
+      } catch (e) { }
     }
   };
 
@@ -2211,18 +2211,18 @@ export default function ReportGenerator() {
       if (el) {
         try {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } catch (e) {}
+        } catch (e) { }
 
         try {
           const rect = el.getBoundingClientRect();
           const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
           const targetY = rect.top + scrollTop - 140;
           window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
-        } catch (e) {}
+        } catch (e) { }
 
         try {
           el.focus();
-        } catch (e) {}
+        } catch (e) { }
       }
     }, 120);
   };
@@ -2509,7 +2509,7 @@ export default function ReportGenerator() {
           data_criacao: new Date().toISOString(),
         });
         localStorage.setItem('mms_relatorios_offline_salvos', JSON.stringify(lista));
-      } catch (e) {}
+      } catch (e) { }
     }
   };
 
@@ -2650,7 +2650,7 @@ export default function ReportGenerator() {
       try {
         localStorage.setItem('mms_tab_' + nextSlot, JSON.stringify(newTabState));
         localStorage.setItem('mms_active_tab', String(nextSlot));
-      } catch (e) {}
+      } catch (e) { }
     }
   };
 
@@ -2663,7 +2663,7 @@ export default function ReportGenerator() {
       if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         try {
           localStorage.removeItem('mms_tab_' + slotId);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       setTabs((prevTabs) => {
@@ -2676,7 +2676,7 @@ export default function ReportGenerator() {
           if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
             try {
               localStorage.setItem('mms_active_tab', String(nextActive));
-            } catch (e) {}
+            } catch (e) { }
           }
         }
 
@@ -2722,7 +2722,7 @@ export default function ReportGenerator() {
           if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
             try {
               localStorage.setItem('mms_active_tab', String(slotId));
-            } catch (e) {}
+            } catch (e) { }
           }
         }}
         activeOpacity={0.85}
@@ -3240,35 +3240,35 @@ export default function ReportGenerator() {
               />
             </View>
 
-              {/* Data */}
-              <View style={styles.inputGroup} className="mms-field-group">
-                <Text style={styles.label} className="mms-field-label">DATA:</Text>
-                {Platform.OS === 'web' ? (
-                  <View style={styles.dateInputContainer} className="mms-date-input-container">
-                    <input
-                      id="field-data"
-                      name="data"
-                      type={currentData.data || isDateInputFocused ? 'date' : 'text'}
-                      value={currentData.data || ''}
-                      placeholder="Selecione a data aqui 📅"
-                      onChange={(e: any) => updateCurrentTab({ data: e.target.value })}
-                      onFocus={(e: any) => {
-                        setIsDateInputFocused(true);
-                        try {
-                          if (e.target.showPicker) e.target.showPicker();
-                        } catch (err) {}
-                      }}
-                      onClick={(e: any) => {
-                        setIsDateInputFocused(true);
-                        try {
-                          if (e.target.showPicker) e.target.showPicker();
-                        } catch (err) {}
-                      }}
-                      onBlur={() => setIsDateInputFocused(false)}
-                      className={`mms-date-input-field ${fieldErrors.data ? 'mms-date-input-error' : ''}`}
-                    />
-                  </View>
-                ) : (
+            {/* Data */}
+            <View style={styles.inputGroup} className="mms-field-group">
+              <Text style={styles.label} className="mms-field-label">DATA:</Text>
+              {Platform.OS === 'web' ? (
+                <View style={styles.dateInputContainer} className="mms-date-input-container">
+                  <input
+                    id="field-data"
+                    name="data"
+                    type={currentData.data || isDateInputFocused ? 'date' : 'text'}
+                    value={currentData.data || ''}
+                    placeholder="Selecione a data aqui 📅"
+                    onChange={(e: any) => updateCurrentTab({ data: e.target.value })}
+                    onFocus={(e: any) => {
+                      setIsDateInputFocused(true);
+                      try {
+                        if (e.target.showPicker) e.target.showPicker();
+                      } catch (err) { }
+                    }}
+                    onClick={(e: any) => {
+                      setIsDateInputFocused(true);
+                      try {
+                        if (e.target.showPicker) e.target.showPicker();
+                      } catch (err) { }
+                    }}
+                    onBlur={() => setIsDateInputFocused(false)}
+                    className={`mms-date-input-field ${fieldErrors.data ? 'mms-date-input-error' : ''}`}
+                  />
+                </View>
+              ) : (
                 <TextInput
                   nativeID="field-data"
                   id="field-data"
@@ -4609,9 +4609,9 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     ...(Platform.OS === 'web'
       ? ({
-          backdropFilter: 'blur(1.5px)',
-          WebkitBackdropFilter: 'blur(1.5px)',
-        } as any)
+        backdropFilter: 'blur(1.5px)',
+        WebkitBackdropFilter: 'blur(1.5px)',
+      } as any)
       : {}),
   },
   dropdownMenuCard: {
@@ -6285,10 +6285,10 @@ const styles = StyleSheet.create({
     elevation: 6,
     ...(Platform.OS === 'web'
       ? ({
-          backdropFilter: 'blur(24px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
-        } as any)
+        backdropFilter: 'blur(24px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+      } as any)
       : {}),
   },
   fabBarCapsuleDark: {
@@ -6301,10 +6301,10 @@ const styles = StyleSheet.create({
     elevation: 8,
     ...(Platform.OS === 'web'
       ? ({
-          backdropFilter: 'blur(24px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-          boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5)',
-        } as any)
+        backdropFilter: 'blur(24px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5)',
+      } as any)
       : {}),
   },
   fabBarTab: {
@@ -6362,9 +6362,9 @@ const styles = StyleSheet.create({
     elevation: 9,
     ...(Platform.OS === 'web'
       ? ({
-          cursor: 'pointer',
-          boxShadow: '0 8px 24px rgba(37, 99, 235, 0.42)',
-        } as any)
+        cursor: 'pointer',
+        boxShadow: '0 8px 24px rgba(37, 99, 235, 0.42)',
+      } as any)
       : {}),
   },
   demoBannerBox: {
@@ -6570,15 +6570,15 @@ const styles = StyleSheet.create({
     padding: 16,
     ...(Platform.OS === 'web'
       ? {
-          animationDuration: '0.45s',
-          animationName: 'mmsNaturalBlurIn',
-          animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-          animationFillMode: 'forwards',
-          backgroundColor: 'transparent',
-        }
+        animationDuration: '0.45s',
+        animationName: 'mmsNaturalBlurIn',
+        animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        animationFillMode: 'forwards',
+        backgroundColor: 'transparent',
+      }
       : {
-          backgroundColor: 'transparent',
-        }),
+        backgroundColor: 'transparent',
+      }),
   },
   authCard: {
     backgroundColor: colors.white,
