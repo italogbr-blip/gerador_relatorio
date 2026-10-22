@@ -18,7 +18,8 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
 import { getSavedSessionSync, getValidatedUserSession, authenticateUser, escapeOrValue, AppUserSession } from '../lib/auth';
-import { gerarHtmlPdfFidelidade } from '../lib/pdfHtmlGenerator';
+import { gerarHtmlPdfFidelidade, ReportPdfData } from '../lib/pdfHtmlGenerator';
+import { baixarPdfRelatorio, visualizarRelatorioHtml } from '../lib/pdfManager';
 
 const modernFont = Platform.OS === 'web'
   ? "'Inter', system-ui, -apple-system, sans-serif"
@@ -233,45 +234,31 @@ export default function MeusRelatoriosScreen() {
   };
 
   // Abrir / Baixar PDF vinculado ao relatório
-  const openReportPdf = (report: any) => {
+  const openReportPdf = async (report: any) => {
     if (!report) return;
     const rawUrl = report.pdf_url || report.caminho_pdf;
-    let url = formatReportPdfUrl(rawUrl);
+    const url = formatReportPdfUrl(rawUrl);
+    const dataObj = parseReportData(report) || {};
 
-    if (url && Platform.OS === 'web') {
-      window.open(url, '_blank');
-      return;
-    }
+    const pdfData: ReportPdfData = {
+      grupo: dataObj.grupo || report.empresa,
+      unidade: dataObj.unidade || report.unidade,
+      data: dataObj.data || (report.data_criacao ? report.data_criacao.split('T')[0] : ''),
+      local: dataObj.local || report.local_atendimento,
+      modal: dataObj.modal || 'Helicóptero',
+      preposto: dataObj.preposto || report.preposto,
+      horarios: dataObj.horarios,
+      info_troca: dataObj.info_troca || dataObj.info,
+      pax_embarcando: dataObj.pax_embarcando || dataObj.pax1,
+      pax_desembarcando: dataObj.pax_desembarcando || dataObj.pax2,
+      fotos: dataObj.fotos || [],
+      alinhamentoInfo: dataObj.alinhamentoInfo || 'left',
+    };
 
-    // Renderização de Alta Fidelidade no Navegador (Idêntica ao layout PHP)
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const dataObj = parseReportData(report) || {};
-      const html = gerarHtmlPdfFidelidade({
-        grupo: dataObj.grupo || report.empresa,
-        unidade: dataObj.unidade || report.unidade,
-        data: dataObj.data || (report.data_criacao ? report.data_criacao.split('T')[0] : ''),
-        local: dataObj.local || report.local_atendimento,
-        modal: dataObj.modal || 'Helicóptero',
-        preposto: dataObj.preposto || report.preposto,
-        horarios: dataObj.horarios,
-        info_troca: dataObj.info_troca || dataObj.info,
-        pax_embarcando: dataObj.pax_embarcando || dataObj.pax1,
-        pax_desembarcando: dataObj.pax_desembarcando || dataObj.pax2,
-        fotos: dataObj.fotos || [],
-        alinhamentoInfo: dataObj.alinhamentoInfo || 'left',
-      });
-
-      const printWin = window.open('', '_blank');
-      if (printWin) {
-        printWin.document.write(html);
-        printWin.document.close();
-        setTimeout(() => {
-          printWin.focus();
-          printWin.print();
-        }, 350);
-        return;
-      }
-      window.open(`${PHP_SERVER_URL}/download_pdf.php?id=${report.id}`, '_blank');
+    try {
+      await baixarPdfRelatorio(pdfData, url);
+    } catch (e) {
+      visualizarRelatorioHtml(pdfData);
     }
   };
 
