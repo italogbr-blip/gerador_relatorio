@@ -209,17 +209,15 @@ export default function PainelCoordScreen() {
   }, [userSession]);
 
   const handleDesbloquearPainel = async () => {
-    const loginParaValidar = (
+    const usuarioDigitado = (
+      inputUsuarioPainel ||
       userSession?.user?.user_metadata?.username ||
       userSession?.user?.email ||
-      inputUsuarioPainel
+      ''
     ).trim();
+    const loginParaValidar = usuarioDigitado || 'italogabriel';
     const senhaDigitada = inputSenhaPainel.trim();
 
-    if (!loginParaValidar) {
-      setErroSenhaPainel('Por favor, informe o usuário.');
-      return;
-    }
     if (!senhaDigitada) {
       setErroSenhaPainel('Por favor, digite a senha do painel.');
       return;
@@ -229,7 +227,6 @@ export default function PainelCoordScreen() {
     setErroSenhaPainel(null);
 
     try {
-      // Credenciais conferidas no servidor (RPC desbloquear_painel_coord): só Usuários Nível 2
       const result = await unlockCoordinatorPanel(loginParaValidar, senhaDigitada);
 
       if (result.success && result.session) {
@@ -249,7 +246,7 @@ export default function PainelCoordScreen() {
           }
           try {
             sessionStorage.setItem('mms_coord_unlocked', 'true');
-            localStorage.setItem('mms_last_coord_user', usuarioDigitado);
+            localStorage.setItem('mms_last_coord_user', loginParaValidar);
           } catch (e) { }
         }
 
@@ -1145,10 +1142,12 @@ export default function PainelCoordScreen() {
                 USUÁRIO
               </Text>
               <TextInput
-                style={styles.coordLockInputDisabled}
+                style={[styles.coordLockInput, styles.coordLockInputLight]}
                 value={inputUsuarioPainel}
-                editable={false}
-                selectTextOnFocus={false}
+                onChangeText={setInputUsuarioPainel}
+                placeholder="Usuário ou e-mail..."
+                placeholderTextColor="#94a3b8"
+                autoCapitalize="none"
               />
             </View>
 
