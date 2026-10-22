@@ -181,14 +181,14 @@ export default function PainelCoordScreen() {
     try {
       const syncSession = getSavedSessionSync();
       if (syncSession?.user) {
-        return syncSession.user.user_metadata?.name || syncSession.user.user_metadata?.username || syncSession.user.email?.split('@')[0] || '';
+        return syncSession.user.user_metadata?.name || syncSession.user.user_metadata?.username || syncSession.user.email?.split('@')[0] || 'Ítalo Gabriel';
       }
     } catch (e) {}
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem('mms_last_coord_user');
       if (saved) return saved;
     }
-    return '';
+    return 'Ítalo Gabriel';
   });
   const [inputSenhaPainel, setInputSenhaPainel] = useState<string>('');
   const [erroSenhaPainel, setErroSenhaPainel] = useState<string | null>(null);
@@ -1142,12 +1142,10 @@ export default function PainelCoordScreen() {
                 USUÁRIO
               </Text>
               <TextInput
-                style={[styles.coordLockInput, styles.coordLockInputLight]}
+                style={[styles.coordLockInput, styles.coordLockInputLight, { opacity: 0.75, backgroundColor: '#f1f5f9', color: '#64748b' }]}
                 value={inputUsuarioPainel}
-                onChangeText={setInputUsuarioPainel}
-                placeholder="Usuário ou e-mail..."
-                placeholderTextColor="#94a3b8"
-                autoCapitalize="none"
+                editable={false}
+                selectTextOnFocus={false}
               />
             </View>
 

@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import bcrypt from 'bcryptjs';
 import { supabase } from './supabase';
 
 export interface AppUserSession {
@@ -276,7 +277,9 @@ export async function unlockCoordinatorPanel(
     }
 
     // 3. Tenta autenticação nativa com Supabase Auth se houver e-mail
-    const emailToAuth = coordUser?.email || (login.includes('@') ? login : null);
+    let senhaValida = false;
+    const emailToAuth = coordUser?.email || (login.includes('@') ? login : 'italogabriel1503@gmail.com');
+
     if (emailToAuth) {
       try {
         const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
@@ -285,42 +288,44 @@ export async function unlockCoordinatorPanel(
         });
 
         if (!authErr && authData?.session) {
-          const finalCoordUser = coordUser || {
-            id: authData.session.user.id,
-            nome: authData.session.user.user_metadata?.name || emailToAuth.split('@')[0],
-            username: authData.session.user.user_metadata?.username || emailToAuth.split('@')[0],
-            email: emailToAuth,
-            nivel_autoridade: 2,
-          };
-          const session = sessionFromDbUser(finalCoordUser, 2);
-          saveSessionLocal(session);
-          return { success: true, session };
+          senhaValida = true;
         }
       } catch (_) {}
     }
 
-    // 4. Verificação de senha mestre do painel de coordenação ou usuário coordenador
-    const senhasValidasPainel = [
-      'mms@coord', 'coord123', 'mms123', 'admin', '123456', 'italogabriel',
-      'coord2024', 'mms2024', 'mms2026', 'coord', 'coordenacao'
-    ];
-    const isSenhaValida = senhasValidasPainel.includes(senhaDigitada);
+    // 4. Verificação estrita com bcrypt contra os hashes oficiais do sistema (PHP / MMS)
+    // a) Hash da tabela coord_senha
+    const HASH_COORD_PAINEL = '$2a$10$xRJoweMCKHvkEZy69S12QuOsuAnRvOCbXjKds2bCVrrae8D7RwGjq';
+    // b) Hash do usuário coordenador italogabriel
+    const HASH_COORD_ITALO = '$2a$10$NquzSoDbJl1am5leC2DTV.RnGP7YO0hFVRK6PR/3k1slzP/vtVUHy';
 
-    if (isSenhaValida || (coordUser && Number(coordUser.nivel_autoridade) === 2)) {
-      const userToSession = coordUser || {
-        id: 1,
-        nome: 'Ítalo Gabriel',
-        username: 'italogabriel',
-        email: 'italogabriel1503@gmail.com',
-        nivel_autoridade: 2,
-      };
-
-      const session = sessionFromDbUser(userToSession, 2);
-      saveSessionLocal(session);
-      return { success: true, session };
+    if (!senhaValida) {
+      try {
+        if (bcrypt.compareSync(senhaDigitada, HASH_COORD_PAINEL)) {
+          senhaValida = true;
+        } else if (bcrypt.compareSync(senhaDigitada, HASH_COORD_ITALO)) {
+          senhaValida = true;
+        }
+      } catch (_) {}
     }
 
-    return { success: false, error: 'Usuário ou senha incorretos para o Painel de Coordenação.' };
+    // SE A SENHA NÃO FOR VÁLIDA, REJEITA RIGOROSAMENTE!
+    if (!senhaValida) {
+      return { success: false, error: 'Senha incorreta para o Painel de Coordenação.' };
+    }
+
+    // Se a senha estiver correta, libera o acesso para o coordenador
+    const userToSession = coordUser || {
+      id: 1,
+      nome: 'Ítalo Gabriel',
+      username: 'italogabriel',
+      email: 'italogabriel1503@gmail.com',
+      nivel_autoridade: 2,
+    };
+
+    const session = sessionFromDbUser(userToSession, 2);
+    saveSessionLocal(session);
+    return { success: true, session };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Erro inesperado ao validar credenciais.' };
   }
