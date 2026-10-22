@@ -14,6 +14,7 @@ import {
   Animated,
   Linking,
   useWindowDimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -2447,7 +2448,7 @@ export default function ReportGenerator() {
             local_atendimento: currentData.local,
             dados_json: JSON.stringify(jsonPayload),
             teve_anexo: currentData.fotosAnexadas.length > 0,
-            ...(pdfUrlResult ? { pdf_url: pdfUrlResult, caminho_pdf: pdfUrlResult } : {}),
+            ...(pdfUrlResult ? { pdf_url: pdfUrlResult } : {}),
           })
           .eq('id', editingReportId);
 
@@ -2464,17 +2465,55 @@ export default function ReportGenerator() {
       }
 
       // 2. Registra novo relatório no banco Supabase
-      const { data, error } = await supabase.from('relatorios').insert([{
-        usuario_id: userSession?.user?.id || null,
+      const numericUserId = typeof userSession?.user?.id === 'number'
+        ? userSession.user.id
+        : !isNaN(Number(userSession?.user?.id)) && Number(userSession?.user?.id) > 0
+          ? Number(userSession?.user?.id)
+          : null;
+
+      // Busca o maior ID para evitar conflito com sequences desalinhadas da migração
+      let nextCustomId: number | null = null;
+      try {
+        const { data: maxRows } = await supabase
+          .from('relatorios')
+          .select('id')
+          .order('id', { ascending: false })
+          .limit(1);
+        if (maxRows && maxRows[0]?.id) {
+          nextCustomId = Number(maxRows[0].id) + 1;
+        }
+      } catch (_) {}
+
+      const insertPayload: any = {
+        usuario_id: numericUserId,
         empresa: currentData.grupo,
         unidade: currentData.unidade,
         local_atendimento: currentData.local,
         dados_json: JSON.stringify(jsonPayload),
         teve_anexo: currentData.fotosAnexadas.length > 0,
         pdf_url: pdfUrlResult,
-        caminho_pdf: pdfUrlResult,
         data_criacao: new Date().toISOString(),
-      }]);
+      };
+
+      if (nextCustomId) {
+        insertPayload.id = nextCustomId;
+      }
+
+      let { data, error } = await supabase.from('relatorios').insert([insertPayload]);
+
+      // Fallback em caso de colisão de ID ou chave única
+      if (error && error.code === '23505') {
+        try {
+          const { data: retryMax } = await supabase
+            .from('relatorios')
+            .select('id')
+            .order('id', { ascending: false })
+            .limit(1);
+          insertPayload.id = (retryMax && retryMax[0]?.id ? Number(retryMax[0].id) : (nextCustomId || 1433)) + 1;
+          const retryRes = await supabase.from('relatorios').insert([insertPayload]);
+          error = retryRes.error;
+        } catch (_) {}
+      }
 
       if (error) {
         console.warn('Falha na sincronização online. Armazenando cópia offline.', error.message);
@@ -2485,8 +2524,8 @@ export default function ReportGenerator() {
         );
       } else {
         showCustomAlert(
-          'RELATÓRIO SALVO',
-          'Seu relatório foi gerado e salvo com sucesso! Você pode visualizá-lo a qualquer momento na página "Meus Relatórios".'
+          'RELATÓRIO SALVO NA NUVEM',
+          'Seu relatório foi gerado e salvo com sucesso na nuvem! Você pode visualizá-lo a qualquer momento na página "Meus Relatórios".'
         );
       }
     } catch (err: any) {
@@ -4143,110 +4182,129 @@ export default function ReportGenerator() {
 
       {/* Modal Autenticação Central da Plataforma */}
       <Modal visible={isAuthModalVisible} transparent animationType="none">
-        <View
-          // @ts-ignore
-          dataSet={{ modalOverlay: 'true' }}
-          style={styles.modalOverlay}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
         >
-          <View style={styles.authCard}>
-            <TouchableOpacity
-              style={styles.authCloseBtn}
-              onPress={() => setIsAuthModalVisible(false)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Text style={styles.authCloseText}>✕</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.authTitle}>
-              {authMode === 'login' ? 'ACESSO Á PLATAFORMA' : 'CRIAR NOVA CONTA'}
-            </Text>
-
-            {authMsg && (
-              <View style={[styles.authMsgBox, authMsg.type === 'erro' ? styles.authMsgErro : styles.authMsgSucesso]}>
-                <Text style={styles.authMsgText}>{authMsg.text}</Text>
-              </View>
-            )}
-
-            {authMode === 'cadastro' && (
-              <View style={styles.authField}>
-                <Text style={styles.authLabel}>NOME COMPLETO</Text>
-                <TextInput
-                  style={styles.authInput}
-                  placeholder="Seu nome"
-                  placeholderTextColor={colors.slate400}
-                  value={authName}
-                  onChangeText={setAuthName}
-                />
-              </View>
-            )}
-
-            <View style={styles.authField}>
-              <Text style={styles.authLabel}>
-                {authMode === 'login' ? 'E-MAIL OU NOME DE USUÁRIO' : 'E-MAIL'}
-              </Text>
-              <TextInput
-                style={styles.authInput}
-                placeholder={authMode === 'login' ? 'Seu e-mail ou nome de usuário' : 'seu.email@exemplo.com'}
-                placeholderTextColor={colors.slate400}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={authEmail}
-                onChangeText={setAuthEmail}
-              />
-            </View>
-
-            <View style={styles.authField}>
-              <Text style={styles.authLabel}>SENHA</Text>
-              <TextInput
-                style={styles.authInput}
-                placeholder="••••••••"
-                placeholderTextColor={colors.slate400}
-                secureTextEntry
-                value={authPassword}
-                onChangeText={setAuthPassword}
-              />
-            </View>
-
-            {authMode === 'cadastro' && (
-              <View style={styles.authField}>
-                <Text style={styles.authLabel}>CONFIRMAR SENHA</Text>
-                <TextInput
-                  style={styles.authInput}
-                  placeholder="••••••••"
-                  placeholderTextColor={colors.slate400}
-                  secureTextEntry
-                  value={authConfirmPassword}
-                  onChangeText={setAuthConfirmPassword}
-                />
-              </View>
-            )}
-
-            <TouchableOpacity style={styles.btnAuthSubmit} onPress={handleAuthSubmit} disabled={authLoading}>
-              {authLoading ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.btnAuthSubmitText}>
-                  {authMode === 'login' ? 'ENTRAR NA PLATAFORMA' : 'CADASTRAR CONTA'}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.authToggleMode}
-              onPress={() => {
-                setAuthMsg(null);
-                setAuthMode(authMode === 'login' ? 'cadastro' : 'login');
+          <View
+            // @ts-ignore
+            dataSet={{ modalOverlay: 'true' }}
+            style={styles.modalOverlay}
+          >
+            <ScrollView
+              contentContainerStyle={{
+                flexGrow: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                paddingVertical: 24,
+                paddingHorizontal: 16,
+                width: '100%',
               }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              style={{ width: '100%' }}
             >
-              <Text style={styles.authToggleModeText}>
-                {authMode === 'login'
-                  ? 'Não tem uma conta? Cadastre-se aqui'
-                  : 'Já tem uma conta? Faça login'}
-              </Text>
-            </TouchableOpacity>
+              <View style={styles.authCard}>
+                <TouchableOpacity
+                  style={styles.authCloseBtn}
+                  onPress={() => setIsAuthModalVisible(false)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Text style={styles.authCloseText}>✕</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.authTitle}>
+                  {authMode === 'login' ? 'ACESSO À PLATAFORMA' : 'CRIAR NOVA CONTA'}
+                </Text>
+
+                {authMsg && (
+                  <View style={[styles.authMsgBox, authMsg.type === 'erro' ? styles.authMsgErro : styles.authMsgSucesso]}>
+                    <Text style={styles.authMsgText}>{authMsg.text}</Text>
+                  </View>
+                )}
+
+                {authMode === 'cadastro' && (
+                  <View style={styles.authField}>
+                    <Text style={styles.authLabel}>NOME COMPLETO</Text>
+                    <TextInput
+                      style={styles.authInput}
+                      placeholder="Seu nome"
+                      placeholderTextColor={colors.slate400}
+                      value={authName}
+                      onChangeText={setAuthName}
+                    />
+                  </View>
+                )}
+
+                <View style={styles.authField}>
+                  <Text style={styles.authLabel}>
+                    {authMode === 'login' ? 'E-MAIL OU NOME DE USUÁRIO' : 'E-MAIL'}
+                  </Text>
+                  <TextInput
+                    style={styles.authInput}
+                    placeholder={authMode === 'login' ? 'Seu e-mail ou nome de usuário' : 'seu.email@exemplo.com'}
+                    placeholderTextColor={colors.slate400}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={authEmail}
+                    onChangeText={setAuthEmail}
+                  />
+                </View>
+
+                <View style={styles.authField}>
+                  <Text style={styles.authLabel}>SENHA</Text>
+                  <TextInput
+                    style={styles.authInput}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.slate400}
+                    secureTextEntry
+                    value={authPassword}
+                    onChangeText={setAuthPassword}
+                  />
+                </View>
+
+                {authMode === 'cadastro' && (
+                  <View style={styles.authField}>
+                    <Text style={styles.authLabel}>CONFIRMAR SENHA</Text>
+                    <TextInput
+                      style={styles.authInput}
+                      placeholder="••••••••"
+                      placeholderTextColor={colors.slate400}
+                      secureTextEntry
+                      value={authConfirmPassword}
+                      onChangeText={setAuthConfirmPassword}
+                    />
+                  </View>
+                )}
+
+                <TouchableOpacity style={styles.btnAuthSubmit} onPress={handleAuthSubmit} disabled={authLoading}>
+                  {authLoading ? (
+                    <ActivityIndicator color={colors.white} />
+                  ) : (
+                    <Text style={styles.btnAuthSubmitText}>
+                      {authMode === 'login' ? 'ENTRAR NA PLATAFORMA' : 'CADASTRAR CONTA'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.authToggleMode}
+                  onPress={() => {
+                    setAuthMsg(null);
+                    setAuthMode(authMode === 'login' ? 'cadastro' : 'login');
+                  }}
+                >
+                  <Text style={styles.authToggleModeText}>
+                    {authMode === 'login'
+                      ? 'Não tem uma conta? Cadastre-se aqui'
+                      : 'Já tem uma conta? Faça login'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal de Edição e Rotação de Imagem ("CONFIRMAR E ANEXAR") */}
