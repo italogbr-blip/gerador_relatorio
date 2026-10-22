@@ -191,12 +191,12 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       paxContinuationPagesHtml += `
         <div class="mms-pdf-page">
           <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
+          <div class="fixed-logo">
+            <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
+          </div>
           <div class="page-content">
-            <div class="fixed-logo">
-              <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
-            </div>
             <div class="titulo-pdf">RELATÓRIO DE TROCA DE TURMA (CONT.)</div>
-            <div class="pax-container" style="margin-top: 0px;">
+            <div class="pax-container" style="margin-top: 14px;">
               <div class="pax-col-left">
                 <div class="pax-title">Nomes Passageiros Embarcando (Cont.):</div>
                 <div>${chunk1Html}</div>
@@ -207,10 +207,10 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
               </div>
               <div style="clear: both;"></div>
             </div>
-            <div class="footer">
-              Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
-              E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-            </div>
+          </div>
+          <div class="footer">
+            Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
+            E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
           </div>
         </div>
       `;
@@ -229,20 +229,20 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
         fotosHtml += `
           <div class="mms-pdf-page">
             <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
+            <div class="fixed-logo">
+              <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
+            </div>
             <div class="page-content">
-              <div class="fixed-logo">
-                <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
-              </div>
-              <div style="padding-top: 8px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 42px; text-decoration: underline; text-underline-offset: 4px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase;">
+              <div style="padding-top: 10px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 10px; text-decoration: underline; text-underline-offset: 4px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase;">
                 ${titulo}
               </div>
               <div style="text-align: center; width: 100%; margin-top: 8px; margin-bottom: 10px;">
                 <img src="${src}" style="max-width: 100%; max-height: 650px; object-fit: contain; border-radius: 4px; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.08);" />
               </div>
-              <div class="footer">
-                Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
-                E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-              </div>
+            </div>
+            <div class="footer">
+              Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
+              E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
             </div>
           </div>
         `;
@@ -280,7 +280,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       height: 1123px;
       min-height: 1123px;
       max-height: 1123px;
-      padding: 0;
+      padding: 114px 57px 68px 57px; /* 30mm 15mm 18mm 15mm conforme index.php original */
       background-color: #ffffff;
       box-sizing: border-box;
       overflow: hidden;
@@ -308,22 +308,21 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       z-index: 2;
       width: 100%;
       height: 100%;
-      padding: 32px 44px 28px 44px;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
     }
     .fixed-logo {
       position: absolute;
-      top: 24px;
-      left: 44px;
-      width: 76px;
-      height: 76px;
+      top: 19px; /* 5mm conforme index.php original */
+      left: 57px; /* 15mm conforme index.php original */
+      width: 80px; /* 80px conforme index.php original */
+      height: 80px; /* 80px conforme index.php original */
       z-index: 5;
     }
     .fixed-logo img {
-      width: 76px;
-      height: 76px;
+      width: 80px;
+      height: 80px;
       object-fit: contain;
       display: block;
     }
@@ -333,8 +332,8 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       font-size: 16px;
       text-decoration: underline;
       text-underline-offset: 4px;
-      margin-top: 6px;
-      margin-bottom: 48px;
+      margin-top: -8px; /* -2mm conforme index.php original */
+      margin-bottom: 19px; /* 5mm conforme index.php original */
       text-transform: uppercase;
       font-family: "Times New Roman", Times, "Times-Roman", serif;
       letter-spacing: 0.5px;
@@ -385,14 +384,17 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
       margin-bottom: 8px;
     }
     .footer {
-      margin-top: auto;
+      position: absolute;
+      bottom: 38px; /* 10mm conforme index.php original */
+      left: 57px; /* 15mm conforme index.php original */
+      right: 57px; /* 15mm conforme index.php original */
       text-align: center;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: bold;
       color: #000000;
       line-height: 1.35;
       font-family: "Times New Roman", Times, serif;
-      padding-bottom: 4px;
+      z-index: 5;
     }
     @media print {
       body { background: transparent !important; }
@@ -403,10 +405,10 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
 <body>
   <div class="mms-pdf-page">
     <img src="${PDF_BACKGROUND_BASE64}" class="fixed-bg" alt="MMS Background" />
+    <div class="fixed-logo">
+      <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
+    </div>
     <div class="page-content">
-      <div class="fixed-logo">
-        <img src="${PDF_LOGO_BASE64}" alt="Logo MMS" />
-      </div>
       <div class="titulo-pdf">RELATÓRIO DE TROCA DE TURMA</div>
 
       <div class="row"><span class="label">Unidade:</span> ${unidade}</div>
@@ -447,11 +449,10 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
         </div>
         <div style="clear: both;"></div>
       </div>
-
-      <div class="footer">
-        Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
-        E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
-      </div>
+    </div>
+    <div class="footer">
+      Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072<br/>
+      E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020
     </div>
   </div>
 
