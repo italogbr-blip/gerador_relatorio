@@ -1,16 +1,31 @@
 {
   "expo": {
-    "name": "CoreApp",
-    "slug": "core-app",
+    "name": "MMS Relatórios",
+    "slug": "mms-relatorios",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "coreapp",
+    "scheme": "mmsrelatorios",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.atmai.relatorios",
+      "infoPlist": {
+        "NSCameraUsageDescription": "O aplicativo precisa de acesso à câmera para fotografar comprovantes e anexos do atendimento.",
+        "NSPhotoLibraryUsageDescription": "O aplicativo precisa de acesso à sua galeria de fotos para anexar imagens ao relatório de atendimento.",
+        "NSLocationWhenInUseUsageDescription": "O aplicativo utiliza sua localização para certificar o ponto de atendimento no relatório."
+      }
     },
     "android": {
+      "package": "com.atmai.relatorios",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
