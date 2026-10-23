@@ -901,12 +901,20 @@ export default function ReportGenerator() {
   const [accessLogsList, setAccessLogsList] = useState<DeviceTelemetryInfo[]>([]);
 
   useEffect(() => {
-    // Registra telemetria do aparelho e acesso à página inicial / gerador
-    collectDeviceTelemetry('acesso_gerador').then((initInfo) => {
+    // Puxa preposto previamente identificado nos relatórios deste aparelho (mesmo deslogado)
+    let prepostoHistorico: string | undefined;
+    if (typeof localStorage !== 'undefined') {
+      try {
+        prepostoHistorico = localStorage.getItem('mms_telemetria_preposto') || undefined;
+      } catch (e) {}
+    }
+
+    // Registra telemetria do aparelho e acesso à página inicial / gerador com identificação do preposto
+    collectDeviceTelemetry('acesso_gerador', prepostoHistorico ? { usuario: prepostoHistorico } : undefined).then((initInfo) => {
       setDeviceInfo(initInfo);
       setAccessLogsList(getLocalDeviceAccessLogs());
     });
-    registerDeviceAccess('acesso_gerador').then((info) => {
+    registerDeviceAccess('acesso_gerador', prepostoHistorico ? { usuario: prepostoHistorico } : undefined).then((info) => {
       setDeviceInfo(info);
       setAccessLogsList(getLocalDeviceAccessLogs());
     });
@@ -2403,6 +2411,14 @@ export default function ReportGenerator() {
       rawPreposto && rawPreposto !== 'undefined' && rawPreposto.trim() !== ''
         ? rawPreposto.trim()
         : (userSession?.user?.user_metadata?.name || '');
+
+    // Salva o preposto neste dispositivo para que seus acessos futuros sejam imediatamente identificados
+    if (prepostoTratado && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('mms_telemetria_preposto', prepostoTratado);
+      } catch (e) {}
+      registerDeviceAccess('acesso_gerador', { usuario: prepostoTratado }).catch(() => {});
+    }
 
     const jsonPayload = {
       grupo: currentData.grupo,

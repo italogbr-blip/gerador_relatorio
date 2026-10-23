@@ -225,20 +225,30 @@ export default function PainelCoordScreen() {
     return () => clearInterval(timer);
   }, []);
 
+  // Filtro de Mês e Ano Interativo da Visão Geral
+  const [mesFiltro, setMesFiltro] = useState<number>(() => new Date().getMonth());
+  const [anoFiltro, setAnoFiltro] = useState<number>(() => new Date().getFullYear());
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState<boolean>(false);
+  const [filtrandoMesAno, setFiltrandoMesAno] = useState<boolean>(false);
+
+  const MESES_NOMES = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+  ];
+
+  const MESES_ABREV = [
+    'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN',
+    'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'
+  ];
+
   const nomeMesAtual = useMemo(() => {
-    const meses = [
-      'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-      'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
-    ];
-    const d = new Date();
-    return `${meses[d.getMonth()]} de ${d.getFullYear()}`;
-  }, []);
+    return `${MESES_NOMES[mesFiltro]} de ${anoFiltro}`;
+  }, [mesFiltro, anoFiltro]);
 
   const mesAnoCurto = useMemo(() => {
-    const d = new Date();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    return `em ${m}/${d.getFullYear()}`;
-  }, []);
+    const m = String(mesFiltro + 1).padStart(2, '0');
+    return `em ${m}/${anoFiltro}`;
+  }, [mesFiltro, anoFiltro]);
 
   // Modal de Detalhes do Relatório
   const [selectedReport, setSelectedReport] = useState<any>(null);
@@ -526,6 +536,28 @@ export default function PainelCoordScreen() {
         console.warn('Erro ao consultar segurança do banco:', errDb);
       }
 
+      // 3. Mapeamento Inteligente: Busca prepostos em relatórios gerados para identificar o usuário mesmo deslogado
+      const mapaPrepostosPorIp = new Map<string, string>();
+      try {
+        const { data: relsPrepostos } = await supabase
+          .from('relatorios')
+          .select('ip_origem, dados_json')
+          .order('id', { ascending: false })
+          .limit(300);
+
+        if (relsPrepostos) {
+          relsPrepostos.forEach((r: any) => {
+            if (r.ip_origem) {
+              const parsed = parseReportData(r);
+              const prep = getPrepostoFromReport(r, parsed);
+              if (prep && !mapaPrepostosPorIp.has(r.ip_origem)) {
+                mapaPrepostosPorIp.set(r.ip_origem, prep);
+              }
+            }
+          });
+        }
+      } catch (errRelPrep) {}
+
       // Lê histórico salvo em localStorage para garantir exibição imediata
       let falhosLocais: any[] = [];
       let loginsLocais: any[] = [];
@@ -557,8 +589,23 @@ export default function PainelCoordScreen() {
         }
 
         const dataRegistro = item.data_tentativa || item.data_login || item.timestamp || new Date().toISOString();
+        const prepostoRelatorio = item.ip ? mapaPrepostosPorIp.get(item.ip) : null;
+        
+        let nomeUsuario = meta?.usuario || item.username;
+        let isPrepostoDetectado = false;
+        if (!nomeUsuario || nomeUsuario === 'Visitante Gerador' || nomeUsuario === 'VISITANTE_INDEX' || nomeUsuario === 'Desconhecido') {
+          if (prepostoRelatorio) {
+            nomeUsuario = prepostoRelatorio;
+            isPrepostoDetectado = true;
+          } else {
+            nomeUsuario = 'Visitante Gerador';
+          }
+        }
+
         const enriched = {
           ...item,
+          username: nomeUsuario,
+          isPrepostoDetectado,
           deviceId: meta?.deviceId || item.deviceId || 'MMS-DEV-' + (item.ip || '0').replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase(),
           model: meta?.model || item.model || 'Aparelho Web',
           os: meta?.os || item.os || 'Sistema',
@@ -581,9 +628,20 @@ export default function PainelCoordScreen() {
 
       // Adiciona itens de telemetria locais que foram registrados neste aparelho
       telemetriaLocal.forEach((t) => {
+        const prepostoRelatorio = t.ip ? mapaPrepostosPorIp.get(t.ip) : null;
+        let nomeUsuario = t.usuario;
+        let isPrepostoDetectado = false;
+        if (!nomeUsuario || nomeUsuario === 'Visitante Gerador' || nomeUsuario.includes('Visitante')) {
+          if (prepostoRelatorio) {
+            nomeUsuario = prepostoRelatorio;
+            isPrepostoDetectado = true;
+          }
+        }
+
         const enriched = {
           id: t.id,
-          username: t.usuario || 'Visitante Gerador',
+          username: nomeUsuario || 'Visitante Gerador',
+          isPrepostoDetectado,
           ip: t.ip || '127.0.0.1',
           data_tentativa: t.timestamp,
           data_login: t.timestamp,
@@ -867,6 +925,82 @@ export default function PainelCoordScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Filtragem Concreta de Todos os Dados por Mês e Ano Selecionados
+  const handleFiltrarPorMesAno = async (mesAlvo?: number, anoAlvo?: number) => {
+    const m = typeof mesAlvo === 'number' ? mesAlvo : mesFiltro;
+    const a = typeof anoAlvo === 'number' ? anoAlvo : anoFiltro;
+
+    setFiltrandoMesAno(true);
+    setLoadingMetricas(true);
+    setLoading(true);
+
+    try {
+      // 1. Gera intervalo de datas ISO exato do mês
+      const primeiroDia = `${a}-${String(m + 1).padStart(2, '0')}-01T00:00:00`;
+      const ultimoDiaNum = new Date(a, m + 1, 0).getDate();
+      const ultimoDia = `${a}-${String(m + 1).padStart(2, '0')}-${String(ultimoDiaNum).padStart(2, '0')}T23:59:59`;
+
+      // Sincroniza os inputs da tabela para exibir as datas do período filtrado
+      setFiltroDataInicio(`${String(1).padStart(2, '0')}/${String(m + 1).padStart(2, '0')}/${a}`);
+      setFiltroDataFim(`${String(ultimoDiaNum).padStart(2, '0')}/${String(m + 1).padStart(2, '0')}/${a}`);
+      setPaginaRelatorios(1);
+
+      // 2. Busca contagem de relatórios daquele mês/ano específico para atualizar os KPIs
+      const { count: countMes } = await supabase
+        .from('relatorios')
+        .select('*', { count: 'exact', head: true })
+        .gte('data_criacao', primeiroDia)
+        .lte('data_criacao', ultimoDia);
+
+      if (typeof countMes === 'number') {
+        setRelatoriosMesCount(countMes);
+      }
+
+      // 3. Busca a listagem de relatórios desse período para atualizar a tabela e os rankings
+      let query = supabase
+        .from('relatorios')
+        .select('*', { count: 'exact' })
+        .gte('data_criacao', primeiroDia)
+        .lte('data_criacao', ultimoDia);
+
+      if (filtroEmpresa && filtroEmpresa !== 'TODAS') {
+        query = query.eq('empresa', filtroEmpresa);
+      }
+
+      if (filtroUsuarioId) {
+        query = query.eq('usuario_id', filtroUsuarioId);
+      }
+
+      if (filtroBusca.trim()) {
+        const term = escapeOrValue(`%${filtroBusca.trim()}%`);
+        query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term}`);
+      }
+
+      const { data: relsMes } = await query
+        .order('data_criacao', { ascending: false })
+        .range(0, porPagina - 1);
+
+      if (relsMes) {
+        setRelatorios(relsMes);
+      }
+
+      setIsMonthPickerOpen(false);
+    } catch (err) {
+      console.warn('Erro ao filtrar por mês e ano:', err);
+    } finally {
+      setFiltrandoMesAno(false);
+      setLoadingMetricas(false);
+      setLoading(false);
+    }
+  };
+
+  const handleRedefinirMesAtual = () => {
+    const hoje = new Date();
+    setMesFiltro(hoje.getMonth());
+    setAnoFiltro(hoje.getFullYear());
+    handleFiltrarPorMesAno(hoje.getMonth(), hoje.getFullYear());
   };
 
   // Carregamento sob demanda dos dados completos do relatório (detalhes no modal)
@@ -1655,15 +1789,29 @@ export default function PainelCoordScreen() {
           </View>
 
           <View style={styles.overviewSummaryRight}>
-            <View style={styles.overviewMonthSelectorLight}>
-              <Text style={styles.overviewMonthText}>📅 {nomeMesAtual}</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.overviewMonthSelectorLight}
+              onPress={() => setIsMonthPickerOpen(true)}
+              activeOpacity={0.75}
+              accessibilityLabel="Selecionar Mês e Ano"
+            >
+              <Text style={{ fontSize: 18, marginRight: 8 }}>🗓️</Text>
+              <Text style={styles.overviewMonthText}>{nomeMesAtual}</Text>
+              <Text style={styles.overviewMonthChevron}>▾</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.overviewBtnFiltrar}
-              onPress={() => carregarRelatorios()}
+              onPress={() => handleFiltrarPorMesAno(mesFiltro, anoFiltro)}
+              disabled={filtrandoMesAno}
               activeOpacity={0.8}
+              accessibilityLabel="Filtrar dados deste mês"
             >
-              <Text style={styles.overviewBtnFiltrarText}>FILTRAR ›</Text>
+              {filtrandoMesAno ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Text style={styles.overviewBtnFiltrarText}>FILTRAR ›</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -1691,10 +1839,10 @@ export default function PainelCoordScreen() {
             <Text style={styles.kpiMetricFootnote}>Relatórios gerados hoje</Text>
           </View>
 
-          {/* Card 2: Neste Mês */}
+          {/* Card 2: Neste Mês / Mês Filtrado */}
           <View style={[styles.kpiMetricCard, styles.kpiMetricCardMes]} className="coord-interactive-card">
             <View style={styles.kpiMetricTopRow}>
-              <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>NESTE MÊS</Text>
+              <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>{mesAnoCurto.toUpperCase()}</Text>
               <Text style={{ fontSize: 14 }}>📅</Text>
             </View>
             <View style={styles.kpiMetricValueContainer}>
@@ -1708,7 +1856,7 @@ export default function PainelCoordScreen() {
                 </Text>
               )}
             </View>
-            <Text style={styles.kpiMetricFootnote}>Atendimentos no mês atual</Text>
+            <Text style={styles.kpiMetricFootnote}>Atendimentos em {nomeMesAtual}</Text>
           </View>
 
           {/* Card 3: Total Geral */}
@@ -3065,7 +3213,7 @@ export default function PainelCoordScreen() {
 
               <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
                 <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>ORIGEM / USUÁRIO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>ORIGEM / USUÁRIO</Text>
                   <Text style={[styles.versionHeaderColText, { width: 180 }]}>ID DO TELEFONE / DISPOSITIVO</Text>
                   <Text style={[styles.versionHeaderColText, { width: 150 }]}>IP DE ORIGEM</Text>
                   <Text style={[styles.versionHeaderColText, { width: 180 }]}>APARELHO DETECTADO</Text>
@@ -3097,11 +3245,17 @@ export default function PainelCoordScreen() {
                           idx % 2 === 1 && { backgroundColor: '#f0f9ff' },
                         ]}
                       >
-                        <View style={{ width: 140 }}>
-                          <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>
+                        <View style={{ width: 150 }}>
+                          <Text style={{ color: ag.isPrepostoDetectado ? '#047857' : '#0f172a', fontWeight: '800', fontSize: 12 }} numberOfLines={1}>
                             {ag.username || 'Visitante Index'}
                           </Text>
-                          <Text style={{ color: '#0284c7', fontSize: 10, fontWeight: '700' }}>⚡ PÁGINA INICIAL</Text>
+                          {ag.isPrepostoDetectado ? (
+                            <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 2, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                              <Text style={{ color: '#065f46', fontSize: 9, fontWeight: '800' }}>📋 PREPOSTO (DO RELATÓRIO)</Text>
+                            </View>
+                          ) : (
+                            <Text style={{ color: '#0284c7', fontSize: 10, fontWeight: '700', marginTop: 2 }}>⚡ PÁGINA INICIAL</Text>
+                          )}
                         </View>
                         <View style={{ width: 180 }}>
                           <View style={{ backgroundColor: '#f8fafc', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#cbd5e1', alignSelf: 'flex-start' }}>
@@ -3690,6 +3844,123 @@ export default function PainelCoordScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* MODAL SELETOR DE MÊS E ANO INTERATIVO */}
+      <Modal
+        visible={isMonthPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsMonthPickerOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.monthPickerOverlay}
+          activeOpacity={1}
+          onPress={() => setIsMonthPickerOpen(false)}
+        >
+          <TouchableOpacity
+            style={styles.monthPickerCard}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation?.()}
+          >
+            {/* Header */}
+            <View style={styles.monthPickerHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 22 }}>🗓️</Text>
+                <View>
+                  <Text style={styles.monthPickerTitle}>SELECIONAR MÊS E ANO</Text>
+                  <Text style={styles.monthPickerSubtitle}>Filtre relatórios, métricas e rankings por período</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.monthPickerCloseBtn}
+                onPress={() => setIsMonthPickerOpen(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.monthPickerCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Controle de Navegação do Ano */}
+            <View style={styles.monthPickerYearRow}>
+              <TouchableOpacity
+                style={styles.monthPickerYearNavBtn}
+                onPress={() => setAnoFiltro((a) => a - 1)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.monthPickerYearNavText}>◀</Text>
+              </TouchableOpacity>
+
+              <View style={styles.monthPickerYearDisplay}>
+                <Text style={styles.monthPickerYearText}>{anoFiltro}</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.monthPickerYearNavBtn}
+                onPress={() => setAnoFiltro((a) => a + 1)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.monthPickerYearNavText}>▶</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Grid dos 12 Meses */}
+            <View style={styles.monthPickerGrid}>
+              {MESES_ABREV.map((abrev, idx) => {
+                const isSelected = mesFiltro === idx;
+                return (
+                  <TouchableOpacity
+                    key={abrev}
+                    style={[
+                      styles.monthPickerMonthBtn,
+                      isSelected && styles.monthPickerMonthBtnActive,
+                    ]}
+                    onPress={() => {
+                      setMesFiltro(idx);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.monthPickerMonthBtnText,
+                        isSelected && styles.monthPickerMonthBtnTextActive,
+                      ]}
+                    >
+                      {abrev}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.monthPickerMonthSubText,
+                        isSelected && { color: 'rgba(255,255,255,0.85)' },
+                      ]}
+                    >
+                      {MESES_NOMES[idx].slice(0, 3)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Ações do Rodapé */}
+            <View style={styles.monthPickerFooter}>
+              <TouchableOpacity
+                style={styles.monthPickerBtnHoje}
+                onPress={handleRedefinirMesAtual}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.monthPickerBtnHojeText}>↺ MÊS ATUAL</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.monthPickerBtnConfirmar}
+                onPress={() => handleFiltrarPorMesAno(mesFiltro, anoFiltro)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.monthPickerBtnConfirmarText}>APLICAR FILTRO ›</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
@@ -5672,36 +5943,238 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     padding: 6,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   overviewMonthSelectorLight: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#94a3b8',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 200,
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {}),
   },
   overviewMonthText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
     fontFamily: modernFont,
+    textTransform: 'capitalize',
+    letterSpacing: 0.2,
+  },
+  overviewMonthChevron: {
+    fontSize: 14,
+    color: '#2563eb',
+    fontWeight: '900',
+    marginLeft: 8,
   },
   overviewBtnFiltrar: {
     backgroundColor: '#2563eb',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
+    borderRadius: 10,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {}),
   },
   overviewBtnFiltrarText: {
     color: '#ffffff',
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     fontFamily: modernFont,
+  },
+
+  /* ─── MODAL SELETOR DE MÊS E ANO ─── */
+  monthPickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+    ...(Platform.OS === 'web'
+      ? {
+        backdropFilter: 'blur(3px)',
+        WebkitBackdropFilter: 'blur(3px)',
+      } as any
+      : {}),
+  },
+  monthPickerCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  monthPickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    marginBottom: 16,
+  },
+  monthPickerTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0f172a',
+    fontFamily: modernFont,
+    letterSpacing: 0.5,
+  },
+  monthPickerSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  monthPickerCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthPickerCloseText: {
+    fontSize: 14,
+    color: '#475569',
+    fontWeight: '800',
+  },
+  monthPickerYearRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 16,
+  },
+  monthPickerYearNavBtn: {
+    width: 40,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthPickerYearNavText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#2563eb',
+  },
+  monthPickerYearDisplay: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthPickerYearText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0f172a',
+    fontFamily: modernFont,
+    letterSpacing: 1,
+  },
+  monthPickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 18,
+  },
+  monthPickerMonthBtn: {
+    width: '23%',
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthPickerMonthBtnActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#1d4ed8',
+  },
+  monthPickerMonthBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#334155',
+    fontFamily: modernFont,
+  },
+  monthPickerMonthBtnTextActive: {
+    color: '#ffffff',
+    fontWeight: '900',
+  },
+  monthPickerMonthSubText: {
+    fontSize: 9,
+    color: '#64748b',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  monthPickerFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  monthPickerBtnHoje: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  monthPickerBtnHojeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+    letterSpacing: 0.5,
+  },
+  monthPickerBtnConfirmar: {
+    flex: 1.5,
+    paddingVertical: 11,
+    borderRadius: 8,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthPickerBtnConfirmarText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 0.8,
   },
 
   /* ─── 4 CARDS DE KPIS / MÉTRICAS ─── */
