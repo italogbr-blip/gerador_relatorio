@@ -20,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { PHP_SAVE_ENDPOINT, formatReportPdfUrl } from '../lib/config';
+import { formatReportPdfUrl } from '../lib/config';
 import { gerarHtmlPdfFidelidade } from '../lib/pdfHtmlGenerator';
 import {
   baixarPdfRelatorio,
@@ -2461,24 +2461,7 @@ export default function ReportGenerator() {
         }
       } catch (_) {}
 
-      // 1. Tenta enviar para o servidor PHP
-      try {
-        const phpResp = await fetch(PHP_SAVE_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(jsonPayload),
-        });
-
-        if (phpResp.ok) {
-          const phpData = await phpResp.json();
-          if (phpData?.sucesso && phpData?.pdf_url) {
-            pdfUrlResult = formatReportPdfUrl(phpData.pdf_url);
-            updateCurrentTab({ pdfUrl: pdfUrlResult, pdfNomeArquivo: phpData?.nome_arquivo || null });
-          }
-        }
-      } catch (phpErr) {
-        console.log('Servidor PHP offline ou sem rota. Prosseguindo com Supabase.');
-      }
+      // Salvamento direto, seguro e sob demanda (sem gravação de arquivos estáticos no servidor PHP)
 
       // Se estiver em modo de edição, atualiza o registro existente
       if (editingReportId) {
