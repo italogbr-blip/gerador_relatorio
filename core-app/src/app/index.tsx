@@ -44,6 +44,12 @@ import {
   fetchLatestAppVersion,
   FooterConfig,
 } from '../lib/footerConfig';
+import {
+  registerDeviceAccess,
+  collectDeviceTelemetry,
+  getLocalDeviceAccessLogs,
+  DeviceTelemetryInfo,
+} from '../lib/deviceTelemetry';
 
 // Cores Curadas do Layout Original Tailwind / PHP
 const colors = {
@@ -889,7 +895,22 @@ export default function ReportGenerator() {
     return 'V1.2.4';
   });
 
+  // Telemetria do Aparelho & Controle de Acessos
+  const [deviceInfo, setDeviceInfo] = useState<DeviceTelemetryInfo | null>(null);
+  const [showAcessosModal, setShowAcessosModal] = useState<boolean>(false);
+  const [accessLogsList, setAccessLogsList] = useState<DeviceTelemetryInfo[]>([]);
+
   useEffect(() => {
+    // Registra telemetria do aparelho e acesso à página inicial / gerador
+    collectDeviceTelemetry('acesso_gerador').then((initInfo) => {
+      setDeviceInfo(initInfo);
+      setAccessLogsList(getLocalDeviceAccessLogs());
+    });
+    registerDeviceAccess('acesso_gerador').then((info) => {
+      setDeviceInfo(info);
+      setAccessLogsList(getLocalDeviceAccessLogs());
+    });
+
     fetchFooterConfig().then((cfg) => {
       if (cfg) setFooterConfig(cfg);
     });
@@ -1742,52 +1763,19 @@ export default function ReportGenerator() {
     );
   };
 
-  // Funções de Registro de Tentativas para o Painel de Coordenação
+  // Funções de Registro de Tentativas para o Painel de Coordenação com Telemetria Completa
   const recordFailedAttempt = async (userIdent: string) => {
-    const attempt = {
-      id: Date.now(),
-      usuario_id: null,
-      username: userIdent || 'desconhecido',
-      ip: '127.0.0.1',
-      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 500) : 'Web App',
-      data_tentativa: new Date().toISOString(),
-    };
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('mms_coord_acessos_falhos');
-        const list = raw ? JSON.parse(raw) : [];
-        list.unshift(attempt);
-        localStorage.setItem('mms_coord_acessos_falhos', JSON.stringify(list.slice(0, 100)));
-      } catch (e) { }
-    }
     try {
-      await supabase.from('coord_acessos_falhos').insert([attempt]);
-    } catch (e) { }
+      await registerDeviceAccess('login_falha', userIdent, null);
+    } catch (_) {}
   };
 
   const recordSuccessfulLogin = async (userId: any, username: string) => {
-    const logItem = {
-      id: Date.now(),
-      usuario_id: userId ? Number(userId) : 1,
-      ip: '127.0.0.1',
-      data_login: new Date().toISOString(),
-      username: username || 'usuario',
-    };
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('mms_registro_logins');
-        const list = raw ? JSON.parse(raw) : [];
-        list.unshift(logItem);
-        localStorage.setItem('mms_registro_logins', JSON.stringify(list.slice(0, 50)));
-      } catch (e) { }
-    }
     try {
-      await supabase.from('registro_logins').insert([{
-        usuario_id: logItem.usuario_id,
-        ip: logItem.ip,
-        data_login: logItem.data_login,
-      }]);
-    } catch (e) { }
+      const loggedInfo = await registerDeviceAccess('login_sucesso', username, userId);
+      setDeviceInfo(loggedInfo);
+      setAccessLogsList(getLocalDeviceAccessLogs());
+    } catch (_) {}
   };
 
   // Auth Functions
@@ -3914,6 +3902,69 @@ export default function ReportGenerator() {
             )}
 
 
+            {/* SEÇÃO: CONTROLE DE ACESSOS AO GERADOR & TELEMETRIA DO APARELHO */}
+            <View style={styles.deviceAccessCard}>
+              <View style={styles.deviceAccessHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                  <View style={styles.deviceAccessIconBox}>
+                    <Text style={{ fontSize: 18 }}>📱</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.deviceAccessTitle}>
+                      CONTROLE DE ACESSOS AO GERADOR DE RELATÓRIOS
+                    </Text>
+                    <Text style={styles.deviceAccessSubtitle}>
+                      Identificação do dispositivo e telemetria de conexão ativa
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.deviceAccessHistBtn}
+                  onPress={() => {
+                    setAccessLogsList(getLocalDeviceAccessLogs());
+                    setShowAcessosModal(true);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.deviceAccessHistBtnText}>📋 Ver Acessos</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.deviceAccessGrid}>
+                {/* ID do Telefone / Dispositivo */}
+                <View style={styles.deviceAccessItem}>
+                  <Text style={styles.deviceAccessLabel}>ID DO TELEFONE / DISPOSITIVO:</Text>
+                  <Text style={styles.deviceAccessValueHighlight} numberOfLines={1}>
+                    🔑 {deviceInfo?.deviceId || 'MMS-DEV-...'}
+                  </Text>
+                </View>
+
+                {/* IP de Origem */}
+                <View style={styles.deviceAccessItem}>
+                  <Text style={styles.deviceAccessLabel}>IP DETECTADO (NUVEM):</Text>
+                  <Text style={styles.deviceAccessValue} numberOfLines={1}>
+                    🌐 {deviceInfo?.ip || '127.0.0.1'}
+                  </Text>
+                </View>
+
+                {/* Modelo do Aparelho */}
+                <View style={styles.deviceAccessItem}>
+                  <Text style={styles.deviceAccessLabel}>APARELHO / MODELO:</Text>
+                  <Text style={styles.deviceAccessValue} numberOfLines={1}>
+                    📲 {deviceInfo?.model || 'Identificando...'}
+                  </Text>
+                </View>
+
+                {/* Sistema & Navegador */}
+                <View style={styles.deviceAccessItem}>
+                  <Text style={styles.deviceAccessLabel}>SISTEMA & NAVEGADOR:</Text>
+                  <Text style={styles.deviceAccessValue} numberOfLines={1}>
+                    ⚙️ {deviceInfo?.os || 'SO'} • {deviceInfo?.browser || 'Browser'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
             {/* Footer Personalizável */}
             <View style={[styles.appFooterContainer, !isDesktop && styles.appFooterContainerMobile]} className="mms-app-footer">
               {isDesktop && <View style={styles.appFooterSpacer} />}
@@ -4520,6 +4571,73 @@ export default function ReportGenerator() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE HISTÓRICO DE ACESSOS AO GERADOR */}
+      <Modal
+        visible={showAcessosModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAcessosModal(false)}
+      >
+        <View style={styles.deviceModalBackdrop}>
+          <View style={styles.deviceModalContainer}>
+            <View style={styles.deviceModalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={{ fontSize: 22 }}>📡</Text>
+                <View>
+                  <Text style={styles.deviceModalTitle}>HISTÓRICO DE ACESSOS AO GERADOR</Text>
+                  <Text style={styles.deviceModalSubtitle}>Registros de conexão e telemetria deste aparelho</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowAcessosModal(false)}
+                style={styles.deviceModalCloseBtn}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.deviceModalCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 420 }}>
+              {accessLogsList.length === 0 ? (
+                <View style={{ padding: 32, alignItems: 'center' }}>
+                  <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhum acesso registrado localmente ainda.</Text>
+                </View>
+              ) : (
+                accessLogsList.map((item, idx) => (
+                  <View key={idx} style={styles.deviceAccessRow}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <Text style={[styles.deviceAccessBadge, item.tipo === 'login_sucesso' ? styles.deviceAccessBadgeSuccess : styles.deviceAccessBadgeAccess]}>
+                          {item.tipo === 'login_sucesso' ? 'LOGIN AUTORIZADO' : 'ACESSO AO GERADOR'}
+                        </Text>
+                        <Text style={styles.deviceAccessRowIp}>🌐 {item.ip}</Text>
+                      </View>
+                      <Text style={styles.deviceAccessRowDevice}>
+                        📲 {item.model} • {item.os} ({item.browser})
+                      </Text>
+                      <Text style={styles.deviceAccessRowId}>
+                        ID: {item.deviceId} | Tela: {item.screenResolution}
+                      </Text>
+                    </View>
+                    <Text style={styles.deviceAccessRowTime}>
+                      🕒 {new Date(item.dataRegistro).toLocaleString('pt-BR')}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.deviceModalDoneBtn}
+              onPress={() => setShowAcessosModal(false)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.deviceModalDoneBtnText}>FECHAR</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -7351,6 +7469,225 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+
+  /* ─── SEÇÃO DE ACESSOS AO GERADOR & TELEMETRIA ─── */
+  deviceAccessCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 16,
+    marginTop: 20,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  deviceAccessHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    marginBottom: 12,
+    gap: 10,
+  },
+  deviceAccessIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deviceAccessTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#1e293b',
+    letterSpacing: 0.6,
+    fontFamily: modernFont,
+  },
+  deviceAccessSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  deviceAccessHistBtn: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  deviceAccessHistBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+    fontFamily: modernFont,
+  },
+  deviceAccessGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  deviceAccessItem: {
+    flex: 1,
+    minWidth: 180,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 10,
+  },
+  deviceAccessLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748b',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    fontFamily: modernFont,
+  },
+  deviceAccessValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1e293b',
+    fontFamily: modernFont,
+  },
+  deviceAccessValueHighlight: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#2563eb',
+    fontFamily: modernFont,
+  },
+
+  /* Modal de Histórico de Acessos */
+  deviceModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  deviceModalContainer: {
+    width: '100%',
+    maxWidth: 680,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  deviceModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    marginBottom: 14,
+  },
+  deviceModalTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  deviceModalSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  deviceModalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deviceModalCloseBtnText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#64748b',
+  },
+  deviceAccessRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    gap: 12,
+  },
+  deviceAccessBadge: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  deviceAccessBadgeSuccess: {
+    backgroundColor: '#dcfce7',
+    color: '#15803d',
+  },
+  deviceAccessBadgeAccess: {
+    backgroundColor: '#dbeafe',
+    color: '#1d4ed8',
+  },
+  deviceAccessRowIp: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    fontFamily: modernFont,
+  },
+  deviceAccessRowDevice: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  deviceAccessRowId: {
+    fontSize: 10,
+    color: '#64748b',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  deviceAccessRowTime: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontFamily: modernFont,
+  },
+  deviceModalDoneBtn: {
+    marginTop: 16,
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deviceModalDoneBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
     fontFamily: modernFont,
   },
 });
