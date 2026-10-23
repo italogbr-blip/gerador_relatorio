@@ -3211,6 +3211,83 @@ export default function PainelCoordScreen() {
                 </View>
               </View>
 
+              {/* Card Destaque: Telemetria do Último Dispositivo / Conexão Capturada */}
+              {acessosGerador.length > 0 && (() => {
+                const ultimo = acessosGerador[0];
+                return (
+                  <View style={{
+                    backgroundColor: '#f8fafc',
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: '#cbd5e1',
+                    padding: 14,
+                    marginTop: 14,
+                    marginBottom: 4,
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 16 }}>⚡</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '900', color: '#0f172a', letterSpacing: 0.5 }}>
+                          ÚLTIMO DISPOSITIVO DETECTADO NO GERADOR
+                        </Text>
+                      </View>
+                      <View style={{ backgroundColor: '#eff6ff', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#bfdbfe' }}>
+                        <Text style={{ color: '#1d4ed8', fontSize: 10, fontWeight: '800' }}>
+                          🕒 {ultimo.data_tentativa ? new Date(ultimo.data_tentativa).toLocaleString('pt-BR') : 'Agora'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                      <View style={{ flex: 1, minWidth: 170, backgroundColor: ultimo.isPrepostoDetectado ? '#f0fdf4' : '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: ultimo.isPrepostoDetectado ? '#86efac' : '#e2e8f0' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: ultimo.isPrepostoDetectado ? '#15803d' : '#64748b', marginBottom: 2 }}>
+                          {ultimo.isPrepostoDetectado ? 'PREPOSTO IDENTIFICADO:' : 'USUÁRIO / ORIGEM:'}
+                        </Text>
+                        <Text style={{ fontSize: 12, fontWeight: '900', color: ultimo.isPrepostoDetectado ? '#166534' : '#0f172a' }} numberOfLines={1}>
+                          👤 {ultimo.username || 'Visitante Index'}
+                        </Text>
+                      </View>
+
+                      <View style={{ flex: 1, minWidth: 170, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
+                          ID DO TELEFONE / DISPOSITIVO:
+                        </Text>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#2563eb', fontFamily: 'monospace' }} numberOfLines={1}>
+                          🔑 {ultimo.deviceId || 'MMS-DEV-...'}
+                        </Text>
+                      </View>
+
+                      <View style={{ flex: 1, minWidth: 150, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
+                          IP DETECTADO (NUVEM):
+                        </Text>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#0284c7', fontFamily: 'monospace' }} numberOfLines={1}>
+                          🌐 {ultimo.ip || '127.0.0.1'}
+                        </Text>
+                      </View>
+
+                      <View style={{ flex: 1, minWidth: 170, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
+                          APARELHO / MODELO:
+                        </Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }} numberOfLines={1}>
+                          📲 {ultimo.model || 'Aparelho Web'}
+                        </Text>
+                      </View>
+
+                      <View style={{ flex: 1, minWidth: 190, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
+                          SISTEMA & NAVEGADOR:
+                        </Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }} numberOfLines={1}>
+                          ⚙️ {ultimo.os || 'OS'} • {ultimo.browser || 'Web'} {ultimo.screen ? `(${ultimo.screen})` : ''}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })()}
+
               <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
                 <View style={styles.versionTableHeaderRow}>
                   <Text style={[styles.versionHeaderColText, { width: 150 }]}>ORIGEM / USUÁRIO</Text>

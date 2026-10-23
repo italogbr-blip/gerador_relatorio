@@ -895,21 +895,11 @@ export default function ReportGenerator() {
     return 'V1.2.4';
   });
 
-  // Telemetria do Aparelho & Controle de Acessos
+  // Telemetria silenciosa do aparelho (enviada diretamente para o Painel da Coordenação)
   const [deviceInfo, setDeviceInfo] = useState<DeviceTelemetryInfo | null>(null);
-  const [showAcessosModal, setShowAcessosModal] = useState<boolean>(false);
-  const [accessLogsList, setAccessLogsList] = useState<DeviceTelemetryInfo[]>([]);
-  const [prepostoIdentificado, setPrepostoIdentificado] = useState<string>(() => {
-    if (typeof localStorage !== 'undefined') {
-      try {
-        return localStorage.getItem('mms_telemetria_preposto') || '';
-      } catch (e) {}
-    }
-    return '';
-  });
 
   useEffect(() => {
-    // Puxa preposto previamente identificado nos relatórios deste aparelho (mesmo deslogado)
+    // Registra telemetria do aparelho e acesso à página inicial / gerador silenciosamente para a coordenação
     let prepostoHistorico: string | undefined;
     if (typeof localStorage !== 'undefined') {
       try {
@@ -917,20 +907,11 @@ export default function ReportGenerator() {
       } catch (e) {}
     }
 
-    // Registra telemetria do aparelho e acesso à página inicial / gerador com identificação do preposto
     collectDeviceTelemetry('acesso_gerador', prepostoHistorico).then((initInfo) => {
       setDeviceInfo(initInfo);
-      if (initInfo.username && initInfo.username !== 'Visitante') {
-        setPrepostoIdentificado(initInfo.username);
-      }
-      setAccessLogsList(getLocalDeviceAccessLogs());
     });
     registerDeviceAccess('acesso_gerador', prepostoHistorico).then((info) => {
       setDeviceInfo(info);
-      if (info.username && info.username !== 'Visitante') {
-        setPrepostoIdentificado(info.username);
-      }
-      setAccessLogsList(getLocalDeviceAccessLogs());
     });
 
     fetchFooterConfig().then((cfg) => {
@@ -1796,7 +1777,6 @@ export default function ReportGenerator() {
     try {
       const loggedInfo = await registerDeviceAccess('login_sucesso', username, userId);
       setDeviceInfo(loggedInfo);
-      setAccessLogsList(getLocalDeviceAccessLogs());
     } catch (_) {}
   };
 
@@ -2428,7 +2408,6 @@ export default function ReportGenerator() {
 
     // Salva o preposto neste dispositivo para que seus acessos futuros sejam imediatamente identificados
     if (prepostoTratado) {
-      setPrepostoIdentificado(prepostoTratado);
       if (typeof localStorage !== 'undefined') {
         try {
           localStorage.setItem('mms_telemetria_preposto', prepostoTratado);
@@ -3923,91 +3902,6 @@ export default function ReportGenerator() {
             )}
 
 
-            {/* SEÇÃO: CONTROLE DE ACESSOS AO GERADOR & TELEMETRIA DO APARELHO */}
-            <View style={styles.deviceAccessCard}>
-              <View style={styles.deviceAccessHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                  <View style={styles.deviceAccessIconBox}>
-                    <Text style={{ fontSize: 18 }}>📱</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.deviceAccessTitle}>
-                      CONTROLE DE ACESSOS AO GERADOR DE RELATÓRIOS
-                    </Text>
-                    <Text style={styles.deviceAccessSubtitle}>
-                      Identificação do dispositivo e telemetria de conexão ativa
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={styles.deviceAccessHistBtn}
-                  onPress={() => {
-                    setAccessLogsList(getLocalDeviceAccessLogs());
-                    setShowAcessosModal(true);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.deviceAccessHistBtnText}>📋 Ver Acessos</Text>
-                </TouchableOpacity>
-              </View>
-
-              {(() => {
-                const prepostoAtivo = prepostoIdentificado || (currentData.preposto && currentData.preposto.trim()) || '';
-                return (
-                  <View style={styles.deviceAccessGrid}>
-                    {/* Preposto / Usuário Identificado */}
-                    <View style={[styles.deviceAccessItem, prepostoAtivo ? { borderColor: '#86efac', backgroundColor: '#f0fdf4' } : {}]}>
-                      <Text style={[styles.deviceAccessLabel, prepostoAtivo ? { color: '#15803d' } : {}]}>
-                        {prepostoAtivo ? 'PREPOSTO IDENTIFICADO (RELATÓRIO):' : 'USUÁRIO / PREPOSTO:'}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.deviceAccessValue,
-                          prepostoAtivo
-                            ? { color: '#166534', fontWeight: '900' }
-                            : { color: '#64748b', fontStyle: 'italic' },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {prepostoAtivo ? `👤 ${prepostoAtivo}` : '👤 Visitante (Aguardando relatório)'}
-                      </Text>
-                    </View>
-
-                    {/* ID do Telefone / Dispositivo */}
-                    <View style={styles.deviceAccessItem}>
-                      <Text style={styles.deviceAccessLabel}>ID DO TELEFONE / DISPOSITIVO:</Text>
-                      <Text style={styles.deviceAccessValueHighlight} numberOfLines={1}>
-                        🔑 {deviceInfo?.deviceId || 'MMS-DEV-...'}
-                      </Text>
-                    </View>
-
-                    {/* IP de Origem */}
-                    <View style={styles.deviceAccessItem}>
-                      <Text style={styles.deviceAccessLabel}>IP DETECTADO (NUVEM):</Text>
-                      <Text style={styles.deviceAccessValue} numberOfLines={1}>
-                        🌐 {deviceInfo?.ip || '127.0.0.1'}
-                      </Text>
-                    </View>
-
-                    {/* Modelo do Aparelho */}
-                    <View style={styles.deviceAccessItem}>
-                      <Text style={styles.deviceAccessLabel}>APARELHO / MODELO:</Text>
-                      <Text style={styles.deviceAccessValue} numberOfLines={1}>
-                        📲 {deviceInfo?.model || 'Identificando...'}
-                      </Text>
-                    </View>
-
-                    {/* Sistema & Navegador */}
-                    <View style={styles.deviceAccessItem}>
-                      <Text style={styles.deviceAccessLabel}>SISTEMA & NAVEGADOR:</Text>
-                      <Text style={styles.deviceAccessValue} numberOfLines={1}>
-                        ⚙️ {deviceInfo?.os || 'SO'} • {deviceInfo?.browser || 'Browser'}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })()}
-            </View>
 
             {/* Footer Personalizável */}
             <View style={[styles.appFooterContainer, !isDesktop && styles.appFooterContainerMobile]} className="mms-app-footer">
@@ -4619,87 +4513,7 @@ export default function ReportGenerator() {
         </View>
       </Modal>
 
-      {/* MODAL DE HISTÓRICO DE ACESSOS AO GERADOR */}
-      <Modal
-        visible={showAcessosModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAcessosModal(false)}
-      >
-        <View style={styles.deviceModalBackdrop}>
-          <View style={styles.deviceModalContainer}>
-            <View style={styles.deviceModalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Text style={{ fontSize: 22 }}>📡</Text>
-                <View>
-                  <Text style={styles.deviceModalTitle}>HISTÓRICO DE ACESSOS AO GERADOR</Text>
-                  <Text style={styles.deviceModalSubtitle}>Registros de conexão e telemetria deste aparelho</Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={() => setShowAcessosModal(false)}
-                style={styles.deviceModalCloseBtn}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.deviceModalCloseBtnText}>✕</Text>
-              </TouchableOpacity>
-            </View>
 
-            <ScrollView style={{ maxHeight: 420 }}>
-              {accessLogsList.length === 0 ? (
-                <View style={{ padding: 32, alignItems: 'center' }}>
-                  <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhum acesso registrado localmente ainda.</Text>
-                </View>
-              ) : (
-                accessLogsList.map((item, idx) => {
-                  const prepostoAtivo = prepostoIdentificado || (currentData.preposto && currentData.preposto.trim()) || '';
-                  const nomeDoLog = (item.username && item.username !== 'Visitante' && item.username !== 'Visitante Gerador')
-                    ? item.username
-                    : prepostoAtivo;
-                  return (
-                    <View key={idx} style={styles.deviceAccessRow}>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                          <Text style={[styles.deviceAccessBadge, item.tipo === 'login_sucesso' ? styles.deviceAccessBadgeSuccess : styles.deviceAccessBadgeAccess]}>
-                            {item.tipo === 'login_sucesso' ? 'LOGIN AUTORIZADO' : 'ACESSO AO GERADOR'}
-                          </Text>
-                          <Text style={styles.deviceAccessRowIp}>🌐 {item.ip}</Text>
-                        </View>
-                        {nomeDoLog ? (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                            <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#a7f3d0' }}>
-                              <Text style={{ color: '#065f46', fontSize: 10, fontWeight: '800' }}>
-                                👤 PREPOSTO: {nomeDoLog}
-                              </Text>
-                            </View>
-                          </View>
-                        ) : null}
-                        <Text style={styles.deviceAccessRowDevice}>
-                          📲 {item.model} • {item.os} ({item.browser})
-                        </Text>
-                        <Text style={styles.deviceAccessRowId}>
-                          ID: {item.deviceId} | Tela: {item.screenResolution}
-                        </Text>
-                      </View>
-                      <Text style={styles.deviceAccessRowTime}>
-                        🕒 {new Date(item.dataRegistro).toLocaleString('pt-BR')}
-                      </Text>
-                    </View>
-                  );
-                })
-              )}
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.deviceModalDoneBtn}
-              onPress={() => setShowAcessosModal(false)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.deviceModalDoneBtnText}>FECHAR</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Toast Flutuante de Rascunho Salvo (idêntico ao index.php) */}
       {isDraftToastVisible && (
