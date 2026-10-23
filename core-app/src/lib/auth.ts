@@ -685,6 +685,19 @@ export async function authenticateUser(
 
     // C) Se autenticou na tabela public.usuarios (ou via RPC):
     if (authenticatedDbUser) {
+      if (authenticatedDbUser.status_aprovacao === 'pendente') {
+        return {
+          success: false,
+          error: 'Seu cadastro está pendente de aprovação pela coordenação.',
+        };
+      }
+      if (authenticatedDbUser.status_aprovacao === 'recusado') {
+        return {
+          success: false,
+          error: 'Seu cadastro foi recusado pela coordenação. Entre em contato se necessário.',
+        };
+      }
+
       // Limpa contador de falhas (igual ao login.php linhas 36-37)
       saveLoginAttemptState(inputStr, null);
 
@@ -824,7 +837,22 @@ export async function registerUser(params: {
     // Gera hash bcrypt compatível com PHP password_verify ($2y$10$...)
     const hashGerado = bcrypt.hashSync(pass, 10).replace(/^\$2[ab]\$/, '$2y$');
 
-    // Insere na tabela public.usuarios igual ao cadastro.php
+    // Verifica se o sistema está configurado para exigir aprovação da coordenação
+    let exigeAprovacao = false;
+    try {
+      const { data: configData } = await supabase
+        .from('configuracoes')
+        .select('exigir_aprovacao_cadastro')
+        .eq('id', 1)
+        .limit(1);
+      if (configData && configData.length > 0) {
+        exigeAprovacao = !!configData[0].exigir_aprovacao_cadastro;
+      }
+    } catch (_) {}
+
+    const statusInicial = exigeAprovacao ? 'pendente' : 'aprovado';
+
+    // Insere na tabela public.usuarios
     const { error: insertErr } = await supabase.from('usuarios').insert([
       {
         username: user,
@@ -832,6 +860,7 @@ export async function registerUser(params: {
         email,
         senha: hashGerado,
         nivel_autoridade: 1,
+        status_aprovacao: statusInicial,
       },
     ]);
 
@@ -839,6 +868,28 @@ export async function registerUser(params: {
       return {
         success: false,
         message: 'Erro ao cadastrar. Tente novamente.',
+      };
+    }
+
+    if (exigeAprovacao) {
+      // Notifica a coordenação imediatamente criando registro em public.notificacoes
+      try {
+        await supabase.from('notificacoes').insert([
+          {
+            titulo: 'Novo Cadastro Pendente',
+            mensagem: `O usuário ${nome} (@${user} - ${email}) realizou cadastro e aguarda sua aprovação no Painel de Coordenação.`,
+            tipo: 'aviso',
+            ativa: 1,
+            regra_exibicao: 'sempre',
+            mostrar_feedback: 0,
+          },
+        ]);
+      } catch (_) {}
+
+      return {
+        success: true,
+        message: 'Cadastro realizado com sucesso! Sua conta aguarda aprovação da coordenação para liberação do acesso.',
+        username: user,
       };
     }
 
@@ -853,5 +904,156 @@ export async function registerUser(params: {
       message: err?.message || 'Erro de conexão.',
     };
   }
+}
+
+/**
+ * Consulta se a aprovação de novos cadastros está ativa
+ */
+export async function getExigirAprovacaoCadastro(): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('configuracoes')
+      .select('exigir_aprovacao_cadastro')
+      .eq('id', 1)
+      .limit(1);
+    if (data && data.length > 0) {
+      return !!data[0].exigir_aprovacao_cadastro;
+    }
+  } catch (_) {}
+  return false;
+}
+
+/**
+ * Atualiza o status de exigência de aprovação de novos cadastros
+ */
+export async function setExigirAprovacaoCadastro(exigir: boolean): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('configuracoes')
+      .update({
+        exigir_aprovacao_cadastro: exigir,
+        ultima_atualizacao: new Date().toISOString(),
+      })
+      .eq('id', 1);
+    return !error;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * Aprova o cadastro de um usuário e registra na auditoria
+ */
+export async function aprovarUsuario(
+  usuarioId: number,
+  executadoPor: string,
+  motivo?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data: userRow } = await supabase
+      .from('usuarios')
+      .select('id, username, nome, email')
+      .eq('id', usuarioId)
+      .limit(1);
+
+    const userObj = userRow && userRow.length > 0 ? userRow[0] : null;
+
+    const { error: updErr } = await supabase
+      .from('usuarios')
+      .update({
+        status_aprovacao: 'aprovado',
+        aprovado_por: executadoPor,
+        data_aprovacao: new Date().toISOString(),
+      })
+      .eq('id', usuarioId);
+
+    if (updErr) return { success: false, error: updErr.message };
+
+    // Grava no histórico de auditoria
+    try {
+      await supabase.from('historico_aprovacoes_usuarios').insert([
+        {
+          usuario_id: usuarioId,
+          username: userObj?.username || 'N/A',
+          nome: userObj?.nome || 'N/A',
+          email: userObj?.email || 'N/A',
+          acao: 'aprovado',
+          motivo: motivo || 'Aprovado pela coordenação',
+          executado_por: executadoPor,
+          data_registro: new Date().toISOString(),
+        },
+      ]);
+    } catch (_) {}
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Erro inesperado' };
+  }
+}
+
+/**
+ * Recusa o cadastro de um usuário e registra na auditoria
+ */
+export async function recusarUsuario(
+  usuarioId: number,
+  executadoPor: string,
+  motivo?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data: userRow } = await supabase
+      .from('usuarios')
+      .select('id, username, nome, email')
+      .eq('id', usuarioId)
+      .limit(1);
+
+    const userObj = userRow && userRow.length > 0 ? userRow[0] : null;
+
+    const { error: updErr } = await supabase
+      .from('usuarios')
+      .update({
+        status_aprovacao: 'recusado',
+        aprovado_por: executadoPor,
+        data_aprovacao: new Date().toISOString(),
+      })
+      .eq('id', usuarioId);
+
+    if (updErr) return { success: false, error: updErr.message };
+
+    // Grava no histórico de auditoria
+    try {
+      await supabase.from('historico_aprovacoes_usuarios').insert([
+        {
+          usuario_id: usuarioId,
+          username: userObj?.username || 'N/A',
+          nome: userObj?.nome || 'N/A',
+          email: userObj?.email || 'N/A',
+          acao: 'recusado',
+          motivo: motivo || 'Recusado pela coordenação',
+          executado_por: executadoPor,
+          data_registro: new Date().toISOString(),
+        },
+      ]);
+    } catch (_) {}
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Erro inesperado' };
+  }
+}
+
+/**
+ * Carrega o histórico de aprovações e recusas
+ */
+export async function carregarHistoricoAprovacoes(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('historico_aprovacoes_usuarios')
+      .select('*')
+      .order('data_registro', { ascending: false })
+      .limit(100);
+
+    if (!error && data) return data;
+  } catch (_) {}
+  return [];
 }
 
