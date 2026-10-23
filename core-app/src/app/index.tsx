@@ -36,6 +36,7 @@ import {
   logoutUserSession,
   isUserCoordinator,
   authenticateUser,
+  registerUser,
   AppUserSession,
 } from '../lib/auth';
 import {
@@ -1350,17 +1351,30 @@ export default function ReportGenerator() {
     outputRange: ['0deg', '360deg'],
   });
 
-  // Supabase Auth State & User Level
+  // Supabase Auth State & User Level (idêntico ao index.php / login.php / cadastro.php)
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [userSession, setUserSession] = useState<AppUserSession | null>(() => getSavedSessionSync());
   const [isAuthModalVisible, setIsAuthModalVisible] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'cadastro'>('login');
   const [authEmail, setAuthEmail] = useState<string>('');
+  const [authConfirmEmail, setAuthConfirmEmail] = useState<string>('');
+  const [authUsername, setAuthUsername] = useState<string>('');
+  const [authConfirmUsername, setAuthConfirmUsername] = useState<string>('');
   const [authPassword, setAuthPassword] = useState<string>('');
   const [authConfirmPassword, setAuthConfirmPassword] = useState<string>('');
   const [authName, setAuthName] = useState<string>('');
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [authMsg, setAuthMsg] = useState<{ type: 'erro' | 'sucesso'; text: string } | null>(null);
+  const [isBiometryEnabled, setIsBiometryEnabled] = useState<boolean>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        return localStorage.getItem('mms_biometric_enabled') === 'true';
+      } catch (_) {}
+    }
+    return false;
+  });
+  const [isBiometryEnrollModalVisible, setIsBiometryEnrollModalVisible] = useState<boolean>(false);
+  const [pendingBiometryCreds, setPendingBiometryCreds] = useState<{ user: string; pass: string } | null>(null);
 
   // Focus Refs & Auto-Advance
   const inputRefs = useRef<{ [key: string]: TextInput | null }>({});
@@ -1780,25 +1794,24 @@ export default function ReportGenerator() {
     } catch (_) {}
   };
 
-  // Auth Functions
+  // Auth Functions (idênticas ao index.php / login.php / cadastro.php)
   const handleAuthSubmit = async () => {
     setAuthMsg(null);
-    if (!authEmail || !authPassword) {
-      setAuthMsg({ type: 'erro', text: 'Preencha o e-mail ou usuário e a senha.' });
-      return;
-    }
 
-    setAuthLoading(true);
-    try {
-      if (authMode === 'login') {
-        const inputStr = authEmail.trim();
+    if (authMode === 'login') {
+      const inputStr = authEmail.trim();
+      if (!inputStr || !authPassword) {
+        setAuthMsg({ type: 'erro', text: 'Preencha todos os campos.' });
+        return;
+      }
 
-        // Senha conferida no servidor (RPC login_usuario) ou no Supabase Auth
+      setAuthLoading(true);
+      try {
         const result = await authenticateUser(inputStr, authPassword);
 
         if (!result.success || !result.session) {
           recordFailedAttempt(inputStr);
-          setAuthMsg({ type: 'erro', text: result.error || 'Usuário não encontrado ou senha incorreta.' });
+          setAuthMsg({ type: 'erro', text: result.error || 'Credenciais inválidas!' });
           return;
         }
 
@@ -1810,89 +1823,144 @@ export default function ReportGenerator() {
 
         recordSuccessfulLogin(session.user.id, userName);
 
-        setAuthMsg({ type: 'sucesso', text: 'Login realizado com sucesso!' });
-        setTimeout(() => {
+        let bioAlreadyEnabled = false;
+        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+          try {
+            bioAlreadyEnabled = localStorage.getItem('mms_biometric_enabled') === 'true';
+          } catch (_) {}
+        }
+
+        if (!bioAlreadyEnabled && Platform.OS === 'web') {
+          setPendingBiometryCreds({ user: inputStr, pass: authPassword });
           setIsAuthModalVisible(false);
-          if (typeof window !== 'undefined') {
-            window.scrollTo(0, 0);
-          }
-        }, 600);
-      } else {
-        const cleanName = authName.trim();
-        const cleanEmail = authEmail.trim().toLowerCase();
-
-        if (!cleanName || !cleanEmail || !authPassword || !authConfirmPassword) {
-          setAuthMsg({ type: 'erro', text: 'Preencha todos os campos do cadastro.' });
-          setAuthLoading(false);
-          return;
-        }
-
-        if (authPassword !== authConfirmPassword) {
-          setAuthMsg({ type: 'erro', text: 'As senhas não coincidem. Digite a mesma senha nos dois campos.' });
-          setAuthLoading(false);
-          return;
-        }
-
-        if (authPassword.length < 6) {
-          setAuthMsg({ type: 'erro', text: 'A senha deve conter no mínimo 6 caracteres.' });
-          setAuthLoading(false);
-          return;
-        }
-
-        const usernameDerived = cleanEmail.split('@')[0].replace(/[^a-z0-9_]/gi, '');
-
-        // 1. Tentar criar em public.usuarios
-        const { error: dbErr } = await supabase.from('usuarios').insert([{
-          nome: cleanName,
-          email: cleanEmail,
-          username: usernameDerived,
-          nivel_autoridade: 1
-        }]);
-
-        // 2. Tentar criar em Supabase Auth
-        const { data: signUpData, error: authErr } = await supabase.auth.signUp({
-          email: cleanEmail,
-          password: authPassword,
-          options: {
-            data: { name: cleanName, username: usernameDerived },
-          },
-        });
-
-        // Só considera a conta criada se o Supabase Auth aceitou o cadastro
-        if (!authErr && signUpData?.user) {
-          if (dbErr) {
-            console.warn('Conta criada no Auth, mas falhou ao gravar em public.usuarios:', dbErr.message);
-          }
-          const userSessionObj: AppUserSession = {
-            user: {
-              id: signUpData?.user?.id || Date.now(),
-              email: cleanEmail,
-              user_metadata: {
-                name: cleanName,
-                username: usernameDerived,
-                nivel_autoridade: 1,
-              },
-            },
-          };
-
-          saveSessionLocal(userSessionObj);
-          setUserSession(userSessionObj);
-          updateCurrentTab({ preposto: cleanName });
-
-          setAuthMsg({ type: 'sucesso', text: 'Conta criada e ativada com sucesso!' });
+          setIsBiometryEnrollModalVisible(true);
+        } else {
+          setAuthMsg({ type: 'sucesso', text: 'Login realizado com sucesso!' });
           setTimeout(() => {
             setIsAuthModalVisible(false);
-            setAuthConfirmPassword('');
             if (typeof window !== 'undefined') {
               window.scrollTo(0, 0);
             }
-          }, 1000);
-        } else {
-          setAuthMsg({ type: 'erro', text: authErr?.message || dbErr?.message || 'Erro ao criar conta.' });
+          }, 500);
         }
+      } catch (err: any) {
+        setAuthMsg({ type: 'erro', text: err.message || 'Erro de conexão com o servidor.' });
+      } finally {
+        setAuthLoading(false);
+      }
+    } else {
+      const cleanName = authName.trim();
+      const cleanUser = authUsername.trim();
+      const cleanUserConfirm = authConfirmUsername.trim();
+      const cleanEmail = authEmail.trim();
+      const cleanEmailConfirm = authConfirmEmail.trim();
+
+      if (!cleanName || !cleanUser || !cleanEmail || !authPassword) {
+        setAuthMsg({ type: 'erro', text: 'Preencha todos os campos.' });
+        return;
+      }
+
+      if (cleanUser !== cleanUserConfirm) {
+        setAuthMsg({ type: 'erro', text: 'Os nomes de usuário não coincidem!' });
+        return;
+      }
+
+      if (cleanEmail.toLowerCase() !== cleanEmailConfirm.toLowerCase()) {
+        setAuthMsg({ type: 'erro', text: 'Os e-mails informados não coincidem!' });
+        return;
+      }
+
+      if (authPassword !== authConfirmPassword) {
+        setAuthMsg({ type: 'erro', text: 'As senhas digitadas não coincidem!' });
+        return;
+      }
+
+      if (authPassword.length < 6) {
+        setAuthMsg({ type: 'erro', text: 'A senha deve ter pelo menos 6 caracteres.' });
+        return;
+      }
+
+      setAuthLoading(true);
+      try {
+        const regResult = await registerUser({
+          nome: cleanName,
+          username: cleanUser,
+          usernameConfirm: cleanUserConfirm,
+          email: cleanEmail,
+          emailConfirm: cleanEmailConfirm,
+          senha: authPassword,
+          senhaConfirm: authConfirmPassword,
+        });
+
+        if (regResult.success) {
+          setAuthName('');
+          setAuthUsername('');
+          setAuthConfirmUsername('');
+          setAuthConfirmEmail('');
+          setAuthPassword('');
+          setAuthConfirmPassword('');
+          setAuthEmail(regResult.username || cleanUser);
+          setAuthMode('login');
+          setAuthMsg({
+            type: 'sucesso',
+            text: regResult.message || 'Cadastro realizado com sucesso! Faça login abaixo.',
+          });
+        } else {
+          setAuthMsg({ type: 'erro', text: regResult.message || 'Erro ao cadastrar. Tente novamente.' });
+        }
+      } catch (err: any) {
+        setAuthMsg({ type: 'erro', text: err.message || 'Erro de conexão com o servidor.' });
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+  };
+
+  const confirmEnrollBiometry = async () => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined' && pendingBiometryCreds) {
+      try {
+        localStorage.setItem('mms_biometric_enabled', 'true');
+        localStorage.setItem('mms_biometric_username', pendingBiometryCreds.user);
+        localStorage.setItem('mms_biometric_password', pendingBiometryCreds.pass);
+        setIsBiometryEnabled(true);
+      } catch (_) {}
+    }
+    setPendingBiometryCreds(null);
+    setIsBiometryEnrollModalVisible(false);
+  };
+
+  const skipEnrollBiometry = () => {
+    setPendingBiometryCreds(null);
+    setIsBiometryEnrollModalVisible(false);
+  };
+
+  const handleBiometricLogin = async () => {
+    if (Platform.OS !== 'web' || typeof localStorage === 'undefined') return;
+    const savedUser = localStorage.getItem('mms_biometric_username');
+    const savedPass = localStorage.getItem('mms_biometric_password');
+    if (!savedUser || !savedPass) {
+      setAuthMsg({ type: 'erro', text: 'Nenhuma biometria cadastrada neste dispositivo.' });
+      return;
+    }
+
+    setAuthLoading(true);
+    setAuthMsg(null);
+    try {
+      const result = await authenticateUser(savedUser, savedPass);
+      if (result.success && result.session) {
+        setUserSession(result.session);
+        const userName = result.session.user.user_metadata?.name || savedUser;
+        updateCurrentTab({ preposto: userName });
+        recordSuccessfulLogin(result.session.user.id, userName);
+        setIsAuthModalVisible(false);
+      } else {
+        setAuthMsg({
+          type: 'erro',
+          text: result.error || 'Credenciais salvas inválidas. Faça login manualmente.',
+        });
       }
     } catch (err: any) {
-      setAuthMsg({ type: 'erro', text: err.message || 'Erro de conexão.' });
+      setAuthMsg({ type: 'erro', text: err?.message || 'Erro de conexão na biometria.' });
     } finally {
       setAuthLoading(false);
     }
@@ -4200,7 +4268,7 @@ export default function ReportGenerator() {
         </View>
       </ScrollView>
 
-      {/* Modal Autenticação Central da Plataforma */}
+      {/* Modal Autenticação Central da Plataforma (idêntico ao index.php linhas 728-848) */}
       <Modal visible={isAuthModalVisible} transparent animationType="none">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -4224,7 +4292,7 @@ export default function ReportGenerator() {
               showsVerticalScrollIndicator={false}
               style={{ width: '100%' }}
             >
-              <View style={styles.authCard}>
+              <View style={[styles.authCard, { padding: 0, overflow: 'hidden', maxWidth: 420 }]}>
                 <TouchableOpacity
                   style={styles.authCloseBtn}
                   onPress={() => setIsAuthModalVisible(false)}
@@ -4234,97 +4302,367 @@ export default function ReportGenerator() {
                   <Text style={styles.authCloseText}>✕</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.authTitle}>
-                  {authMode === 'login' ? 'ACESSO À PLATAFORMA' : 'CRIAR NOVA CONTA'}
-                </Text>
-
-                {authMsg && (
-                  <View style={[styles.authMsgBox, authMsg.type === 'erro' ? styles.authMsgErro : styles.authMsgSucesso]}>
-                    <Text style={styles.authMsgText}>{authMsg.text}</Text>
-                  </View>
-                )}
-
-                {authMode === 'cadastro' && (
-                  <View style={styles.authField}>
-                    <Text style={styles.authLabel}>NOME COMPLETO</Text>
-                    <TextInput
-                      style={styles.authInput}
-                      placeholder="Seu nome"
-                      placeholderTextColor={colors.slate400}
-                      value={authName}
-                      onChangeText={setAuthName}
-                    />
-                  </View>
-                )}
-
-                <View style={styles.authField}>
-                  <Text style={styles.authLabel}>
-                    {authMode === 'login' ? 'E-MAIL OU NOME DE USUÁRIO' : 'E-MAIL'}
-                  </Text>
-                  <TextInput
-                    style={styles.authInput}
-                    placeholder={authMode === 'login' ? 'Seu e-mail ou nome de usuário' : 'seu.email@exemplo.com'}
-                    placeholderTextColor={colors.slate400}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={authEmail}
-                    onChangeText={setAuthEmail}
-                  />
-                </View>
-
-                <View style={styles.authField}>
-                  <Text style={styles.authLabel}>SENHA</Text>
-                  <TextInput
-                    style={styles.authInput}
-                    placeholder="••••••••"
-                    placeholderTextColor={colors.slate400}
-                    secureTextEntry
-                    value={authPassword}
-                    onChangeText={setAuthPassword}
-                  />
-                </View>
-
-                {authMode === 'cadastro' && (
-                  <View style={styles.authField}>
-                    <Text style={styles.authLabel}>CONFIRMAR SENHA</Text>
-                    <TextInput
-                      style={styles.authInput}
-                      placeholder="••••••••"
-                      placeholderTextColor={colors.slate400}
-                      secureTextEntry
-                      value={authConfirmPassword}
-                      onChangeText={setAuthConfirmPassword}
-                    />
-                  </View>
-                )}
-
-                <TouchableOpacity style={styles.btnAuthSubmit} onPress={handleAuthSubmit} disabled={authLoading}>
-                  {authLoading ? (
-                    <ActivityIndicator color={colors.white} />
-                  ) : (
-                    <Text style={styles.btnAuthSubmitText}>
-                      {authMode === 'login' ? 'ENTRAR NA PLATAFORMA' : 'CADASTRAR CONTA'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.authToggleMode}
-                  onPress={() => {
-                    setAuthMsg(null);
-                    setAuthMode(authMode === 'login' ? 'cadastro' : 'login');
+                {/* Abas Superiores: Entrar / Criar Conta (idêntico ao index.php linhas 734-739) */}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.slate200,
+                    backgroundColor: colors.slate50,
                   }}
                 >
-                  <Text style={styles.authToggleModeText}>
-                    {authMode === 'login'
-                      ? 'Não tem uma conta? Cadastre-se aqui'
-                      : 'Já tem uma conta? Faça login'}
-                  </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      paddingVertical: 15,
+                      alignItems: 'center',
+                      borderBottomWidth: 2,
+                      borderBottomColor: authMode === 'login' ? colors.blue600 : 'transparent',
+                      backgroundColor: authMode === 'login' ? colors.white : 'transparent',
+                    }}
+                    onPress={() => {
+                      setAuthMsg(null);
+                      setAuthMode('login');
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: '900',
+                        letterSpacing: 1,
+                        textTransform: 'uppercase',
+                        color: authMode === 'login' ? colors.blue600 : colors.slate400,
+                        fontFamily: modernFont,
+                      }}
+                    >
+                      Entrar
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      paddingVertical: 15,
+                      alignItems: 'center',
+                      borderBottomWidth: 2,
+                      borderBottomColor: authMode === 'cadastro' ? colors.blue600 : 'transparent',
+                      backgroundColor: authMode === 'cadastro' ? colors.white : 'transparent',
+                    }}
+                    onPress={() => {
+                      setAuthMsg(null);
+                      setAuthMode('cadastro');
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: '900',
+                        letterSpacing: 1,
+                        textTransform: 'uppercase',
+                        color: authMode === 'cadastro' ? colors.blue600 : colors.slate400,
+                        fontFamily: modernFont,
+                      }}
+                    >
+                      Criar Conta
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ padding: 24 }}>
+                  {authMsg && (
+                    <View
+                      style={[
+                        styles.authMsgBox,
+                        authMsg.type === 'erro' ? styles.authMsgErro : styles.authMsgSucesso,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.authMsgText,
+                          { color: authMsg.type === 'erro' ? '#e11d48' : '#059669' },
+                        ]}
+                      >
+                        {authMsg.text}
+                      </Text>
+                    </View>
+                  )}
+
+                  {authMode === 'login' ? (
+                    <>
+                      <View style={styles.authField}>
+                        <Text style={styles.authLabel}>USUÁRIO</Text>
+                        <TextInput
+                          style={styles.authInput}
+                          placeholder="Seu usuário"
+                          placeholderTextColor={colors.slate400}
+                          autoCapitalize="none"
+                          value={authEmail}
+                          onChangeText={setAuthEmail}
+                        />
+                      </View>
+
+                      <View style={styles.authField}>
+                        <Text style={styles.authLabel}>SENHA</Text>
+                        <TextInput
+                          style={styles.authInput}
+                          placeholder="••••••••"
+                          placeholderTextColor={colors.slate400}
+                          secureTextEntry
+                          value={authPassword}
+                          onChangeText={setAuthPassword}
+                          onSubmitEditing={handleAuthSubmit}
+                        />
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.btnAuthSubmit}
+                        onPress={handleAuthSubmit}
+                        disabled={authLoading}
+                      >
+                        {authLoading ? (
+                          <Text style={styles.btnAuthSubmitText}>VERIFICANDO...</Text>
+                        ) : (
+                          <Text style={styles.btnAuthSubmitText}>ACESSAR PLATAFORMA</Text>
+                        )}
+                      </TouchableOpacity>
+
+                      {isBiometryEnabled && Platform.OS === 'web' && (
+                        <View
+                          style={{
+                            marginTop: 14,
+                            paddingTop: 14,
+                            borderTopWidth: 1,
+                            borderTopColor: colors.slate100,
+                          }}
+                        >
+                          <TouchableOpacity
+                            style={{
+                              width: '100%',
+                              backgroundColor: colors.slate50,
+                              borderWidth: 1,
+                              borderColor: colors.slate200,
+                              paddingVertical: 11,
+                              borderRadius: 10,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            onPress={handleBiometricLogin}
+                            disabled={authLoading}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                fontWeight: '900',
+                                color: colors.slate700,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.8,
+                                fontFamily: modernFont,
+                              }}
+                            >
+                              🔒 Entrar com Biometria / FaceID
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <View style={styles.authField}>
+                        <Text style={styles.authLabel}>NOME COMPLETO</Text>
+                        <TextInput
+                          style={styles.authInput}
+                          placeholder="Ex: João da Silva"
+                          placeholderTextColor={colors.slate400}
+                          value={authName}
+                          onChangeText={setAuthName}
+                        />
+                      </View>
+
+                      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.authLabel}>USUÁRIO</Text>
+                          <TextInput
+                            style={styles.authInput}
+                            placeholder="Ex: joao123"
+                            placeholderTextColor={colors.slate400}
+                            autoCapitalize="none"
+                            value={authUsername}
+                            onChangeText={setAuthUsername}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.authLabel}>CONFIRMAR USUÁRIO</Text>
+                          <TextInput
+                            style={styles.authInput}
+                            placeholder="Repita o usuário"
+                            placeholderTextColor={colors.slate400}
+                            autoCapitalize="none"
+                            value={authConfirmUsername}
+                            onChangeText={setAuthConfirmUsername}
+                          />
+                        </View>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.authLabel}>E-MAIL</Text>
+                          <TextInput
+                            style={styles.authInput}
+                            placeholder="seu@email.com"
+                            placeholderTextColor={colors.slate400}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            value={authEmail}
+                            onChangeText={setAuthEmail}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.authLabel}>CONFIRMAR E-MAIL</Text>
+                          <TextInput
+                            style={styles.authInput}
+                            placeholder="Repita o e-mail"
+                            placeholderTextColor={colors.slate400}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            value={authConfirmEmail}
+                            onChangeText={setAuthConfirmEmail}
+                          />
+                        </View>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.authLabel}>SENHA</Text>
+                          <TextInput
+                            style={styles.authInput}
+                            placeholder="Mínimo 6 dígitos"
+                            placeholderTextColor={colors.slate400}
+                            secureTextEntry
+                            value={authPassword}
+                            onChangeText={setAuthPassword}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.authLabel}>CONFIRMAR SENHA</Text>
+                          <TextInput
+                            style={styles.authInput}
+                            placeholder="Repita a senha"
+                            placeholderTextColor={colors.slate400}
+                            secureTextEntry
+                            value={authConfirmPassword}
+                            onChangeText={setAuthConfirmPassword}
+                          />
+                        </View>
+                      </View>
+
+                      <TouchableOpacity
+                        style={[styles.btnAuthSubmit, { backgroundColor: '#059669' }]}
+                        onPress={handleAuthSubmit}
+                        disabled={authLoading}
+                      >
+                        {authLoading ? (
+                          <Text style={styles.btnAuthSubmitText}>PROCESSANDO...</Text>
+                        ) : (
+                          <Text style={styles.btnAuthSubmitText}>FINALIZAR CADASTRO</Text>
+                        )}
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
               </View>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal de Convite para Ativar Biometria pós-login (idêntico ao index.php linhas 825-848) */}
+      <Modal visible={isBiometryEnrollModalVisible} transparent animationType="none">
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.authCard, { alignItems: 'center', maxWidth: 380 }]}>
+            <View
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: '#eff6ff',
+                borderWidth: 1,
+                borderColor: '#dbeafe',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+              }}
+            >
+              <Text style={{ fontSize: 28 }}>🔐</Text>
+            </View>
+            <Text style={[styles.authTitle, { marginBottom: 8 }]}>LOGIN POR BIOMETRIA</Text>
+            <Text
+              style={{
+                fontSize: 13,
+                color: colors.slate500,
+                textAlign: 'center',
+                lineHeight: 20,
+                marginBottom: 20,
+                fontFamily: modernFont,
+              }}
+            >
+              Deseja ativar o acesso rápido por{' '}
+              <Text style={{ fontWeight: '700', color: colors.slate700 }}>
+                Impressão Digital ou Reconhecimento Facial
+              </Text>{' '}
+              neste dispositivo para os próximos acessos?
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  backgroundColor: colors.slate100,
+                  alignItems: 'center',
+                }}
+                onPress={skipEnrollBiometry}
+              >
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '900',
+                    color: colors.slate600,
+                    textTransform: 'uppercase',
+                    fontFamily: modernFont,
+                  }}
+                >
+                  Agora Não
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  backgroundColor: colors.blue600,
+                  alignItems: 'center',
+                }}
+                onPress={confirmEnrollBiometry}
+              >
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '900',
+                    color: colors.white,
+                    textTransform: 'uppercase',
+                    fontFamily: modernFont,
+                  }}
+                >
+                  Ativar Biometria
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Modal de Edição e Rotação de Imagem ("CONFIRMAR E ANEXAR") */}
