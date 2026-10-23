@@ -899,6 +899,14 @@ export default function ReportGenerator() {
   const [deviceInfo, setDeviceInfo] = useState<DeviceTelemetryInfo | null>(null);
   const [showAcessosModal, setShowAcessosModal] = useState<boolean>(false);
   const [accessLogsList, setAccessLogsList] = useState<DeviceTelemetryInfo[]>([]);
+  const [prepostoIdentificado, setPrepostoIdentificado] = useState<string>(() => {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        return localStorage.getItem('mms_telemetria_preposto') || '';
+      } catch (e) {}
+    }
+    return '';
+  });
 
   useEffect(() => {
     // Puxa preposto previamente identificado nos relatórios deste aparelho (mesmo deslogado)
@@ -910,12 +918,18 @@ export default function ReportGenerator() {
     }
 
     // Registra telemetria do aparelho e acesso à página inicial / gerador com identificação do preposto
-    collectDeviceTelemetry('acesso_gerador', prepostoHistorico ? { usuario: prepostoHistorico } : undefined).then((initInfo) => {
+    collectDeviceTelemetry('acesso_gerador', prepostoHistorico).then((initInfo) => {
       setDeviceInfo(initInfo);
+      if (initInfo.username && initInfo.username !== 'Visitante') {
+        setPrepostoIdentificado(initInfo.username);
+      }
       setAccessLogsList(getLocalDeviceAccessLogs());
     });
-    registerDeviceAccess('acesso_gerador', prepostoHistorico ? { usuario: prepostoHistorico } : undefined).then((info) => {
+    registerDeviceAccess('acesso_gerador', prepostoHistorico).then((info) => {
       setDeviceInfo(info);
+      if (info.username && info.username !== 'Visitante') {
+        setPrepostoIdentificado(info.username);
+      }
       setAccessLogsList(getLocalDeviceAccessLogs());
     });
 
@@ -2413,11 +2427,14 @@ export default function ReportGenerator() {
         : (userSession?.user?.user_metadata?.name || '');
 
     // Salva o preposto neste dispositivo para que seus acessos futuros sejam imediatamente identificados
-    if (prepostoTratado && typeof localStorage !== 'undefined') {
-      try {
-        localStorage.setItem('mms_telemetria_preposto', prepostoTratado);
-      } catch (e) {}
-      registerDeviceAccess('acesso_gerador', { usuario: prepostoTratado }).catch(() => {});
+    if (prepostoTratado) {
+      setPrepostoIdentificado(prepostoTratado);
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('mms_telemetria_preposto', prepostoTratado);
+        } catch (e) {}
+        registerDeviceAccess('acesso_gerador', prepostoTratado).catch(() => {});
+      }
     }
 
     const jsonPayload = {
@@ -3934,39 +3951,62 @@ export default function ReportGenerator() {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.deviceAccessGrid}>
-                {/* ID do Telefone / Dispositivo */}
-                <View style={styles.deviceAccessItem}>
-                  <Text style={styles.deviceAccessLabel}>ID DO TELEFONE / DISPOSITIVO:</Text>
-                  <Text style={styles.deviceAccessValueHighlight} numberOfLines={1}>
-                    🔑 {deviceInfo?.deviceId || 'MMS-DEV-...'}
-                  </Text>
-                </View>
+              {(() => {
+                const prepostoAtivo = prepostoIdentificado || (currentData.preposto && currentData.preposto.trim()) || '';
+                return (
+                  <View style={styles.deviceAccessGrid}>
+                    {/* Preposto / Usuário Identificado */}
+                    <View style={[styles.deviceAccessItem, prepostoAtivo ? { borderColor: '#86efac', backgroundColor: '#f0fdf4' } : {}]}>
+                      <Text style={[styles.deviceAccessLabel, prepostoAtivo ? { color: '#15803d' } : {}]}>
+                        {prepostoAtivo ? 'PREPOSTO IDENTIFICADO (RELATÓRIO):' : 'USUÁRIO / PREPOSTO:'}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.deviceAccessValue,
+                          prepostoAtivo
+                            ? { color: '#166534', fontWeight: '900' }
+                            : { color: '#64748b', fontStyle: 'italic' },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {prepostoAtivo ? `👤 ${prepostoAtivo}` : '👤 Visitante (Aguardando relatório)'}
+                      </Text>
+                    </View>
 
-                {/* IP de Origem */}
-                <View style={styles.deviceAccessItem}>
-                  <Text style={styles.deviceAccessLabel}>IP DETECTADO (NUVEM):</Text>
-                  <Text style={styles.deviceAccessValue} numberOfLines={1}>
-                    🌐 {deviceInfo?.ip || '127.0.0.1'}
-                  </Text>
-                </View>
+                    {/* ID do Telefone / Dispositivo */}
+                    <View style={styles.deviceAccessItem}>
+                      <Text style={styles.deviceAccessLabel}>ID DO TELEFONE / DISPOSITIVO:</Text>
+                      <Text style={styles.deviceAccessValueHighlight} numberOfLines={1}>
+                        🔑 {deviceInfo?.deviceId || 'MMS-DEV-...'}
+                      </Text>
+                    </View>
 
-                {/* Modelo do Aparelho */}
-                <View style={styles.deviceAccessItem}>
-                  <Text style={styles.deviceAccessLabel}>APARELHO / MODELO:</Text>
-                  <Text style={styles.deviceAccessValue} numberOfLines={1}>
-                    📲 {deviceInfo?.model || 'Identificando...'}
-                  </Text>
-                </View>
+                    {/* IP de Origem */}
+                    <View style={styles.deviceAccessItem}>
+                      <Text style={styles.deviceAccessLabel}>IP DETECTADO (NUVEM):</Text>
+                      <Text style={styles.deviceAccessValue} numberOfLines={1}>
+                        🌐 {deviceInfo?.ip || '127.0.0.1'}
+                      </Text>
+                    </View>
 
-                {/* Sistema & Navegador */}
-                <View style={styles.deviceAccessItem}>
-                  <Text style={styles.deviceAccessLabel}>SISTEMA & NAVEGADOR:</Text>
-                  <Text style={styles.deviceAccessValue} numberOfLines={1}>
-                    ⚙️ {deviceInfo?.os || 'SO'} • {deviceInfo?.browser || 'Browser'}
-                  </Text>
-                </View>
-              </View>
+                    {/* Modelo do Aparelho */}
+                    <View style={styles.deviceAccessItem}>
+                      <Text style={styles.deviceAccessLabel}>APARELHO / MODELO:</Text>
+                      <Text style={styles.deviceAccessValue} numberOfLines={1}>
+                        📲 {deviceInfo?.model || 'Identificando...'}
+                      </Text>
+                    </View>
+
+                    {/* Sistema & Navegador */}
+                    <View style={styles.deviceAccessItem}>
+                      <Text style={styles.deviceAccessLabel}>SISTEMA & NAVEGADOR:</Text>
+                      <Text style={styles.deviceAccessValue} numberOfLines={1}>
+                        ⚙️ {deviceInfo?.os || 'SO'} • {deviceInfo?.browser || 'Browser'}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
 
             {/* Footer Personalizável */}
@@ -4611,27 +4651,42 @@ export default function ReportGenerator() {
                   <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhum acesso registrado localmente ainda.</Text>
                 </View>
               ) : (
-                accessLogsList.map((item, idx) => (
-                  <View key={idx} style={styles.deviceAccessRow}>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <Text style={[styles.deviceAccessBadge, item.tipo === 'login_sucesso' ? styles.deviceAccessBadgeSuccess : styles.deviceAccessBadgeAccess]}>
-                          {item.tipo === 'login_sucesso' ? 'LOGIN AUTORIZADO' : 'ACESSO AO GERADOR'}
+                accessLogsList.map((item, idx) => {
+                  const prepostoAtivo = prepostoIdentificado || (currentData.preposto && currentData.preposto.trim()) || '';
+                  const nomeDoLog = (item.username && item.username !== 'Visitante' && item.username !== 'Visitante Gerador')
+                    ? item.username
+                    : prepostoAtivo;
+                  return (
+                    <View key={idx} style={styles.deviceAccessRow}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <Text style={[styles.deviceAccessBadge, item.tipo === 'login_sucesso' ? styles.deviceAccessBadgeSuccess : styles.deviceAccessBadgeAccess]}>
+                            {item.tipo === 'login_sucesso' ? 'LOGIN AUTORIZADO' : 'ACESSO AO GERADOR'}
+                          </Text>
+                          <Text style={styles.deviceAccessRowIp}>🌐 {item.ip}</Text>
+                        </View>
+                        {nomeDoLog ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                            <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                              <Text style={{ color: '#065f46', fontSize: 10, fontWeight: '800' }}>
+                                👤 PREPOSTO: {nomeDoLog}
+                              </Text>
+                            </View>
+                          </View>
+                        ) : null}
+                        <Text style={styles.deviceAccessRowDevice}>
+                          📲 {item.model} • {item.os} ({item.browser})
                         </Text>
-                        <Text style={styles.deviceAccessRowIp}>🌐 {item.ip}</Text>
+                        <Text style={styles.deviceAccessRowId}>
+                          ID: {item.deviceId} | Tela: {item.screenResolution}
+                        </Text>
                       </View>
-                      <Text style={styles.deviceAccessRowDevice}>
-                        📲 {item.model} • {item.os} ({item.browser})
-                      </Text>
-                      <Text style={styles.deviceAccessRowId}>
-                        ID: {item.deviceId} | Tela: {item.screenResolution}
+                      <Text style={styles.deviceAccessRowTime}>
+                        🕒 {new Date(item.dataRegistro).toLocaleString('pt-BR')}
                       </Text>
                     </View>
-                    <Text style={styles.deviceAccessRowTime}>
-                      🕒 {new Date(item.dataRegistro).toLocaleString('pt-BR')}
-                    </Text>
-                  </View>
-                ))
+                  );
+                })
               )}
             </ScrollView>
 
