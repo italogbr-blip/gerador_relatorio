@@ -46,11 +46,10 @@ export async function fetchFooterConfig(): Promise<FooterConfig> {
       .select('mensagem')
       .eq('estilo', 'footer_config')
       .order('id', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (!error && data && data.mensagem) {
-      const parsed = JSON.parse(data.mensagem);
+    if (!error && data && data.length > 0 && data[0]?.mensagem) {
+      const parsed = JSON.parse(data[0].mensagem);
       const merged = { ...defaultFooterConfig, ...parsed };
       if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         try {
