@@ -129,6 +129,12 @@ export default function PainelCoordScreen() {
   const [paginaRelatorios, setPaginaRelatorios] = useState<number>(1);
   const porPagina = 15;
 
+  // Sub-abas e Paginação de Rankings
+  const [subTabRanking, setSubTabRanking] = useState<'prepostos' | 'empresas'>('prepostos');
+  const [paginaRankingPrepostos, setPaginaRankingPrepostos] = useState<number>(1);
+  const [paginaRankingEmpresas, setPaginaRankingEmpresas] = useState<number>(1);
+  const porPaginaRanking = 10;
+
   // Filtro de Usuários
   const [filtroBuscaUsuario, setFiltroBuscaUsuario] = useState<string>('');
   const [filtroUsuarioId, setFiltroUsuarioId] = useState<number | null>(null);
@@ -1056,9 +1062,9 @@ export default function PainelCoordScreen() {
     }
   };
 
-  // Cálculo de Ranking (Top Geradores)
-  const rankingGeradores = useMemo(() => {
-    const mapa: { [key: string]: { nome: string; total: number; empresa: string } } = {};
+  // Cálculo de Ranking: Prepostos (Todos os prepostos e usuários geradores)
+  const rankingPrepostos = useMemo(() => {
+    const mapa: { [key: string]: { nome: string; total: number; ultimaEmpresa: string } } = {};
 
     relatorios.forEach((r) => {
       const parsed = parseReportData(r);
@@ -1083,13 +1089,57 @@ export default function PainelCoordScreen() {
       const emp = r.empresa || 'OUTROS';
 
       if (!mapa[chaveGerador]) {
-        mapa[chaveGerador] = { nome: chaveGerador, total: 0, empresa: emp };
+        mapa[chaveGerador] = { nome: chaveGerador, total: 0, ultimaEmpresa: emp };
       }
       mapa[chaveGerador].total += 1;
+      if (emp && emp !== 'OUTROS') {
+        mapa[chaveGerador].ultimaEmpresa = emp;
+      }
     });
 
     return Object.values(mapa).sort((a, b) => b.total - a.total);
   }, [relatorios, usuarios]);
+
+  // Alias para compatibilidade
+  const rankingGeradores = rankingPrepostos;
+
+  // Cálculo de Ranking: Empresas (Volume por empresa/cliente)
+  const rankingEmpresas = useMemo(() => {
+    const mapa: { [key: string]: { empresa: string; total: number } } = {};
+
+    relatorios.forEach((r) => {
+      let emp = (r.empresa || '').trim().toUpperCase();
+      if (!emp || emp === 'N/A' || emp === 'UNDEFINED' || emp === 'NULL') {
+        emp = 'OUTROS';
+      }
+      if (!mapa[emp]) {
+        mapa[emp] = { empresa: emp, total: 0 };
+      }
+      mapa[emp].total += 1;
+    });
+
+    return Object.values(mapa).sort((a, b) => b.total - a.total);
+  }, [relatorios]);
+
+  // Paginação dos Prepostos (10 por página)
+  const totalPaginasPrepostos = useMemo(() => {
+    return Math.max(1, Math.ceil(rankingPrepostos.length / porPaginaRanking));
+  }, [rankingPrepostos.length]);
+
+  const prepostosPaginados = useMemo(() => {
+    const inicio = (paginaRankingPrepostos - 1) * porPaginaRanking;
+    return rankingPrepostos.slice(inicio, inicio + porPaginaRanking);
+  }, [rankingPrepostos, paginaRankingPrepostos]);
+
+  // Paginação das Empresas (10 por página)
+  const totalPaginasEmpresas = useMemo(() => {
+    return Math.max(1, Math.ceil(rankingEmpresas.length / porPaginaRanking));
+  }, [rankingEmpresas.length]);
+
+  const empresasPaginadas = useMemo(() => {
+    const inicio = (paginaRankingEmpresas - 1) * porPaginaRanking;
+    return rankingEmpresas.slice(inicio, inicio + porPaginaRanking);
+  }, [rankingEmpresas, paginaRankingEmpresas]);
 
   // Lista de Usuários Filtrados
   const usuariosFiltrados = useMemo(() => {
@@ -1445,7 +1495,7 @@ export default function PainelCoordScreen() {
             >
               <Text style={{ fontSize: 13, marginRight: 6 }}>🏆</Text>
               <Text style={[styles.tabNavButtonText, activeTab === 'ranking' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-                RANKING
+                RANKINGS
               </Text>
             </TouchableOpacity>
 
@@ -1825,76 +1875,368 @@ export default function PainelCoordScreen() {
           </View>
         )}
 
-        {/* ════════════════ ABA 2: RANKING / TOP GERADORES (IGUAL COORD/INDEX.PHP) ════════════════ */}
+        {/* ════════════════ ABA 2: RANKINGS (PREPOSTOS & EMPRESAS) ════════════════ */}
         {activeTab === 'ranking' && (
           <View style={styles.tabContent}>
             <View style={styles.rankingCard}>
+              {/* Header do Card de Rankings com Seletor de Sub-abas */}
               <View style={styles.rankingHeader}>
-                <View style={styles.rankingHeaderLeft}>
-                  <View style={styles.rankingIconBox}>
-                    <Text style={{ fontSize: 20, color: '#ffffff' }}>🏆</Text>
-                  </View>
-                  <View>
-                    <Text style={styles.rankingTitle}>TOP GERADORES</Text>
-                    <Text style={styles.rankingSubtitle}>Ranking dos que mais geraram relatórios</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Tabela do Ranking */}
-              <View style={styles.rankingTableHeaderRow}>
-                <View style={styles.rankingColPos}>
-                  <Text style={styles.rankingTableHeaderText}>POSIÇÃO</Text>
-                </View>
-                <View style={styles.rankingColUser}>
-                  <Text style={styles.rankingTableHeaderText}>USUÁRIO / PREPOSTO</Text>
-                </View>
-                <View style={styles.rankingColTotal}>
-                  <Text style={styles.rankingTableHeaderText}>TOTAL</Text>
-                </View>
-              </View>
-
-              <View>
-                {rankingGeradores.map((item, index) => {
-                  const is1 = index === 0;
-                  const is2 = index === 1;
-                  const is3 = index === 2;
-
-                  return (
-                    <View key={item.nome || index} style={styles.rankingTableRow}>
-                      <View style={styles.rankingColPos}>
-                        {is1 ? (
-                          <View style={[styles.rankingPosBadge, styles.rankingPosBadge1]}>
-                            <Text style={styles.rankingPosBadgeText1}>1</Text>
-                          </View>
-                        ) : is2 ? (
-                          <View style={[styles.rankingPosBadge, styles.rankingPosBadge2]}>
-                            <Text style={styles.rankingPosBadgeText2}>2</Text>
-                          </View>
-                        ) : is3 ? (
-                          <View style={[styles.rankingPosBadge, styles.rankingPosBadge3]}>
-                            <Text style={styles.rankingPosBadgeText3}>3</Text>
-                          </View>
-                        ) : (
-                          <Text style={styles.rankingPosNumber}>{index + 1}</Text>
-                        )}
-                      </View>
-
-                      <View style={styles.rankingColUser}>
-                        <Text style={styles.rankingUserName} numberOfLines={1}>
-                          {item.nome}
-                        </Text>
-                      </View>
-
-                      <View style={styles.rankingColTotal}>
-                        <View style={styles.rankingTotalBadge}>
-                          <Text style={styles.rankingTotalBadgeText}>{item.total}</Text>
-                        </View>
-                      </View>
+                <View style={styles.rankingHeaderTopRow}>
+                  <View style={styles.rankingHeaderLeft}>
+                    <View style={styles.rankingIconBox}>
+                      <Text style={{ fontSize: 20, color: '#ffffff' }}>🏆</Text>
                     </View>
-                  );
-                })}
+                    <View>
+                      <Text style={styles.rankingTitle}>RANKINGS GERAIS</Text>
+                      <Text style={styles.rankingSubtitle}>
+                        {subTabRanking === 'prepostos'
+                          ? 'Classificação de prepostos por volume de relatórios emitidos'
+                          : 'Distribuição de relatórios gerados por empresa atendida'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Sub-abas: 1º Ranking Prepostos | 2º Ranking Empresas */}
+                <View style={styles.rankingSubTabsRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.rankingSubTabBtn,
+                      subTabRanking === 'prepostos' && styles.rankingSubTabBtnActive,
+                    ]}
+                    onPress={() => setSubTabRanking('prepostos')}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={{ fontSize: 14 }}>👷‍♂️</Text>
+                    <Text
+                      style={[
+                        styles.rankingSubTabBtnText,
+                        subTabRanking === 'prepostos' && styles.rankingSubTabBtnTextActive,
+                      ]}
+                    >
+                      RANKING PREPOSTOS
+                    </Text>
+                    <View
+                      style={[
+                        styles.rankingSubTabPill,
+                        subTabRanking === 'prepostos'
+                          ? styles.rankingSubTabPillActive
+                          : styles.rankingSubTabPillInactive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.rankingSubTabPillText,
+                          subTabRanking === 'prepostos'
+                            ? styles.rankingSubTabPillTextActive
+                            : styles.rankingSubTabPillTextInactive,
+                        ]}
+                      >
+                        {rankingPrepostos.length}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.rankingSubTabBtn,
+                      subTabRanking === 'empresas' && styles.rankingSubTabBtnActive,
+                    ]}
+                    onPress={() => setSubTabRanking('empresas')}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={{ fontSize: 14 }}>🏢</Text>
+                    <Text
+                      style={[
+                        styles.rankingSubTabBtnText,
+                        subTabRanking === 'empresas' && styles.rankingSubTabBtnTextActive,
+                      ]}
+                    >
+                      RANKING EMPRESAS
+                    </Text>
+                    <View
+                      style={[
+                        styles.rankingSubTabPill,
+                        subTabRanking === 'empresas'
+                          ? styles.rankingSubTabPillActive
+                          : styles.rankingSubTabPillInactive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.rankingSubTabPillText,
+                          subTabRanking === 'empresas'
+                            ? styles.rankingSubTabPillTextActive
+                            : styles.rankingSubTabPillTextInactive,
+                        ]}
+                      >
+                        {rankingEmpresas.length}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
               </View>
+
+              {/* ────────── SUB-ABA 1: RANKING PREPOSTOS ────────── */}
+              {subTabRanking === 'prepostos' && (
+                <View>
+                  {/* Cabeçalho da Tabela de Prepostos */}
+                  <View style={styles.rankingTableHeaderRow}>
+                    <View style={styles.rankingColPos}>
+                      <Text style={styles.rankingTableHeaderText}>POSIÇÃO</Text>
+                    </View>
+                    <View style={styles.rankingColUser}>
+                      <Text style={styles.rankingTableHeaderText}>PREPOSTO / USUÁRIO</Text>
+                    </View>
+                    {!isMobile && (
+                      <View style={styles.rankingColEmpresa}>
+                        <Text style={styles.rankingTableHeaderText}>ÚLTIMA EMPRESA</Text>
+                      </View>
+                    )}
+                    <View style={styles.rankingColTotal}>
+                      <Text style={styles.rankingTableHeaderText}>TOTAL</Text>
+                    </View>
+                  </View>
+
+                  {/* Listagem Paginada de Prepostos */}
+                  {prepostosPaginados.length === 0 ? (
+                    <View style={{ padding: 40, alignItems: 'center' }}>
+                      <Text style={{ color: '#94a3b8', fontSize: 13, fontFamily: modernFont }}>
+                        Nenhum preposto ou relatório registrado ainda.
+                      </Text>
+                    </View>
+                  ) : (
+                    prepostosPaginados.map((item, index) => {
+                      const posReal = (paginaRankingPrepostos - 1) * porPaginaRanking + index;
+                      const is1 = posReal === 0;
+                      const is2 = posReal === 1;
+                      const is3 = posReal === 2;
+
+                      return (
+                        <View key={item.nome || index} style={styles.rankingTableRow}>
+                          {/* Coluna Posição */}
+                          <View style={styles.rankingColPos}>
+                            {is1 ? (
+                              <View style={[styles.rankingPosBadge, styles.rankingPosBadge1]}>
+                                <Text style={styles.rankingPosBadgeText1}>1</Text>
+                              </View>
+                            ) : is2 ? (
+                              <View style={[styles.rankingPosBadge, styles.rankingPosBadge2]}>
+                                <Text style={styles.rankingPosBadgeText2}>2</Text>
+                              </View>
+                            ) : is3 ? (
+                              <View style={[styles.rankingPosBadge, styles.rankingPosBadge3]}>
+                                <Text style={styles.rankingPosBadgeText3}>3</Text>
+                              </View>
+                            ) : (
+                              <Text style={styles.rankingPosNumber}>{posReal + 1}</Text>
+                            )}
+                          </View>
+
+                          {/* Coluna Preposto */}
+                          <View style={styles.rankingColUser}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                              <View style={styles.rankingAvatarCircle}>
+                                <Text style={styles.rankingAvatarText}>
+                                  {item.nome.replace(/[^a-zA-Z0-9]/g, '').charAt(0).toUpperCase() || 'P'}
+                                </Text>
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.rankingUserName} numberOfLines={1}>
+                                  {item.nome}
+                                </Text>
+                                {isMobile && item.ultimaEmpresa && (
+                                  <Text style={styles.rankingUserSubText} numberOfLines={1}>
+                                    🏢 {item.ultimaEmpresa}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                          </View>
+
+                          {/* Coluna Última Empresa (Desktop) */}
+                          {!isMobile && (
+                            <View style={styles.rankingColEmpresa}>
+                              <View style={styles.rankingEmpresaTag}>
+                                <Text style={styles.rankingEmpresaTagText} numberOfLines={1}>
+                                  {item.ultimaEmpresa || 'NÃO ESPECIFICADA'}
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* Coluna Total */}
+                          <View style={styles.rankingColTotal}>
+                            <View style={styles.rankingTotalBadge}>
+                              <Text style={styles.rankingTotalBadgeText}>{item.total}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+
+                  {/* Paginação de Prepostos (quando ultrapassar 10 usuários) */}
+                  {rankingPrepostos.length > porPaginaRanking && (
+                    <View style={styles.paginationRow}>
+                      <TouchableOpacity
+                        style={[styles.pageBtn, paginaRankingPrepostos <= 1 && styles.pageBtnDisabled]}
+                        disabled={paginaRankingPrepostos <= 1}
+                        onPress={() => setPaginaRankingPrepostos((p) => Math.max(1, p - 1))}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.pageBtnText}>← ANTERIOR</Text>
+                      </TouchableOpacity>
+
+                      <Text style={styles.pageIndicatorText}>
+                        PÁGINA {paginaRankingPrepostos} DE {totalPaginasPrepostos} • {rankingPrepostos.length} PREPOSTOS
+                      </Text>
+
+                      <TouchableOpacity
+                        style={[styles.pageBtn, paginaRankingPrepostos >= totalPaginasPrepostos && styles.pageBtnDisabled]}
+                        disabled={paginaRankingPrepostos >= totalPaginasPrepostos}
+                        onPress={() => setPaginaRankingPrepostos((p) => Math.min(totalPaginasPrepostos, p + 1))}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.pageBtnText}>PRÓXIMA →</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* ────────── SUB-ABA 2: RANKING EMPRESAS ────────── */}
+              {subTabRanking === 'empresas' && (
+                <View>
+                  {/* Cabeçalho da Tabela de Empresas */}
+                  <View style={styles.rankingTableHeaderRow}>
+                    <View style={styles.rankingColPos}>
+                      <Text style={styles.rankingTableHeaderText}>POSIÇÃO</Text>
+                    </View>
+                    <View style={styles.rankingColUser}>
+                      <Text style={styles.rankingTableHeaderText}>EMPRESA / CLIENTE</Text>
+                    </View>
+                    {!isMobile && (
+                      <View style={styles.rankingColEmpresa}>
+                        <Text style={styles.rankingTableHeaderText}>PARTICIPAÇÃO</Text>
+                      </View>
+                    )}
+                    <View style={styles.rankingColTotal}>
+                      <Text style={styles.rankingTableHeaderText}>TOTAL</Text>
+                    </View>
+                  </View>
+
+                  {/* Listagem Paginada de Empresas */}
+                  {empresasPaginadas.length === 0 ? (
+                    <View style={{ padding: 40, alignItems: 'center' }}>
+                      <Text style={{ color: '#94a3b8', fontSize: 13, fontFamily: modernFont }}>
+                        Nenhuma empresa registrada nos relatórios.
+                      </Text>
+                    </View>
+                  ) : (
+                    empresasPaginadas.map((item, index) => {
+                      const posReal = (paginaRankingEmpresas - 1) * porPaginaRanking + index;
+                      const is1 = posReal === 0;
+                      const is2 = posReal === 1;
+                      const is3 = posReal === 2;
+                      const percent = totalRelatoriosGeral > 0
+                        ? ((item.total / totalRelatoriosGeral) * 100).toFixed(1)
+                        : '0';
+
+                      return (
+                        <View key={item.empresa || index} style={styles.rankingTableRow}>
+                          {/* Coluna Posição */}
+                          <View style={styles.rankingColPos}>
+                            {is1 ? (
+                              <View style={[styles.rankingPosBadge, styles.rankingPosBadge1]}>
+                                <Text style={styles.rankingPosBadgeText1}>1</Text>
+                              </View>
+                            ) : is2 ? (
+                              <View style={[styles.rankingPosBadge, styles.rankingPosBadge2]}>
+                                <Text style={styles.rankingPosBadgeText2}>2</Text>
+                              </View>
+                            ) : is3 ? (
+                              <View style={[styles.rankingPosBadge, styles.rankingPosBadge3]}>
+                                <Text style={styles.rankingPosBadgeText3}>3</Text>
+                              </View>
+                            ) : (
+                              <Text style={styles.rankingPosNumber}>{posReal + 1}</Text>
+                            )}
+                          </View>
+
+                          {/* Coluna Empresa */}
+                          <View style={styles.rankingColUser}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                              <View style={styles.rankingCompanyIconBox}>
+                                <Text style={{ fontSize: 16 }}>🏢</Text>
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.rankingUserName} numberOfLines={1}>
+                                  {item.empresa}
+                                </Text>
+                                {isMobile && (
+                                  <Text style={styles.rankingUserSubText}>
+                                    {percent}% do volume total
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                          </View>
+
+                          {/* Coluna Participação (Desktop) */}
+                          {!isMobile && (
+                            <View style={styles.rankingColEmpresa}>
+                              <View style={{ width: '100%', paddingRight: 20 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b' }}>VOLUME</Text>
+                                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#0284c7' }}>{percent}%</Text>
+                                </View>
+                                <View style={styles.rankingProgressBarBg}>
+                                  <View style={[styles.rankingProgressBarFill, { width: `${Math.min(100, Math.max(5, Number(percent)))}%` }]} />
+                                </View>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* Coluna Total */}
+                          <View style={styles.rankingColTotal}>
+                            <View style={[styles.rankingTotalBadge, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+                              <Text style={[styles.rankingTotalBadgeText, { color: '#16a34a' }]}>{item.total}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+
+                  {/* Paginação de Empresas (quando ultrapassar 10 empresas) */}
+                  {rankingEmpresas.length > porPaginaRanking && (
+                    <View style={styles.paginationRow}>
+                      <TouchableOpacity
+                        style={[styles.pageBtn, paginaRankingEmpresas <= 1 && styles.pageBtnDisabled]}
+                        disabled={paginaRankingEmpresas <= 1}
+                        onPress={() => setPaginaRankingEmpresas((p) => Math.max(1, p - 1))}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.pageBtnText}>← ANTERIOR</Text>
+                      </TouchableOpacity>
+
+                      <Text style={styles.pageIndicatorText}>
+                        PÁGINA {paginaRankingEmpresas} DE {totalPaginasEmpresas} • {rankingEmpresas.length} EMPRESAS
+                      </Text>
+
+                      <TouchableOpacity
+                        style={[styles.pageBtn, paginaRankingEmpresas >= totalPaginasEmpresas && styles.pageBtnDisabled]}
+                        disabled={paginaRankingEmpresas >= totalPaginasEmpresas}
+                        onPress={() => setPaginaRankingEmpresas((p) => Math.min(totalPaginasEmpresas, p + 1))}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.pageBtnText}>PRÓXIMA →</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -5408,16 +5750,144 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  rankingHeaderTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  rankingSubTabsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fef3c7',
+    padding: 4,
+    borderRadius: 12,
+  },
+  rankingSubTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 9,
+  },
+  rankingSubTabBtnActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#b45309',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  rankingSubTabBtnText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#92400e',
+    letterSpacing: 0.6,
+    fontFamily: modernFont,
+  },
+  rankingSubTabBtnTextActive: {
+    color: '#78350f',
+  },
+  rankingSubTabPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  rankingSubTabPillActive: {
+    backgroundColor: '#fef3c7',
+  },
+  rankingSubTabPillInactive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  rankingSubTabPillText: {
+    fontSize: 10,
+    fontWeight: '900',
+    fontFamily: modernFont,
+  },
+  rankingSubTabPillTextActive: {
+    color: '#92400e',
+  },
+  rankingSubTabPillTextInactive: {
+    color: '#b45309',
+  },
   rankingColPos: {
-    width: '15%',
+    width: 60,
     alignItems: 'center',
   },
   rankingColUser: {
-    width: '65%',
+    flex: 1,
+    paddingHorizontal: 8,
+  },
+  rankingColEmpresa: {
+    width: 170,
+    paddingHorizontal: 8,
   },
   rankingColTotal: {
-    width: '20%',
+    width: 80,
     alignItems: 'center',
+  },
+  rankingAvatarCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankingAvatarText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#2563eb',
+    fontFamily: modernFont,
+  },
+  rankingUserSubText: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '600',
+    marginTop: 2,
+    fontFamily: modernFont,
+  },
+  rankingEmpresaTag: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  rankingEmpresaTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#475569',
+    letterSpacing: 0.4,
+    fontFamily: modernFont,
+  },
+  rankingCompanyIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankingProgressBarBg: {
+    width: '100%',
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#e2e8f0',
+    overflow: 'hidden',
+  },
+  rankingProgressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: '#0284c7',
   },
   rankingTableHeaderText: {
     fontSize: 10,
