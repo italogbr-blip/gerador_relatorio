@@ -854,17 +854,14 @@ export default function PainelCoordScreen() {
   };
 
   // 3. Visualizar relatório em página completa (fidelidade a coord/index.php e ver_relatorio.php)
-  const handleVisualizarRelatorio = async (report: any) => {
+  const handleVisualizarRelatorio = (report: any) => {
     if (!report) return;
-    let fullReport = report;
-    if (!report.dados_json) {
-      try {
-        const { data } = await supabase.from('relatorios').select('*').eq('id', report.id).single();
-        if (data) fullReport = data;
-      } catch (e) {}
+    const reportId = report.id;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(`/ver_relatorio?id=${reportId}`, '_blank');
+    } else {
+      router.push(`/ver_relatorio?id=${reportId}`);
     }
-    const pdfData = extractReportPdfData(fullReport);
-    visualizarRelatorioHtml(pdfData);
   };
 
   const handleVoltarAoGerador = () => {
@@ -1034,17 +1031,34 @@ export default function PainelCoordScreen() {
 
     relatorios.forEach((r) => {
       const parsed = parseReportData(r);
-      const preposto = (parsed?.preposto || r.unidade || 'Desconhecido').trim();
+      const rawPreposto = parsed?.preposto;
+      const hasPrepostoValido =
+        rawPreposto &&
+        rawPreposto !== 'undefined' &&
+        rawPreposto.trim() !== '' &&
+        rawPreposto.trim().toUpperCase() !== 'N/A';
+      const uNome = usuarios.find((u) => u.id === r.usuario_id)?.nome;
+
+      let chaveGerador = '';
+      if (hasPrepostoValido) {
+        chaveGerador = rawPreposto.trim();
+      } else if (uNome) {
+        chaveGerador = uNome.trim();
+      } else {
+        const ipOrigem = r.ip_origem || 'N/A';
+        chaveGerador = `🌐 IP: ${ipOrigem} (${r.unidade || 'Relatório'})`;
+      }
+
       const emp = r.empresa || 'OUTROS';
 
-      if (!mapa[preposto]) {
-        mapa[preposto] = { nome: preposto, total: 0, empresa: emp };
+      if (!mapa[chaveGerador]) {
+        mapa[chaveGerador] = { nome: chaveGerador, total: 0, empresa: emp };
       }
-      mapa[preposto].total += 1;
+      mapa[chaveGerador].total += 1;
     });
 
     return Object.values(mapa).sort((a, b) => b.total - a.total);
-  }, [relatorios]);
+  }, [relatorios, usuarios]);
 
   // Lista de Usuários Filtrados
   const usuariosFiltrados = useMemo(() => {
@@ -1613,9 +1627,20 @@ export default function PainelCoordScreen() {
                         minute: '2-digit',
                       })
                       : 'N/A';
-                    const preposto = parsed?.preposto || usuarios.find((u) => u.id === item.usuario_id)?.nome || 'NÃO INFORMADO';
+                    const rawPreposto = parsed?.preposto;
+                    const hasPrepostoValido =
+                      rawPreposto &&
+                      rawPreposto !== 'undefined' &&
+                      rawPreposto.trim() !== '' &&
+                      rawPreposto.trim().toUpperCase() !== 'N/A';
+                    const preposto = hasPrepostoValido
+                      ? rawPreposto.trim()
+                      : (usuarios.find((u) => u.id === item.usuario_id)?.nome || null);
                     const ipOrigem = item.ip_origem || 'N/A';
                     const badgeStyle = getCompanyBadgeStyle(item.empresa);
+                    const autorTexto = preposto
+                      ? `POR: 🌐 IP: ${ipOrigem} (${preposto.toUpperCase()})`
+                      : `POR: 🌐 IP: ${ipOrigem} (${(item.unidade || 'RELATÓRIO').toUpperCase()})`;
 
                     return (
                       <View key={item.id} style={styles.reportsItemCard}>
@@ -1631,7 +1656,7 @@ export default function PainelCoordScreen() {
                         </View>
 
                         <Text style={styles.reportsItemSub} numberOfLines={1}>
-                          POR: 🌐 IP: {ipOrigem} ({preposto.toUpperCase()})
+                          {autorTexto}
                         </Text>
 
                         <View style={styles.reportsItemTimeRow}>

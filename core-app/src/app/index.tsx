@@ -2410,13 +2410,19 @@ export default function ReportGenerator() {
   };
 
   const salvarRelatorioNoSupabase = async () => {
+    const rawPreposto = currentData.preposto;
+    const prepostoTratado =
+      rawPreposto && rawPreposto !== 'undefined' && rawPreposto.trim() !== ''
+        ? rawPreposto.trim()
+        : (userSession?.user?.user_metadata?.name || '');
+
     const jsonPayload = {
       grupo: currentData.grupo,
       unidade: currentData.unidade,
       data: currentData.data,
       local: currentData.local,
       modal: currentData.modal,
-      preposto: currentData.preposto,
+      preposto: prepostoTratado,
       observacao_nome_arquivo: currentData.observacao,
       horarios: {
         saida_hotel: currentData.listaSaidas,
@@ -2445,6 +2451,15 @@ export default function ReportGenerator() {
 
     try {
       let pdfUrlResult: string | null = null;
+      let clientIp: string | null = null;
+
+      try {
+        const ipRes = await fetch('https://api.ipify.org?format=json');
+        if (ipRes.ok) {
+          const ipJson = await ipRes.json();
+          clientIp = ipJson.ip || null;
+        }
+      } catch (_) {}
 
       // 1. Tenta enviar para o servidor PHP
       try {
@@ -2476,6 +2491,7 @@ export default function ReportGenerator() {
             dados_json: JSON.stringify(jsonPayload),
             teve_anexo: currentData.fotosAnexadas.length > 0,
             ...(pdfUrlResult ? { pdf_url: pdfUrlResult } : {}),
+            ...(clientIp ? { ip_origem: clientIp } : {}),
           })
           .eq('id', editingReportId);
 
@@ -2519,6 +2535,7 @@ export default function ReportGenerator() {
         dados_json: JSON.stringify(jsonPayload),
         teve_anexo: currentData.fotosAnexadas.length > 0,
         pdf_url: pdfUrlResult,
+        ip_origem: clientIp,
         data_criacao: new Date().toISOString(),
       };
 
