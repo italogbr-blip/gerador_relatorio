@@ -79,6 +79,26 @@ export default function Layout() {
         }
       } catch (e) {}
 
+      // Previne que a seleção ou foco de inputs nos navegadores desloque a janela (window.scrollY > 0)
+      const preventWindowScroll = () => {
+        if (window.scrollY !== 0 || window.scrollX !== 0) {
+          window.scrollTo(0, 0);
+        }
+        if (document.documentElement.scrollTop !== 0) {
+          document.documentElement.scrollTop = 0;
+        }
+        if (document.body.scrollTop !== 0) {
+          document.body.scrollTop = 0;
+        }
+      };
+
+      window.addEventListener('scroll', preventWindowScroll, { passive: true });
+      window.addEventListener('focusin', () => {
+        setTimeout(preventWindowScroll, 10);
+        setTimeout(preventWindowScroll, 80);
+        setTimeout(preventWindowScroll, 200);
+      });
+
       if (!document.getElementById('inter-font-link')) {
         const link = document.createElement('link');
         link.id = 'inter-font-link';
@@ -91,14 +111,23 @@ export default function Layout() {
         const style = document.createElement('style');
         style.id = 'custom-scrollbar-style';
         style.innerHTML = `
-          /* Reset e Fundo Padrão Idêntico ao index.php */
-          html, body {
+          /* Reset e Bloqueio de Viewport para Prevenir Desalinhamento ao Focar Campos */
+          html, body, #root {
             touch-action: pan-x pan-y;
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
             background-color: #0f172a;
             margin: 0;
-            min-height: 100vh;
+            padding: 0;
+            height: 100% !important;
+            width: 100% !important;
+            overflow: hidden !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            overscroll-behavior-y: none !important;
           }
 
           /* Scrollbar Estilizado Customizado (#0f172a Padrão) */

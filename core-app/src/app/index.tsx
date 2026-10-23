@@ -970,6 +970,194 @@ export default function ReportGenerator() {
     ? Math.min(1, Math.max(0.32, (windowWidth - 20) / a4BaseWidth))
     : 1;
 
+  // --- SISTEMA DE PULL-TO-REFRESH ANIMADO (EMPURRA A PÁGINA PARA BAIXO COM ÍCONE EM ROTAÇÃO) ---
+  const scrollRef = useRef<any>(null);
+  const scrollYRef = useRef(0);
+  const pullAnim = useRef(new Animated.Value(0)).current;
+  const pullSpinAnim = useRef(new Animated.Value(0)).current;
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isThresholdReached, setIsThresholdReached] = useState(false);
+
+  const executeRefresh = () => {
+    setIsRefreshing(true);
+    setIsThresholdReached(true);
+
+    Animated.timing(pullAnim, {
+      toValue: 62,
+      duration: 220,
+      useNativeDriver: false,
+    }).start();
+
+    pullSpinAnim.setValue(0);
+    const spinLoop = Animated.loop(
+      Animated.timing(pullSpinAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: false,
+      })
+    );
+    spinLoop.start();
+
+    setTimeout(() => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.location.reload();
+      } else {
+        setIsRefreshing(false);
+        setIsThresholdReached(false);
+        Animated.timing(pullAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }).start();
+      }
+    }, 850);
+  };
+
+  const triggerManualRefresh = () => {
+    if (isRefreshing) return;
+    scrollRef.current?.scrollTo?.({ y: 0, animated: true });
+    executeRefresh();
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    const PULL_THRESHOLD = 75;
+    const MAX_PULL = 115;
+    let startY = 0;
+    let isDragging = false;
+    let currentDist = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (scrollYRef.current <= 2 && e.touches.length === 1) {
+        startY = e.touches[0].clientY;
+        isDragging = true;
+        currentDist = 0;
+      } else {
+        isDragging = false;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDragging || isRefreshing) return;
+      const currentY = e.touches[0].clientY;
+      const deltaY = currentY - startY;
+
+      if (deltaY > 0 && scrollYRef.current <= 2) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.82) * 1.6);
+        currentDist = dist;
+        pullAnim.setValue(dist);
+
+        if (dist >= PULL_THRESHOLD && !isThresholdReached) {
+          setIsThresholdReached(true);
+        } else if (dist < PULL_THRESHOLD && isThresholdReached) {
+          setIsThresholdReached(false);
+        }
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (!isDragging || isRefreshing) return;
+      isDragging = false;
+      if (currentDist >= PULL_THRESHOLD) {
+        executeRefresh();
+      } else if (currentDist > 0) {
+        setIsThresholdReached(false);
+        Animated.spring(pullAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false,
+        }).start();
+      }
+      currentDist = 0;
+    };
+
+    let mouseStartY = 0;
+    let isMouseDragging = false;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (scrollYRef.current <= 2 && e.button === 0 && e.clientY <= 90) {
+        mouseStartY = e.clientY;
+        isMouseDragging = true;
+        currentDist = 0;
+      }
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isMouseDragging || isRefreshing) return;
+      const deltaY = e.clientY - mouseStartY;
+      if (deltaY > 0 && scrollYRef.current <= 2) {
+        const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.82) * 1.6);
+        currentDist = dist;
+        pullAnim.setValue(dist);
+
+        if (dist >= PULL_THRESHOLD && !isThresholdReached) {
+          setIsThresholdReached(true);
+        } else if (dist < PULL_THRESHOLD && isThresholdReached) {
+          setIsThresholdReached(false);
+        }
+      }
+    };
+
+    const onMouseUp = () => {
+      if (!isMouseDragging || isRefreshing) return;
+      isMouseDragging = false;
+      if (currentDist >= PULL_THRESHOLD) {
+        executeRefresh();
+      } else if (currentDist > 0) {
+        setIsThresholdReached(false);
+        Animated.spring(pullAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: false,
+        }).start();
+      }
+      currentDist = 0;
+    };
+
+    const scrollEl = document.querySelector('.mms-main-scroll');
+    const handleElScroll = () => {
+      if (scrollEl) {
+        scrollYRef.current = scrollEl.scrollTop;
+      }
+    };
+    scrollEl?.addEventListener('scroll', handleElScroll, { passive: true });
+
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    window.addEventListener('mousedown', onMouseDown, { passive: true });
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    window.addEventListener('mouseup', onMouseUp, { passive: true });
+
+    return () => {
+      scrollEl?.removeEventListener('scroll', handleElScroll);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isRefreshing, isThresholdReached]);
+
+  const pullSpinInterpolate = pullSpinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const pullRotationInterpolate = pullAnim.interpolate({
+    inputRange: [0, 75],
+    outputRange: ['0deg', '360deg'],
+    extrapolate: 'clamp',
+  });
+
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const menuAnim = useRef(new Animated.Value(0)).current;
 
@@ -2883,7 +3071,101 @@ export default function ReportGenerator() {
     <SafeAreaView style={styles.body} className="mms-app-layout">
       <StatusBar style="light" />
 
-      <ScrollView style={{ flex: 1, width: '100%' }} contentContainerStyle={{ flexGrow: 1 }} className="mms-main-scroll">
+      <ScrollView
+        ref={scrollRef}
+        style={{ flex: 1, width: '100%' }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        className="mms-main-scroll"
+        onScroll={(e) => {
+          scrollYRef.current = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
+      >
+        {/* Sistema de Pull-To-Refresh Animado que empurra a página para baixo */}
+        <Animated.View
+          style={[
+            styles.pullRefreshWrapper,
+            {
+              height: pullAnim,
+              opacity: pullAnim.interpolate({
+                inputRange: [0, 8, 45],
+                outputRange: [0, 0.6, 1],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}
+        >
+          <View style={styles.pullRefreshInner}>
+            <Animated.View
+              style={[
+                styles.pullRefreshIconBox,
+                (isThresholdReached || isRefreshing) && styles.pullRefreshIconBoxActive,
+                {
+                  transform: [
+                    {
+                      rotate: isRefreshing ? pullSpinInterpolate : pullRotationInterpolate,
+                    },
+                    {
+                      scale: isRefreshing
+                        ? 1.12
+                        : pullAnim.interpolate({
+                            inputRange: [0, 35, 75],
+                            outputRange: [0.75, 0.95, 1.2],
+                            extrapolate: 'clamp',
+                          }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              {Platform.OS === 'web' ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={isThresholdReached || isRefreshing ? '#10b981' : '#38bdf8'}
+                  strokeWidth="2.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                </svg>
+              ) : (
+                <Text style={{ fontSize: 20 }}>🔄</Text>
+              )}
+            </Animated.View>
+
+            <View style={styles.pullRefreshTextGroup}>
+              <Text style={[styles.pullRefreshLabel, (isThresholdReached || isRefreshing) && styles.pullRefreshLabelActive]}>
+                {isRefreshing
+                  ? 'Atualizando sistema...'
+                  : isThresholdReached
+                  ? '⚡ Solte para atualizar!'
+                  : 'Puxe para baixo para atualizar'}
+              </Text>
+              <View style={styles.pullRefreshTrack}>
+                <Animated.View
+                  style={[
+                    styles.pullRefreshBar,
+                    {
+                      width: isRefreshing
+                        ? '100%'
+                        : pullAnim.interpolate({
+                            inputRange: [0, 75],
+                            outputRange: ['0%', '100%'],
+                            extrapolate: 'clamp',
+                          }),
+                      backgroundColor: isThresholdReached || isRefreshing ? '#10b981' : '#0284c7',
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+
         {/* Navbar Superior (Rola junto com a página - Não fixo) */}
         <View style={styles.navbar} className="mms-navbar">
           {/* Esquerda: Logo / Marca do Sistema (MMS RELATÓRIOS) */}
@@ -2922,6 +3204,16 @@ export default function ReportGenerator() {
                 <Text style={{ fontSize: 18 }}>⚙️</Text>
               </TouchableOpacity>
             )}
+
+            {/* Botão de Atualizar / Refresh animado */}
+            <TouchableOpacity
+              style={styles.navNotifBtn}
+              activeOpacity={0.7}
+              onPress={triggerManualRefresh}
+              accessibilityLabel="Atualizar Página"
+            >
+              <Text style={{ fontSize: 16 }}>🔄</Text>
+            </TouchableOpacity>
 
             {/* Botão de Notificações com Badge e Ação Real */}
             <TouchableOpacity
@@ -4734,6 +5026,71 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     backgroundColor: '#0f172a',
+  },
+  pullRefreshWrapper: {
+    width: '100%',
+    backgroundColor: '#090e1a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 101,
+  },
+  pullRefreshInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    height: '100%',
+  },
+  pullRefreshIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#1e293b',
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#38bdf8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  pullRefreshIconBoxActive: {
+    borderColor: '#10b981',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    shadowColor: '#10b981',
+    shadowOpacity: 0.6,
+  },
+  pullRefreshTextGroup: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 4,
+  },
+  pullRefreshLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94a3b8',
+    letterSpacing: 0.3,
+  },
+  pullRefreshLabelActive: {
+    color: '#34d399',
+    fontWeight: '800',
+  },
+  pullRefreshTrack: {
+    width: 140,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#334155',
+    overflow: 'hidden',
+  },
+  pullRefreshBar: {
+    height: '100%',
+    borderRadius: 2,
   },
   navbar: {
     minHeight: 60,
