@@ -20,14 +20,9 @@ SELECT setval(
   false
 );
 
--- 3. Sincroniza a sequence da tabela configuracoes_popups se existir
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'configuracoes_popups') THEN
-    PERFORM setval(
-      pg_get_serial_sequence('public.configuracoes_popups', 'id'),
-      COALESCE((SELECT MAX(id) FROM public.configuracoes_popups), 1) + 1,
-      false
-    );
-  END IF;
-END $$;
+-- 3. Sincroniza a sequence da tabela configuracoes_popups com o maior ID existente
+SELECT setval(
+  pg_get_serial_sequence('public.configuracoes_popups', 'id'),
+  COALESCE((SELECT MAX(id) FROM public.configuracoes_popups), 1) + 1,
+  false
+);
