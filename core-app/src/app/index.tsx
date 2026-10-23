@@ -2861,6 +2861,17 @@ export default function ReportGenerator() {
 
           {/* Direita: Notificações e Menu */}
           <View style={styles.navRightGroup} className="mms-navbar__actions">
+            {/* Botão Atalho para o Painel da Coordenação */}
+            <TouchableOpacity
+              style={styles.navNotifBtn}
+              className="mms-navbar__coord-btn"
+              activeOpacity={0.7}
+              onPress={() => router.push('/painel_coord')}
+              accessibilityLabel="Painel Coordenação"
+            >
+              <Text style={{ fontSize: 16 }}>⚙️</Text>
+            </TouchableOpacity>
+
             {/* Botão de Notificações com Badge e Ação Real */}
             <TouchableOpacity
               style={styles.navNotifBtn}
@@ -2981,21 +2992,22 @@ export default function ReportGenerator() {
                       </View>
                     </TouchableOpacity>
 
-                    {/* Painel de Coordenação: EXCLUSIVO PARA USUÁRIOS LOGADOS NÍVEL 2 */}
+                    {/* Painel de Coordenação: Sempre acessível */}
+                    <TouchableOpacity
+                      style={styles.menuItem}
+                      onPress={() => {
+                        toggleMenu();
+                        router.push('/painel_coord');
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.menuItemIcon}>⚙️</Text>
+                        <Text style={[styles.menuItemText, { color: '#d97706' }]}>Painel Coordenação</Text>
+                      </View>
+                    </TouchableOpacity>
+
                     {isUserCoordinator(userSession) && (
                       <>
-                        <TouchableOpacity
-                          style={styles.menuItem}
-                          onPress={() => {
-                            toggleMenu();
-                            router.push('/painel_coord');
-                          }}
-                        >
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Text style={styles.menuItemIcon}>⚙️</Text>
-                            <Text style={[styles.menuItemText, { color: '#d97706' }]}>Painel Coordenação</Text>
-                          </View>
-                        </TouchableOpacity>
 
                         <TouchableOpacity
                           style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100 }]}
@@ -3072,6 +3084,19 @@ export default function ReportGenerator() {
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Text style={styles.menuItemIcon}>📝</Text>
                         <Text style={[styles.menuItemText, { color: colors.emerald600 }]}>Criar Nova Conta</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100, marginTop: 4 }]}
+                      onPress={() => {
+                        toggleMenu();
+                        router.push('/painel_coord');
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.menuItemIcon}>⚙️</Text>
+                        <Text style={[styles.menuItemText, { color: '#d97706' }]}>Painel Coordenação</Text>
                       </View>
                     </TouchableOpacity>
                   </>
