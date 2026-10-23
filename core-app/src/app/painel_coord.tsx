@@ -88,13 +88,6 @@ export default function PainelCoordScreen() {
   const [acessosFalhos, setAcessosFalhos] = useState<any[]>([]);
   const [acessosGerador, setAcessosGerador] = useState<any[]>([]);
   const [ultimosLogins, setUltimosLogins] = useState<any[]>([]);
-  const [ipsBloqueados, setIpsBloqueados] = useState<any[]>([]);
-  const [inputIpManual, setInputIpManual] = useState<string>('');
-  const [salvandoBloqueioIp, setSalvandoBloqueioIp] = useState<boolean>(false);
-
-  const blockedIpsSet = useMemo(() => {
-    return new Set(ipsBloqueados.map((item) => String(item.ip || '').trim()));
-  }, [ipsBloqueados]);
   const [loadingSeguranca, setLoadingSeguranca] = useState<boolean>(false);
   const [alertaSegurancaExpandido, setAlertaSegurancaExpandido] = useState<boolean>(true);
   const [ultimoCheckSeguranca, setUltimoCheckSeguranca] = useState<string>(() => {
@@ -518,10 +511,9 @@ export default function PainelCoordScreen() {
     try {
       let falhosDb: any[] = [];
       let loginsDb: any[] = [];
-      let bloqueadosDb: any[] = [];
 
       try {
-        const [resFalhos, resLogins, resBloqueados] = await Promise.all([
+        const [resFalhos, resLogins] = await Promise.all([
           supabase
             .from('coord_acessos_falhos')
             .select('*')
@@ -532,10 +524,6 @@ export default function PainelCoordScreen() {
             .select('*')
             .order('data_login', { ascending: false })
             .limit(50),
-          supabase
-            .from('ips_bloqueados')
-            .select('*')
-            .order('data_bloqueio', { ascending: false }),
         ]);
 
         if (!resFalhos.error && resFalhos.data) {
@@ -544,14 +532,9 @@ export default function PainelCoordScreen() {
         if (!resLogins.error && resLogins.data) {
           loginsDb = resLogins.data;
         }
-        if (!resBloqueados.error && resBloqueados.data) {
-          bloqueadosDb = resBloqueados.data;
-        }
       } catch (errDb) {
         console.warn('Erro ao consultar segurança do banco:', errDb);
       }
-
-      setIpsBloqueados(bloqueadosDb);
 
       // 3. Mapeamento Inteligente: Busca prepostos em relatórios gerados para identificar o usuário mesmo deslogado
       const mapaPrepostosPorIp = new Map<string, string>();
@@ -749,101 +732,6 @@ export default function PainelCoordScreen() {
       },
       true
     );
-  };
-
-  const handleToggleBloquearIp = (ipAlvo: string, estaBloqueado: boolean) => {
-    const ipLimpo = (ipAlvo || '').trim();
-    if (!ipLimpo || ipLimpo === '127.0.0.1' || ipLimpo.toLowerCase() === 'localhost') {
-      showCustomAlert('IP Inválido', 'Não é possível bloquear o endereço de IP local.');
-      return;
-    }
-
-    if (estaBloqueado) {
-      showCustomAlert(
-        'Desbloquear IP',
-        `Deseja realmente DESBLOQUEAR o IP "${ipLimpo}"?\n\nO usuário deste IP voltará a ter acesso normal ao Gerador de Relatórios.`,
-        async () => {
-          try {
-            const { error } = await supabase
-              .from('ips_bloqueados')
-              .delete()
-              .eq('ip', ipLimpo);
-            if (error) {
-              showCustomAlert('Erro ao Desbloquear', error.message || 'Falha ao remover o bloqueio.');
-            } else {
-              showCustomAlert('IP Desbloqueado', `O IP ${ipLimpo} foi desbloqueado com sucesso.`);
-              carregarSeguranca();
-            }
-          } catch (err: any) {
-            showCustomAlert('Erro', err.message || 'Erro inesperado.');
-          }
-        },
-        false
-      );
-    } else {
-      showCustomAlert(
-        'Bloquear IP',
-        `Deseja realmente BLOQUEAR o IP "${ipLimpo}"?\n\nQualquer dispositivo conectado através deste IP será impedido de acessar o Gerador de Relatórios.`,
-        async () => {
-          try {
-            const { error } = await supabase
-              .from('ips_bloqueados')
-              .insert([{
-                ip: ipLimpo,
-                bloqueado_por: userSession?.user?.user_metadata?.username || userSession?.user?.email || 'Coordenação',
-                data_bloqueio: new Date().toISOString(),
-              }]);
-            if (error) {
-              showCustomAlert('Erro ao Bloquear', error.message || 'Falha ao salvar o bloqueio.');
-            } else {
-              showCustomAlert('IP Bloqueado', `O IP ${ipLimpo} foi bloqueado com sucesso!`);
-              carregarSeguranca();
-            }
-          } catch (err: any) {
-            showCustomAlert('Erro', err.message || 'Erro inesperado.');
-          }
-        },
-        true
-      );
-    }
-  };
-
-  const handleBloquearIpManual = async () => {
-    const ipLimpo = inputIpManual.trim();
-    if (!ipLimpo) {
-      showCustomAlert('Atenção', 'Digite um endereço IP válido.');
-      return;
-    }
-    if (ipLimpo === '127.0.0.1' || ipLimpo.toLowerCase() === 'localhost') {
-      showCustomAlert('IP Inválido', 'Não é possível bloquear o IP local.');
-      return;
-    }
-    if (blockedIpsSet.has(ipLimpo)) {
-      showCustomAlert('Atenção', `O IP ${ipLimpo} já se encontra na lista de bloqueio.`);
-      return;
-    }
-
-    setSalvandoBloqueioIp(true);
-    try {
-      const { error } = await supabase
-        .from('ips_bloqueados')
-        .insert([{
-          ip: ipLimpo,
-          bloqueado_por: userSession?.user?.user_metadata?.username || userSession?.user?.email || 'Coordenação',
-          data_bloqueio: new Date().toISOString(),
-        }]);
-      if (error) {
-        showCustomAlert('Erro ao Bloquear', error.message || 'Falha ao salvar o bloqueio.');
-      } else {
-        showCustomAlert('IP Bloqueado', `O IP ${ipLimpo} foi bloqueado com sucesso!`);
-        setInputIpManual('');
-        carregarSeguranca();
-      }
-    } catch (err: any) {
-      showCustomAlert('Erro', err.message || 'Erro inesperado.');
-    } finally {
-      setSalvandoBloqueioIp(false);
-    }
   };
 
   const carregarVersoes = async () => {
@@ -3230,12 +3118,11 @@ export default function PainelCoordScreen() {
               <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
                 <View style={styles.versionTableHeaderRow}>
                   <Text style={[styles.versionHeaderColText, { width: 140 }]}>USUÁRIO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>ID TELEFONE / DISPOSITIVO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>IP DE ORIGEM</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 160 }]}>APARELHO / MODELO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>ID TELEFONE / DISPOSITIVO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>IP DE ORIGEM</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>APARELHO / MODELO</Text>
                   <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA & NAVEGADOR</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA / HORA</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>DATA / HORA</Text>
                 </View>
 
                 {loadingSeguranca ? (
@@ -3266,19 +3153,19 @@ export default function PainelCoordScreen() {
                           </Text>
                           <Text style={{ color: '#16a34a', fontSize: 10, fontWeight: '700' }}>● SESSÃO AUTORIZADA</Text>
                         </View>
-                        <View style={{ width: 170 }}>
+                        <View style={{ width: 180 }}>
                           <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#e2e8f0', alignSelf: 'flex-start' }}>
                             <Text style={{ color: '#334155', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
                               🆔 {String(lg.deviceId || 'DEV-AUTH').replace(/^MMS-/i, '')}
                             </Text>
                           </View>
                         </View>
-                        <View style={{ width: 140 }}>
+                        <View style={{ width: 150 }}>
                           <Text style={{ color: '#0369a1', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
                             🌐 {lg.ip || '127.0.0.1'}
                           </Text>
                         </View>
-                        <View style={{ width: 160 }}>
+                        <View style={{ width: 180 }}>
                           <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
                             📱 {lg.model || 'Aparelho Registrado'}
                           </Text>
@@ -3288,40 +3175,10 @@ export default function PainelCoordScreen() {
                             💻 {lg.os || 'OS'} • {lg.browser || 'Browser'}
                           </Text>
                         </View>
-                        <View style={{ width: 140 }}>
+                        <View style={{ width: 150 }}>
                           <Text style={{ color: '#64748b', fontSize: 11 }}>
                             🕒 {dataStr}
                           </Text>
-                        </View>
-                        <View style={{ width: 130, alignItems: 'center', justifyContent: 'center' }}>
-                          {lg.ip && lg.ip !== '127.0.0.1' ? (
-                            <TouchableOpacity
-                              onPress={() => handleToggleBloquearIp(lg.ip, blockedIpsSet.has(lg.ip))}
-                              style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                gap: 4,
-                                paddingHorizontal: 8,
-                                paddingVertical: 5,
-                                borderRadius: 6,
-                                backgroundColor: blockedIpsSet.has(lg.ip) ? '#fee2e2' : '#f8fafc',
-                                borderWidth: 1,
-                                borderColor: blockedIpsSet.has(lg.ip) ? '#fca5a5' : '#cbd5e1',
-                              }}
-                              activeOpacity={0.7}
-                            >
-                              <Text style={{ fontSize: 12 }}>{blockedIpsSet.has(lg.ip) ? '🚫' : '🔒'}</Text>
-                              <Text style={{
-                                fontSize: 10,
-                                fontWeight: '900',
-                                color: blockedIpsSet.has(lg.ip) ? '#b91c1c' : '#475569',
-                              }}>
-                                {blockedIpsSet.has(lg.ip) ? 'BLOQUEADO' : 'BLOQUEAR'}
-                              </Text>
-                            </TouchableOpacity>
-                          ) : (
-                            <Text style={{ fontSize: 10, color: '#94a3b8' }}>-</Text>
-                          )}
                         </View>
                       </View>
                     );
@@ -3407,29 +3264,6 @@ export default function PainelCoordScreen() {
                         <Text style={{ fontSize: 12, fontWeight: '800', color: '#0284c7', fontFamily: 'monospace' }} numberOfLines={1}>
                           🌐 {ultimo.ip || '127.0.0.1'}
                         </Text>
-                        {ultimo.ip && ultimo.ip !== '127.0.0.1' && (
-                          <TouchableOpacity
-                            onPress={() => handleToggleBloquearIp(ultimo.ip, blockedIpsSet.has(ultimo.ip))}
-                            style={{
-                              marginTop: 6,
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 4,
-                              alignSelf: 'flex-start',
-                              backgroundColor: blockedIpsSet.has(ultimo.ip) ? '#fee2e2' : '#f1f5f9',
-                              paddingHorizontal: 8,
-                              paddingVertical: 3,
-                              borderRadius: 4,
-                              borderWidth: 1,
-                              borderColor: blockedIpsSet.has(ultimo.ip) ? '#fca5a5' : '#cbd5e1',
-                            }}
-                          >
-                            <Text style={{ fontSize: 11 }}>{blockedIpsSet.has(ultimo.ip) ? '🚫' : '🔒'}</Text>
-                            <Text style={{ fontSize: 9, fontWeight: '900', color: blockedIpsSet.has(ultimo.ip) ? '#b91c1c' : '#475569' }}>
-                              {blockedIpsSet.has(ultimo.ip) ? 'IP BLOQUEADO' : 'BLOQUEAR IP'}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
                       </View>
 
                       <View style={{ flex: 1, minWidth: 170, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
@@ -3456,13 +3290,12 @@ export default function PainelCoordScreen() {
 
               <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
                 <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>ORIGEM / USUÁRIO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>ID DO TELEFONE / DISPOSITIVO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>IP DE ORIGEM</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 160 }]}>APARELHO DETECTADO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>ORIGEM / USUÁRIO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>ID DO TELEFONE / DISPOSITIVO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>IP DE ORIGEM</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>APARELHO DETECTADO</Text>
                   <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA & RESOLUÇÃO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA / HORA</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>DATA / HORA</Text>
                 </View>
 
                 {loadingSeguranca ? (
@@ -3489,7 +3322,7 @@ export default function PainelCoordScreen() {
                           idx % 2 === 1 && { backgroundColor: '#f0f9ff' },
                         ]}
                       >
-                        <View style={{ width: 140 }}>
+                        <View style={{ width: 150 }}>
                           <Text style={{ color: ag.isPrepostoDetectado ? '#047857' : '#0f172a', fontWeight: '800', fontSize: 12 }} numberOfLines={1}>
                             {ag.username || 'Visitante Index'}
                           </Text>
@@ -3501,19 +3334,19 @@ export default function PainelCoordScreen() {
                             <Text style={{ color: '#0284c7', fontSize: 10, fontWeight: '700', marginTop: 2 }}>⚡ PÁGINA INICIAL</Text>
                           )}
                         </View>
-                        <View style={{ width: 170 }}>
+                        <View style={{ width: 180 }}>
                           <View style={{ backgroundColor: '#f8fafc', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#cbd5e1', alignSelf: 'flex-start' }}>
                             <Text style={{ color: '#0f172a', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
                               🆔 {String(ag.deviceId || 'DEV-001').replace(/^MMS-/i, '')}
                             </Text>
                           </View>
                         </View>
-                        <View style={{ width: 140 }}>
+                        <View style={{ width: 150 }}>
                           <Text style={{ color: '#0284c7', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
                             🌐 {ag.ip || '127.0.0.1'}
                           </Text>
                         </View>
-                        <View style={{ width: 160 }}>
+                        <View style={{ width: 180 }}>
                           <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
                             📱 {ag.model || 'Aparelho Web'}
                           </Text>
@@ -3523,40 +3356,10 @@ export default function PainelCoordScreen() {
                             🖥️ {ag.os || 'OS'} • {ag.browser || 'Web'} {ag.screen ? `(${ag.screen})` : ''}
                           </Text>
                         </View>
-                        <View style={{ width: 140 }}>
+                        <View style={{ width: 150 }}>
                           <Text style={{ color: '#64748b', fontSize: 11 }}>
                             🕒 {dataStr}
                           </Text>
-                        </View>
-                        <View style={{ width: 130, alignItems: 'center', justifyContent: 'center' }}>
-                          {ag.ip && ag.ip !== '127.0.0.1' ? (
-                            <TouchableOpacity
-                              onPress={() => handleToggleBloquearIp(ag.ip, blockedIpsSet.has(ag.ip))}
-                              style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                gap: 4,
-                                paddingHorizontal: 8,
-                                paddingVertical: 5,
-                                borderRadius: 6,
-                                backgroundColor: blockedIpsSet.has(ag.ip) ? '#fee2e2' : '#f8fafc',
-                                borderWidth: 1,
-                                borderColor: blockedIpsSet.has(ag.ip) ? '#fca5a5' : '#cbd5e1',
-                              }}
-                              activeOpacity={0.7}
-                            >
-                              <Text style={{ fontSize: 12 }}>{blockedIpsSet.has(ag.ip) ? '🚫' : '🔒'}</Text>
-                              <Text style={{
-                                fontSize: 10,
-                                fontWeight: '900',
-                                color: blockedIpsSet.has(ag.ip) ? '#b91c1c' : '#475569',
-                              }}>
-                                {blockedIpsSet.has(ag.ip) ? 'BLOQUEADO' : 'BLOQUEAR'}
-                              </Text>
-                            </TouchableOpacity>
-                          ) : (
-                            <Text style={{ fontSize: 10, color: '#94a3b8' }}>-</Text>
-                          )}
                         </View>
                       </View>
                     );
@@ -3607,12 +3410,11 @@ export default function PainelCoordScreen() {
               <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
                 <View style={styles.versionTableHeaderRow}>
                   <Text style={[styles.versionHeaderColText, { width: 140 }]}>LOGIN DIGITADO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>ID DO DISPOSITIVO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>IP DE ORIGEM</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 160 }]}>APARELHO / MODELO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>ID DO DISPOSITIVO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>IP DE ORIGEM</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>APARELHO / MODELO</Text>
                   <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA / DETALHES</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA / HORA</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>DATA / HORA</Text>
                 </View>
 
                 {loadingSeguranca ? (
@@ -3652,19 +3454,19 @@ export default function PainelCoordScreen() {
                           </Text>
                           <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '700' }}>❌ SENHA INVÁLIDA</Text>
                         </View>
-                        <View style={{ width: 170 }}>
+                        <View style={{ width: 180 }}>
                           <View style={{ backgroundColor: '#fff1f2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#fecdd3', alignSelf: 'flex-start' }}>
                             <Text style={{ color: '#be123c', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
                               🆔 {String(af.deviceId || 'DEV-FALHA').replace(/^MMS-/i, '')}
                             </Text>
                           </View>
                         </View>
-                        <View style={{ width: 140 }}>
+                        <View style={{ width: 150 }}>
                           <Text style={{ color: '#475569', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
                             🌐 {af.ip || '127.0.0.1'}
                           </Text>
                         </View>
-                        <View style={{ width: 160 }}>
+                        <View style={{ width: 180 }}>
                           <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
                             📱 {af.model || 'Aparelho Detectado'}
                           </Text>
@@ -3674,195 +3476,10 @@ export default function PainelCoordScreen() {
                             {af.os ? `💻 ${af.os} • ${af.browser}` : (af.user_agent || 'App / Browser')}
                           </Text>
                         </View>
-                        <View style={{ width: 140 }}>
+                        <View style={{ width: 150 }}>
                           <Text style={{ color: '#64748b', fontSize: 11 }}>
                             🕒 {dataStr}
                           </Text>
-                        </View>
-                        <View style={{ width: 130, alignItems: 'center', justifyContent: 'center' }}>
-                          {af.ip && af.ip !== '127.0.0.1' ? (
-                            <TouchableOpacity
-                              onPress={() => handleToggleBloquearIp(af.ip, blockedIpsSet.has(af.ip))}
-                              style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                gap: 4,
-                                paddingHorizontal: 8,
-                                paddingVertical: 5,
-                                borderRadius: 6,
-                                backgroundColor: blockedIpsSet.has(af.ip) ? '#fee2e2' : '#f8fafc',
-                                borderWidth: 1,
-                                borderColor: blockedIpsSet.has(af.ip) ? '#fca5a5' : '#cbd5e1',
-                              }}
-                              activeOpacity={0.7}
-                            >
-                              <Text style={{ fontSize: 12 }}>{blockedIpsSet.has(af.ip) ? '🚫' : '🔒'}</Text>
-                              <Text style={{
-                                fontSize: 10,
-                                fontWeight: '900',
-                                color: blockedIpsSet.has(af.ip) ? '#b91c1c' : '#475569',
-                              }}>
-                                {blockedIpsSet.has(af.ip) ? 'BLOQUEADO' : 'BLOQUEAR'}
-                              </Text>
-                            </TouchableOpacity>
-                          ) : (
-                            <Text style={{ fontSize: 10, color: '#94a3b8' }}>-</Text>
-                          )}
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
-            </View>
-
-            {/* 4. FIREWALL DO GERADOR — IPS BLOQUEADOS */}
-            <View style={[styles.cardContainer, { marginTop: 18 }]}>
-              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 22 }}>🚫</Text>
-                  </View>
-                  <View>
-                    <Text style={[styles.cardTitle, { color: '#dc2626' }]}>
-                      FIREWALL DO GERADOR — IPS BLOQUEADOS
-                    </Text>
-                    <Text style={styles.cardSubtitle}>
-                      Endereços IP permanentemente impedidos de carregar a página inicial e emitir relatórios
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
-                  <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
-                    {ipsBloqueados.length} IPS BLOQUEADOS
-                  </Text>
-                </View>
-              </View>
-
-              {/* Formulário Manual para Bloqueio de IP */}
-              <View style={{ backgroundColor: '#f8fafc', padding: 14, borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', marginTop: 14 }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: '#334155', marginBottom: 8 }}>
-                  BLOQUEAR UM NOVO ENDEREÇO IP MANUALMENTE
-                </Text>
-                <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <TextInput
-                    style={{
-                      flex: 1,
-                      minWidth: 200,
-                      backgroundColor: '#ffffff',
-                      borderWidth: 1,
-                      borderColor: '#cbd5e1',
-                      borderRadius: 8,
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      fontSize: 13,
-                      fontFamily: 'monospace',
-                      color: '#0f172a',
-                    }}
-                    value={inputIpManual}
-                    onChangeText={setInputIpManual}
-                    placeholder="Ex: 187.12.34.56"
-                    placeholderTextColor="#94a3b8"
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: '#dc2626',
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      borderRadius: 8,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                    onPress={handleBloquearIpManual}
-                    disabled={salvandoBloqueioIp}
-                    activeOpacity={0.85}
-                  >
-                    {salvandoBloqueioIp ? (
-                      <ActivityIndicator size="small" color="#ffffff" />
-                    ) : (
-                      <>
-                        <Text style={{ fontSize: 13 }}>🚫</Text>
-                        <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
-                          BLOQUEAR IP
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Tabela de IPs Bloqueados */}
-              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
-                <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>ENDEREÇO IP BLOQUEADO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>DATA DO BLOQUEIO</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>BLOQUEADO POR</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140, textAlign: 'center' }]}>AÇÃO</Text>
-                </View>
-
-                {loadingSeguranca ? (
-                  <View style={{ padding: 24, alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#dc2626" />
-                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando lista de IPs bloqueados...</Text>
-                  </View>
-                ) : ipsBloqueados.length === 0 ? (
-                  <View style={{ padding: 24, alignItems: 'center' }}>
-                    <Text style={{ color: '#059669', fontSize: 12, fontWeight: '700' }}>
-                      ✅ Nenhum IP bloqueado no momento. Todos os dispositivos possuem acesso ao gerador.
-                    </Text>
-                  </View>
-                ) : (
-                  ipsBloqueados.map((item, idx) => {
-                    const dataStr = item.data_bloqueio
-                      ? new Date(item.data_bloqueio).toLocaleString('pt-BR')
-                      : 'N/A';
-                    return (
-                      <View
-                        key={item.ip || idx}
-                        style={[
-                          styles.versionTableRow,
-                          idx % 2 === 1 && { backgroundColor: '#fff5f5' },
-                        ]}
-                      >
-                        <View style={{ width: 180 }}>
-                          <Text style={{ color: '#dc2626', fontFamily: 'monospace', fontWeight: '800', fontSize: 12 }}>
-                            🚫 {item.ip}
-                          </Text>
-                        </View>
-                        <View style={{ width: 180 }}>
-                          <Text style={{ color: '#64748b', fontSize: 11 }}>
-                            🕒 {dataStr}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: '#0f172a', fontWeight: '700', fontSize: 11 }}>
-                            👤 {item.bloqueado_por || 'Coordenação'}
-                          </Text>
-                        </View>
-                        <View style={{ width: 140, alignItems: 'center', justifyContent: 'center' }}>
-                          <TouchableOpacity
-                            onPress={() => handleToggleBloquearIp(item.ip, true)}
-                            style={{
-                              backgroundColor: '#fee2e2',
-                              paddingHorizontal: 10,
-                              paddingVertical: 5,
-                              borderRadius: 6,
-                              borderWidth: 1,
-                              borderColor: '#fca5a5',
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={{ fontSize: 12 }}>🔓</Text>
-                            <Text style={{ color: '#b91c1c', fontSize: 10, fontWeight: '800' }}>
-                              DESBLOQUEAR
-                            </Text>
-                          </TouchableOpacity>
                         </View>
                       </View>
                     );
