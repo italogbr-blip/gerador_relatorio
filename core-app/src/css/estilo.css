@@ -97,12 +97,11 @@ html, body {
   padding-bottom: 96px !important;
 }
 
-/* ─── 4. NAVBAR SUPERIOR (MMS NAVBAR - FIXO / STICKY NO TOPO) ─── */
+/* ─── 4. NAVBAR SUPERIOR (MMS NAVBAR - NÃO FIXO / ROLA COM A PÁGINA) ─── */
 .mms-navbar {
-  position: -webkit-sticky !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 1000 !important;
+  position: relative !important;
+  top: auto !important;
+  z-index: 100 !important;
   min-height: 60px !important;
   height: auto !important;
   width: 100% !important;

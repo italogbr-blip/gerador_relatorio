@@ -2851,79 +2851,81 @@ export default function ReportGenerator() {
     <SafeAreaView style={styles.body} className="mms-app-layout">
       <StatusBar style="light" />
 
-      {/* Navbar Superior 100% Idêntica ao index.php:269-358 */}
-      <View style={styles.navbar} className="mms-navbar">
-        {/* Esquerda: Logo / Marca do Sistema (MMS RELATÓRIOS) */}
-        <View style={styles.navBrandContainer} className="mms-navbar__brand">
-          <View style={styles.navLeftGradientBox} className="mms-navbar__brand-icon">
-            {Platform.OS === 'web' ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-              </svg>
-            ) : (
-              <Text style={{ color: '#fff', fontSize: 16 }}>📑</Text>
-            )}
-          </View>
-          <View style={styles.navBrandTextWrap} className="mms-navbar__brand-text">
-            <View style={styles.navBrandTitleRow} className="mms-navbar__brand-title-row">
-              <Text style={styles.navBrandName} className="mms-navbar__brand-name">RELATÓRIOS</Text>
+      <ScrollView style={{ flex: 1, width: '100%' }} contentContainerStyle={{ flexGrow: 1 }} className="mms-main-scroll">
+        {/* Navbar Superior (Rola junto com a página - Não fixo) */}
+        <View style={styles.navbar} className="mms-navbar">
+          {/* Esquerda: Logo / Marca do Sistema (MMS RELATÓRIOS) */}
+          <View style={styles.navBrandContainer} className="mms-navbar__brand">
+            <View style={styles.navLeftGradientBox} className="mms-navbar__brand-icon">
+              {Platform.OS === 'web' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+              ) : (
+                <Text style={{ color: '#fff', fontSize: 16 }}>📑</Text>
+              )}
+            </View>
+            <View style={styles.navBrandTextWrap} className="mms-navbar__brand-text">
+              <View style={styles.navBrandTitleRow} className="mms-navbar__brand-title-row">
+                <Text style={styles.navBrandName} className="mms-navbar__brand-name">RELATÓRIOS</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Direita: Notificações e Menu */}
-        <View style={styles.navRightGroup} className="mms-navbar__actions">
-          {/* Botão de Notificações com Badge e Ação Real */}
-          <TouchableOpacity
-            style={styles.navNotifBtn}
-            className="mms-navbar__notif-btn"
-            activeOpacity={0.7}
-            onPress={() => {
-              setIsNotifDropdownOpen(!isNotifDropdownOpen);
-              handleMarcarTodasLidas();
-            }}
-          >
-            {Platform.OS === 'web' ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke={unreadCount > 0 ? '#38bdf8' : '#94a3b8'}>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            ) : (
-              <Text style={{ fontSize: 18 }}>🔔</Text>
-            )}
-            {unreadCount > 0 && (
-              <View style={styles.notifBadgeCircle} className="mms-navbar__notif-badge">
-                <Text style={styles.notifBadgeCircleText}>{unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {/* Direita: Notificações e Menu */}
+          <View style={styles.navRightGroup} className="mms-navbar__actions">
+            {/* Botão de Notificações com Badge e Ação Real */}
+            <TouchableOpacity
+              style={styles.navNotifBtn}
+              className="mms-navbar__notif-btn"
+              activeOpacity={0.7}
+              onPress={() => {
+                setIsNotifDropdownOpen(!isNotifDropdownOpen);
+                handleMarcarTodasLidas();
+              }}
+            >
+              {Platform.OS === 'web' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke={unreadCount > 0 ? '#38bdf8' : '#94a3b8'}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+              ) : (
+                <Text style={{ fontSize: 18 }}>🔔</Text>
+              )}
+              {unreadCount > 0 && (
+                <View style={styles.notifBadgeCircle} className="mms-navbar__notif-badge">
+                  <Text style={styles.notifBadgeCircleText}>{unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
-          {/* Botão Menu Hamburger / Avatar */}
-          <TouchableOpacity
-            onPress={toggleMenu}
-            style={[styles.navMenuBtn, showMenu && styles.navMenuBtnActive]}
-            className="mms-navbar__menu-btn"
-            activeOpacity={0.8}
-          >
-            <Text style={styles.navMenuBtnText}>MENU</Text>
+            {/* Botão Menu Hamburger / Avatar */}
+            <TouchableOpacity
+              onPress={toggleMenu}
+              style={[styles.navMenuBtn, showMenu && styles.navMenuBtnActive]}
+              className="mms-navbar__menu-btn"
+              activeOpacity={0.8}
+            >
+              <Text style={styles.navMenuBtnText}>MENU</Text>
 
-            {userSession?.user ? (
-              <View style={styles.menuAvatarCircle}>
-                <Text style={styles.menuAvatarCircleText}>
-                  {((userSession?.user?.user_metadata?.name || (userSession?.user as any)?.nome || (userSession?.user as any)?.username || userSession?.user?.email || 'U').toString().trim().charAt(0) || 'U').toUpperCase()}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.navHamburgerLines}>
-                <View style={styles.navHamburgerBar} />
-                <View style={styles.navHamburgerBar} />
-                <View style={styles.navHamburgerBar} />
-              </View>
-            )}
-          </TouchableOpacity>
+              {userSession?.user ? (
+                <View style={styles.menuAvatarCircle}>
+                  <Text style={styles.menuAvatarCircleText}>
+                    {((userSession?.user?.user_metadata?.name || (userSession?.user as any)?.nome || (userSession?.user as any)?.username || userSession?.user?.email || 'U').toString().trim().charAt(0) || 'U').toUpperCase()}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.navHamburgerLines}>
+                  <View style={styles.navHamburgerBar} />
+                  <View style={styles.navHamburgerBar} />
+                  <View style={styles.navHamburgerBar} />
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Dropdown Menu Modal (Elimina qualquer travamento, estouro de tela ou bug de z-index) */}
@@ -3195,10 +3197,10 @@ export default function ReportGenerator() {
             </View>
           </Modal>
         )}
-      </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} className="mms-main-scroll">
-        {/* Cartão Principal de Preenchimento (Independente e Separado do Preview) */}
+        {/* Conteúdo Principal Centralizado */}
+        <View style={styles.scroll}>
+          {/* Cartão Principal de Preenchimento (Independente e Separado do Preview) */}
         <View style={styles.card} className="mms-card mms-form-card">
           {/* Header do Card com Botão Iniciar Novo Relatório à direita */}
           <View style={styles.cardHeader} className="mms-card__header">
@@ -4198,6 +4200,7 @@ export default function ReportGenerator() {
             </>
           );
         })()}
+        </View>
       </ScrollView>
 
       {/* Modal Autenticação Central da Plataforma */}
@@ -4547,10 +4550,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    position: (Platform.OS === 'web' ? 'sticky' : 'relative') as any,
-    top: 0,
+    position: 'relative' as any,
     width: '100%',
-    zIndex: 1000,
+    zIndex: 100,
   },
   navBrandContainer: {
     flexDirection: 'row',
