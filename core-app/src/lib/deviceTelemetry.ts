@@ -190,12 +190,55 @@ export async function getPublicIp(): Promise<string> {
  */
 export async function collectDeviceTelemetry(
   tipo: 'acesso_gerador' | 'login_sucesso' | 'login_falha' | 'painel_coord' = 'acesso_gerador',
-  username?: string,
+  username?: string | any,
   usuarioId?: number | string | null
 ): Promise<DeviceTelemetryInfo> {
   const deviceId = getOrCreateDeviceId();
   const { model, os, browser } = detectDeviceModel();
   const ip = await getPublicIp();
+
+  let resolvedUsername: string | undefined;
+  if (typeof username === 'string' && username.trim() !== '') {
+    resolvedUsername = username.trim();
+  } else if (typeof username === 'object' && username) {
+    resolvedUsername = username.usuario || username.username;
+  }
+
+  // Tenta puxar preposto previamente identificado deste aparelho
+  if (!resolvedUsername && Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+    try {
+      const savedPrep = localStorage.getItem('mms_telemetria_preposto');
+      if (savedPrep && savedPrep.trim() !== '') {
+        resolvedUsername = savedPrep.trim();
+      }
+    } catch (_) {}
+  }
+
+  // Se ainda não tiver preposto, busca o último relatório gerado a partir deste IP
+  if (!resolvedUsername && ip && ip !== '127.0.0.1') {
+    try {
+      const { data } = await supabase
+        .from('relatorios')
+        .select('dados_json')
+        .eq('ip_origem', ip)
+        .order('id', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const rawJson = data[0].dados_json;
+        const parsed = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
+        const prep = parsed?.preposto || parsed?.nome_preposto || parsed?.preposto_nome || parsed?.responsavel;
+        if (prep && typeof prep === 'string' && prep.trim() !== '' && prep.trim().toUpperCase() !== 'N/A') {
+          resolvedUsername = prep.trim();
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem('mms_telemetria_preposto', resolvedUsername);
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
   let screenResolution = 'N/A';
   let hardware = 'Padrão';
@@ -232,7 +275,7 @@ export async function collectDeviceTelemetry(
     userAgent,
     dataRegistro: new Date().toISOString(),
     tipo,
-    username: username || 'Visitante',
+    username: resolvedUsername || 'Visitante',
     usuarioId: usuarioId || null,
   };
 }
@@ -242,10 +285,11 @@ export async function collectDeviceTelemetry(
  */
 export async function registerDeviceAccess(
   tipo: 'acesso_gerador' | 'login_sucesso' | 'login_falha' | 'painel_coord' = 'acesso_gerador',
-  username?: string,
+  username?: string | any,
   usuarioId?: number | string | null
 ): Promise<DeviceTelemetryInfo> {
   const telemetry = await collectDeviceTelemetry(tipo, username, usuarioId);
+  const nomeFinal = telemetry.username && telemetry.username !== 'Visitante' ? telemetry.username : undefined;
 
   // 1. Grava no LocalStorage para acesso instantâneo na UI
   if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
@@ -265,10 +309,11 @@ export async function registerDeviceAccess(
   try {
     const payload = {
       usuario_id: usuarioId ? Number(usuarioId) : null,
-      username: username ? `@${username}` : (tipo === 'acesso_gerador' ? 'Visitante (Gerador)' : 'Acesso Geral'),
+      username: nomeFinal || (tipo === 'acesso_gerador' ? 'Visitante (Gerador)' : 'Acesso Geral'),
       ip: telemetry.ip,
       user_agent: JSON.stringify({
         deviceId: telemetry.deviceId,
+        usuario: nomeFinal || 'Visitante',
         model: telemetry.model,
         os: telemetry.os,
         browser: telemetry.browser,
