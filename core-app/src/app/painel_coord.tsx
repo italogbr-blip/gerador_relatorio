@@ -112,14 +112,69 @@ export default function PainelCoordScreen() {
     carregarSeguranca();
   };
 
-  // Estados de Dados
+  // Estados de Dados & Métricas com Cache Instantâneo
   const [relatorios, setRelatorios] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [popups, setPopups] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [totalRelatoriosGeral, setTotalRelatoriosGeral] = useState<number>(0);
-  const [relatoriosHojeCount, setRelatoriosHojeCount] = useState<number>(0);
-  const [relatoriosMesCount, setRelatoriosMesCount] = useState<number>(0);
+
+  // Inicialização inteligente com cache local (0ms no carregamento inicial)
+  const [loadingMetricas, setLoadingMetricas] = useState<boolean>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('mms_coord_kpi_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const mesAtualKey = new Date().toISOString().substring(0, 7);
+          if (parsed && parsed.mesKey === mesAtualKey && typeof parsed.mes === 'number') {
+            return false;
+          }
+        }
+      } catch (e) {}
+    }
+    return true;
+  });
+
+  const [totalRelatoriosGeral, setTotalRelatoriosGeral] = useState<number>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('mms_coord_kpi_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (typeof parsed?.total === 'number') return parsed.total;
+        }
+      } catch (e) {}
+    }
+    return 0;
+  });
+
+  const [relatoriosHojeCount, setRelatoriosHojeCount] = useState<number>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('mms_coord_kpi_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const hojeStr = new Date().toISOString().substring(0, 10);
+          if (parsed?.hojeKey === hojeStr && typeof parsed?.hoje === 'number') return parsed.hoje;
+        }
+      } catch (e) {}
+    }
+    return 0;
+  });
+
+  const [relatoriosMesCount, setRelatoriosMesCount] = useState<number>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('mms_coord_kpi_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const mesAtualKey = new Date().toISOString().substring(0, 7);
+          if (parsed?.mesKey === mesAtualKey && typeof parsed?.mes === 'number') return parsed.mes;
+        }
+      } catch (e) {}
+    }
+    return 0;
+  });
 
   // Filtros de Relatórios
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('TODAS');
@@ -554,6 +609,7 @@ export default function PainelCoordScreen() {
       const hojeStr = new Date().toISOString().split('T')[0];
       const agora = new Date();
       const primeiroDiaMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
+      const mesKey = agora.toISOString().substring(0, 7);
 
       // Executa as 3 contagens simultaneamente em paralelo na nuvem
       const [resTotal, resHoje, resMes] = await Promise.all([
@@ -562,17 +618,40 @@ export default function PainelCoordScreen() {
         supabase.from('relatorios').select('*', { count: 'exact', head: true }).gte('data_criacao', primeiroDiaMes),
       ]);
 
+      let tot = totalRelatoriosGeral;
+      let hj = relatoriosHojeCount;
+      let mes = relatoriosMesCount;
+
       if (resTotal.count !== null && resTotal.count !== undefined) {
+        tot = resTotal.count;
         setTotalRelatoriosGeral(resTotal.count);
       }
       if (resHoje.count !== null && resHoje.count !== undefined) {
+        hj = resHoje.count;
         setRelatoriosHojeCount(resHoje.count);
       }
       if (resMes.count !== null && resMes.count !== undefined) {
+        mes = resMes.count;
         setRelatoriosMesCount(resMes.count);
+      }
+
+      // Salva no cache local para carregamento instantâneo em 0ms nos próximos acessos
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('mms_coord_kpi_cache', JSON.stringify({
+            total: tot,
+            hoje: hj,
+            mes: mes,
+            hojeKey: hojeStr,
+            mesKey: mesKey,
+            updatedAt: Date.now(),
+          }));
+        } catch (e) {}
       }
     } catch (e) {
       console.warn('Erro ao carregar métricas:', e);
+    } finally {
+      setLoadingMetricas(false);
     }
   };
 
@@ -1434,7 +1513,17 @@ export default function PainelCoordScreen() {
               <Text style={[styles.kpiMetricLabel, { color: '#ea580c' }]}>HOJE</Text>
               <Text style={{ fontSize: 14 }}>⚡</Text>
             </View>
-            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{relatoriosHojeCount}</Text>
+            <View style={styles.kpiMetricValueContainer}>
+              {loadingMetricas ? (
+                <View style={styles.kpiMetricLoadingBox}>
+                  <ActivityIndicator size="small" color="#ea580c" />
+                </View>
+              ) : (
+                <Text style={[styles.kpiMetricValue, { color: '#000000', marginVertical: 0 }]}>
+                  {relatoriosHojeCount}
+                </Text>
+              )}
+            </View>
             <Text style={styles.kpiMetricFootnote}>Relatórios gerados hoje</Text>
           </View>
 
@@ -1444,7 +1533,17 @@ export default function PainelCoordScreen() {
               <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>NESTE MÊS</Text>
               <Text style={{ fontSize: 14 }}>📅</Text>
             </View>
-            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{relatoriosMesCount}</Text>
+            <View style={styles.kpiMetricValueContainer}>
+              {loadingMetricas ? (
+                <View style={styles.kpiMetricLoadingBox}>
+                  <ActivityIndicator size="small" color="#0284c7" />
+                </View>
+              ) : (
+                <Text style={[styles.kpiMetricValue, { color: '#000000', marginVertical: 0 }]}>
+                  {relatoriosMesCount}
+                </Text>
+              )}
+            </View>
             <Text style={styles.kpiMetricFootnote}>Atendimentos no mês atual</Text>
           </View>
 
@@ -1454,7 +1553,17 @@ export default function PainelCoordScreen() {
               <Text style={[styles.kpiMetricLabel, { color: '#2563eb' }]}>TOTAL GERAL</Text>
               <Text style={{ fontSize: 14 }}>📊</Text>
             </View>
-            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{totalRelatoriosGeral}</Text>
+            <View style={styles.kpiMetricValueContainer}>
+              {loadingMetricas ? (
+                <View style={styles.kpiMetricLoadingBox}>
+                  <ActivityIndicator size="small" color="#2563eb" />
+                </View>
+              ) : (
+                <Text style={[styles.kpiMetricValue, { color: '#000000', marginVertical: 0 }]}>
+                  {totalRelatoriosGeral}
+                </Text>
+              )}
+            </View>
             <Text style={styles.kpiMetricFootnote}>Relatórios emitidos</Text>
           </View>
 
@@ -1464,7 +1573,17 @@ export default function PainelCoordScreen() {
               <Text style={[styles.kpiMetricLabel, { color: '#7c3aed' }]}>USUÁRIOS</Text>
               <Text style={{ fontSize: 14 }}>👥</Text>
             </View>
-            <Text style={[styles.kpiMetricValue, { color: '#000000' }]}>{usuarios.length > 0 ? usuarios.length : 10}</Text>
+            <View style={styles.kpiMetricValueContainer}>
+              {loading && usuarios.length === 0 ? (
+                <View style={styles.kpiMetricLoadingBox}>
+                  <ActivityIndicator size="small" color="#7c3aed" />
+                </View>
+              ) : (
+                <Text style={[styles.kpiMetricValue, { color: '#000000', marginVertical: 0 }]}>
+                  {usuarios.length > 0 ? usuarios.length : 10}
+                </Text>
+              )}
+            </View>
             <Text style={styles.kpiMetricFootnote}>Contas registradas</Text>
           </View>
         </View>
@@ -5316,6 +5435,16 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     marginVertical: 4,
     fontFamily: modernFont,
+  },
+  kpiMetricValueContainer: {
+    minHeight: 44,
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  kpiMetricLoadingBox: {
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   kpiMetricFootnote: {
     fontSize: 11,
