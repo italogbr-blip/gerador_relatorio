@@ -80,6 +80,37 @@ export default function PainelCoordScreen() {
   const [acessosFalhos, setAcessosFalhos] = useState<any[]>([]);
   const [ultimosLogins, setUltimosLogins] = useState<any[]>([]);
   const [loadingSeguranca, setLoadingSeguranca] = useState<boolean>(false);
+  const [alertaSegurancaExpandido, setAlertaSegurancaExpandido] = useState<boolean>(true);
+  const [ultimoCheckSeguranca, setUltimoCheckSeguranca] = useState<string>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      return localStorage.getItem('mms_coord_seguranca_vista') || '';
+    }
+    return '';
+  });
+
+  const acessosFalhosNaoVistosCount = useMemo(() => {
+    if (!acessosFalhos || acessosFalhos.length === 0) return 0;
+    if (!ultimoCheckSeguranca) return acessosFalhos.length;
+    const checkTime = new Date(ultimoCheckSeguranca).getTime();
+    const novos = acessosFalhos.filter((af) => {
+      const afTime = new Date(af.data_tentativa).getTime();
+      return isNaN(checkTime) || afTime > checkTime;
+    });
+    return novos.length;
+  }, [acessosFalhos, ultimoCheckSeguranca]);
+
+  const handleIrParaSeguranca = () => {
+    setActiveTab('seguranca');
+    setAlertaSegurancaExpandido(false);
+    const agora = new Date().toISOString();
+    setUltimoCheckSeguranca(agora);
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('mms_coord_seguranca_vista', agora);
+      } catch (e) {}
+    }
+    carregarSeguranca();
+  };
 
   // Estados de Dados
   const [relatorios, setRelatorios] = useState<any[]>([]);
@@ -1236,11 +1267,18 @@ export default function PainelCoordScreen() {
                 <TouchableOpacity
                   style={styles.coordNavNotificationBtn}
                   className="coord-nav-btn-notif"
-                  onPress={() => setActiveTab('popups')}
+                  onPress={handleIrParaSeguranca}
                   activeOpacity={0.8}
-                  accessibilityLabel="Notificações"
+                  accessibilityLabel="Notificações de Acesso"
                 >
                   <Text style={{ fontSize: 16 }}>🔔</Text>
+                  {acessosFalhosNaoVistosCount > 0 && (
+                    <View style={styles.coordNavNotifBadge}>
+                      <Text style={styles.coordNavNotifBadgeText}>
+                        {acessosFalhosNaoVistosCount > 9 ? '9+' : acessosFalhosNaoVistosCount}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1267,6 +1305,50 @@ export default function PainelCoordScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Banner de Alerta Expandido de Tentativa de Acesso Não Autorizado */}
+        {acessosFalhosNaoVistosCount > 0 && alertaSegurancaExpandido && (
+          <TouchableOpacity
+            style={styles.coordSecurityAlertBanner}
+            onPress={handleIrParaSeguranca}
+            activeOpacity={0.92}
+          >
+            <View style={styles.coordSecurityAlertBannerContent}>
+              <View style={styles.coordSecurityAlertIconWrap}>
+                <Text style={{ fontSize: 22 }}>🚨</Text>
+              </View>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                  <Text style={styles.coordSecurityAlertTitle}>
+                    ALERTA DE SEGURANÇA: TENTATIVAS DE ACESSO DETECTADAS
+                  </Text>
+                  <View style={styles.coordSecurityAlertPill}>
+                    <Text style={styles.coordSecurityAlertPillText}>
+                      {acessosFalhosNaoVistosCount} {acessosFalhosNaoVistosCount === 1 ? 'NÃO VISTA' : 'NÃO VISTAS'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.coordSecurityAlertSub}>
+                  Foram registradas tentativas de login não autorizadas com credenciais incorretas no painel de coordenação. Clique para inspecionar os registros de segurança.
+                </Text>
+              </View>
+              <View style={styles.coordSecurityAlertActionBox}>
+                <Text style={styles.coordSecurityAlertActionText}>VER DETALHES ›</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.coordSecurityAlertCloseBtn}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  setAlertaSegurancaExpandido(false);
+                }}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.coordSecurityAlertCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Filtro de KPIs / Visão Geral (Refinado) */}
         <View style={styles.overviewSummaryCardLight}>
           <View style={styles.overviewSummaryLeft}>
@@ -1391,16 +1473,20 @@ export default function PainelCoordScreen() {
 
             <TouchableOpacity
               style={[styles.tabNavButton, activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => {
-                setActiveTab('seguranca');
-                carregarSeguranca();
-              }}
+              onPress={handleIrParaSeguranca}
               activeOpacity={0.85}
             >
               <Text style={{ fontSize: 13, marginRight: 6 }}>🛡️</Text>
               <Text style={[styles.tabNavButtonText, activeTab === 'seguranca' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
                 SEGURANÇA
               </Text>
+              {acessosFalhosNaoVistosCount > 0 && (
+                <View style={styles.tabNavBadge}>
+                  <Text style={styles.tabNavBadgeText}>
+                    {acessosFalhosNaoVistosCount > 9 ? '9+' : acessosFalhosNaoVistosCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -5405,6 +5491,126 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#2563eb',
     fontFamily: modernFont,
+  },
+  coordNavNotifBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#ef4444',
+    borderWidth: 1.5,
+    borderColor: '#0f172a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  coordNavNotifBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '900',
+    fontFamily: modernFont,
+    textAlign: 'center',
+    lineHeight: 12,
+  },
+  tabNavBadge: {
+    marginLeft: 6,
+    backgroundColor: '#ef4444',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    minWidth: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabNavBadgeText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '900',
+    fontFamily: modernFont,
+  },
+  coordSecurityAlertBanner: {
+    backgroundColor: '#fff1f2',
+    borderWidth: 1.5,
+    borderColor: '#fda4af',
+    borderRadius: 14,
+    marginBottom: 16,
+    padding: 14,
+    shadowColor: '#e11d48',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  coordSecurityAlertBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  coordSecurityAlertIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#ffe4e6',
+    borderWidth: 1,
+    borderColor: '#fecdd3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coordSecurityAlertTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#be123c',
+    letterSpacing: 0.5,
+    fontFamily: modernFont,
+  },
+  coordSecurityAlertPill: {
+    backgroundColor: '#e11d48',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  coordSecurityAlertPillText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '900',
+    fontFamily: modernFont,
+    letterSpacing: 0.5,
+  },
+  coordSecurityAlertSub: {
+    fontSize: 12,
+    color: '#881337',
+    fontWeight: '500',
+    lineHeight: 17,
+    fontFamily: modernFont,
+  },
+  coordSecurityAlertActionBox: {
+    backgroundColor: '#be123c',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  coordSecurityAlertActionText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    fontFamily: modernFont,
+  },
+  coordSecurityAlertCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(190, 18, 60, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
+  coordSecurityAlertCloseBtnText: {
+    color: '#be123c',
+    fontSize: 13,
+    fontWeight: '900',
   },
 
 });
