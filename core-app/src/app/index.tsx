@@ -49,6 +49,7 @@ import {
   registerDeviceAccess,
   collectDeviceTelemetry,
   getLocalDeviceAccessLogs,
+  getPublicIp,
   DeviceTelemetryInfo,
 } from '../lib/deviceTelemetry';
 
@@ -899,7 +900,32 @@ export default function ReportGenerator() {
   // Telemetria silenciosa do aparelho (enviada diretamente para o Painel da Coordenação)
   const [deviceInfo, setDeviceInfo] = useState<DeviceTelemetryInfo | null>(null);
 
+  // Verificação de Bloqueio de IP no Gerador
+  const [isIpBlocked, setIsIpBlocked] = useState<boolean>(false);
+  const [clientIp, setClientIp] = useState<string>('');
+
   useEffect(() => {
+    let isMounted = true;
+    const verificarIpBloqueado = async () => {
+      try {
+        const ip = await getPublicIp();
+        if (!isMounted) return;
+        setClientIp(ip);
+        if (ip && ip !== '127.0.0.1') {
+          const { data, error } = await supabase
+            .from('ips_bloqueados')
+            .select('ip')
+            .eq('ip', ip);
+          if (!error && data && data.length > 0) {
+            setIsIpBlocked(true);
+          }
+        }
+      } catch (e) {
+        // Silencioso se offline
+      }
+    };
+    verificarIpBloqueado();
+
     // Registra telemetria do aparelho e acesso à página inicial / gerador silenciosamente para a coordenação
     let prepostoHistorico: string | undefined;
     if (typeof localStorage !== 'undefined') {
@@ -2824,6 +2850,34 @@ export default function ReportGenerator() {
     );
   };
 
+
+  if (isIpBlocked) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center', padding: 24, minHeight: Platform.OS === 'web' ? ('100vh' as any) : undefined }}>
+        <StatusBar style="light" />
+        <View style={{ maxWidth: 480, width: '100%', backgroundColor: '#1e293b', borderRadius: 16, padding: 36, alignItems: 'center', borderWidth: 1, borderColor: '#334155' }}>
+          <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: '#fee2e2', borderWidth: 2, borderColor: '#ef4444', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+            <Text style={{ fontSize: 32 }}>🚫</Text>
+          </View>
+          <Text style={{ fontSize: 22, fontWeight: '900', color: '#ffffff', textAlign: 'center', marginBottom: 12, letterSpacing: 0.5 }}>
+            ACESSO BLOQUEADO
+          </Text>
+          <Text style={{ fontSize: 14, color: '#94a3b8', textAlign: 'center', lineHeight: 22, marginBottom: 20 }}>
+            Seu acesso ao Gerador de Relatórios foi bloqueado pela coordenação do MMS.
+          </Text>
+          <View style={{ backgroundColor: '#0f172a', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginBottom: 16, alignItems: 'center' }}>
+            <Text style={{ color: '#64748b', fontSize: 11, fontWeight: '700', marginBottom: 2 }}>IP BLOQUEADO</Text>
+            <Text style={{ color: '#f87171', fontFamily: 'monospace', fontSize: 14, fontWeight: '800' }}>
+              {clientIp || '127.0.0.1'}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 12, color: '#64748b', textAlign: 'center' }}>
+            Caso considere este bloqueio indevido, entre em contato com a coordenação.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.body} className="mms-app-layout">
