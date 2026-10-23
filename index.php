@@ -30,7 +30,7 @@ try {
     $stmtB = $pdo->prepare("SELECT ip FROM ips_bloqueados WHERE ip = ?");
     $stmtB->execute([$ip_visitante]);
     if ($stmtB->fetch()) {
-        die("<!DOCTYPE html><html><head><title>Acesso Bloqueado</title><meta name='viewport' content='width=device-width, initial-scale=1.0'></head><body style='background:#0f172a;color:white;text-align:center;padding:50px;font-family:sans-serif;'><h1>🚫 Acesso Bloqueado</h1><p>Seu acesso ao Gerador de Relatórios foi bloqueado pela coordenação.</p></body></html>");
+        die("<!DOCTYPE html><html><head><title>Acesso Bloqueado</title><meta name='viewport' content='width=device-width, initial-scale=1.0'></head><body style='background:#0f172a;color:white;text-align:center;padding:50px;font-family:sans-serif;'><h1>🚫 Acesso Bloqueado</h1><p>Seu acesso foi bloqueado pela coordenação.</p></body></html>");
     }
 
     $stmtIp = $pdo->prepare("SELECT ip FROM mms_acessos_gerador WHERE ip = ?");

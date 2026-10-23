@@ -2863,7 +2863,7 @@ export default function ReportGenerator() {
             ACESSO BLOQUEADO
           </Text>
           <Text style={{ fontSize: 14, color: '#94a3b8', textAlign: 'center', lineHeight: 22, marginBottom: 20 }}>
-            Seu acesso ao Gerador de Relatórios foi bloqueado pela coordenação do MMS.
+            Seu acesso foi bloqueado pela coordenação.
           </Text>
           <View style={{ backgroundColor: '#0f172a', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginBottom: 16, alignItems: 'center' }}>
             <Text style={{ color: '#64748b', fontSize: 11, fontWeight: '700', marginBottom: 2 }}>IP BLOQUEADO</Text>
@@ -2872,7 +2872,7 @@ export default function ReportGenerator() {
             </Text>
           </View>
           <Text style={{ fontSize: 12, color: '#64748b', textAlign: 'center' }}>
-            Caso considere este bloqueio indevido, entre em contato com a coordenação.
+            Caso considere este bloqueio indevido, entre em contato.
           </Text>
         </View>
       </View>
