@@ -3110,15 +3110,30 @@ export default function PainelCoordScreen() {
               </View>
 
               {/* Barra de Busca de Usuário */}
-              <View style={styles.searchBox}>
+              <View style={[
+                styles.searchBox,
+                isDarkMode ? { backgroundColor: '#0f172a', borderColor: '#334155' } : { backgroundColor: '#ffffff', borderColor: '#cbd5e1' }
+              ]}>
                 <Text style={styles.searchIcon}>🔍</Text>
                 <TextInput
-                  style={[styles.searchInput, !isDarkMode && { color: '#0f172a' }]}
+                  style={[
+                    styles.searchInput,
+                    isDarkMode ? { color: '#ffffff' } : { color: '#0f172a' }
+                  ]}
                   placeholder="Filtrar por nome, username ou e-mail..."
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
                   value={filtroBuscaUsuario}
                   onChangeText={setFiltroBuscaUsuario}
                 />
+                {filtroBuscaUsuario ? (
+                  <TouchableOpacity
+                    onPress={() => setFiltroBuscaUsuario('')}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ padding: 4 }}
+                  >
+                    <Text style={{ fontSize: 13, color: isDarkMode ? '#94a3b8' : '#64748b', fontWeight: 'bold' }}>✕</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
               {/* Tabela de Usuários */}
@@ -5100,18 +5115,20 @@ const styles = StyleSheet.create({
     minWidth: 260,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#ffffff',
     borderRadius: 8,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#cbd5e1',
+    minHeight: 40,
   },
   searchIcon: {
     marginRight: 8,
+    fontSize: 14,
   },
   searchInput: {
     flex: 1,
-    color: '#ffffff',
+    color: '#0f172a',
     fontSize: 13,
     paddingVertical: 8,
   },
