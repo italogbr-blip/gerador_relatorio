@@ -31,6 +31,8 @@ import {
   defaultFooterConfig,
   fetchAllAppVersions,
   insertAppVersion,
+  deleteAppVersion,
+  cleanDatabaseFooterConfigVersion,
   AppVersionRecord,
 } from '../lib/footerConfig';
 
@@ -249,11 +251,13 @@ export default function PainelCoordScreen() {
     fetchFooterConfig().then((cfg) => {
       if (cfg) setFooterDraft(cfg);
     });
+    cleanDatabaseFooterConfigVersion();
   }, []);
 
   const handleSalvarFooter = async () => {
     setSalvandoFooter(true);
     const success = await saveFooterConfig(footerDraft);
+    await cleanDatabaseFooterConfigVersion();
     setSalvandoFooter(false);
     if (success) {
       showCustomAlert('RODAPÉ ATUALIZADO', 'A nova personalização do rodapé foi salva com sucesso e já está ativa no gerador de relatórios.');
@@ -601,6 +605,26 @@ export default function PainelCoordScreen() {
       }
     } finally {
       setSalvandoVersao(false);
+    }
+  };
+
+  const handleExcluirVersao = async (item: AppVersionRecord) => {
+    if (!item) return;
+    try {
+      const confirmExclusao = Platform.OS === 'web'
+        ? window.confirm(`Deseja realmente remover a versão "${item.versao}" do banco de dados?`)
+        : true;
+      if (!confirmExclusao) return;
+
+      const ok = await deleteAppVersion(item.id || item.versao);
+      if (ok) {
+        showCustomAlert('VERSÃO REMOVIDA', `A versão "${item.versao}" foi excluída com sucesso do banco de dados.`);
+        await carregarVersoes();
+      } else {
+        showCustomAlert('ERRO', 'Não foi possível remover a versão da base de dados.');
+      }
+    } catch (e: any) {
+      showCustomAlert('ERRO', e?.message || 'Falha ao remover versão.');
     }
   };
 
@@ -2622,7 +2646,7 @@ export default function PainelCoordScreen() {
                   </Text>
                   <View style={styles.footerPreviewBadge}>
                     <Text style={styles.footerPreviewBadgeIcon}>⬡</Text>
-                    <Text style={styles.footerPreviewBadgeText}>{footerDraft.versao}</Text>
+                    <Text style={styles.footerPreviewBadgeText}>{versoesList[0]?.versao || 'V1.2.4'}</Text>
                   </View>
                 </View>
               </View>
@@ -2723,18 +2747,6 @@ export default function PainelCoordScreen() {
                       </Text>
                     </TouchableOpacity>
                   </View>
-                </View>
-
-                {/* Versão do App */}
-                <View style={styles.footerFormField}>
-                  <Text style={[styles.footerInputLabel, !isDarkMode && { color: '#334155' }]}>VERSÃO NO BADGE:</Text>
-                  <TextInput
-                    style={[styles.footerInput, !isDarkMode && styles.footerInputLight]}
-                    value={footerDraft.versao}
-                    onChangeText={(val) => setFooterDraft((prev) => ({ ...prev, versao: val }))}
-                    placeholder="Ex: V1.2.5"
-                    placeholderTextColor="#64748b"
-                  />
                 </View>
               </View>
 
@@ -3082,6 +3094,7 @@ export default function PainelCoordScreen() {
                   <Text style={[styles.versionColData, styles.versionHeaderColText]}>DATA</Text>
                   <Text style={[styles.versionColVersao, styles.versionHeaderColText]}>VERSÃO</Text>
                   <Text style={[styles.versionColDesc, styles.versionHeaderColText]}>DESCRIÇÃO</Text>
+                  <Text style={[styles.versionColAcoes, styles.versionHeaderColText]}>AÇÃO</Text>
                 </View>
 
                 {loadingVersoes ? (
@@ -3127,6 +3140,15 @@ export default function PainelCoordScreen() {
                           <Text style={[styles.versionDescText, !isDarkMode && { color: '#334155' }]}>
                             {v.descricao || '-'}
                           </Text>
+                        </View>
+                        <View style={styles.versionColAcoes}>
+                          <TouchableOpacity
+                            style={styles.btnExcluirVersao}
+                            onPress={() => handleExcluirVersao(v)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.btnExcluirVersaoText}>🗑️ Excluir</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                     );
@@ -5158,6 +5180,28 @@ const styles = StyleSheet.create({
   versionDescText: {
     fontSize: 12,
     color: '#334155',
+    fontFamily: modernFont,
+  },
+  versionColAcoes: {
+    width: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnExcluirVersao: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnExcluirVersaoText: {
+    color: '#dc2626',
+    fontSize: 11,
+    fontWeight: '700',
     fontFamily: modernFont,
   },
 

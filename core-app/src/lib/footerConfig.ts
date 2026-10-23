@@ -10,7 +10,7 @@ export interface FooterConfig {
   destaque2: string;
   corDestaque2: string;
   negrito2: boolean;
-  versao: string;
+  versao?: string;
 }
 
 export const defaultFooterConfig: FooterConfig = {
@@ -22,7 +22,6 @@ export const defaultFooterConfig: FooterConfig = {
   destaque2: 'MMS SUPORTE LOGÍSTICO',
   corDestaque2: '#2563eb',
   negrito2: true,
-  versao: 'V1.2.5',
 };
 
 const STORAGE_KEY = 'mms_footer_config';
@@ -65,15 +64,16 @@ export async function fetchFooterConfig(): Promise<FooterConfig> {
 }
 
 export async function saveFooterConfig(config: FooterConfig): Promise<boolean> {
+  const { versao, ...configClean } = config as any;
   if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(configClean));
     } catch (e) {}
   }
 
   try {
     const payload = {
-      mensagem: JSON.stringify(config),
+      mensagem: JSON.stringify(configClean),
       estilo: 'footer_config',
       duracao: 1,
       frequencia: 'sempre',
@@ -221,4 +221,81 @@ export async function insertAppVersion(versao: string, descricao: string): Promi
   // Retorna true pois a versão foi gravada com sucesso para a aplicação e sessão do usuário
   return true;
 }
+
+export async function deleteAppVersion(idOrVersao: number | string): Promise<boolean> {
+  // 1. Remove do cache e estado local
+  if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('mms_local_versoes');
+      if (raw) {
+        const list: AppVersionRecord[] = JSON.parse(raw);
+        const filtered = list.filter((item) =>
+          typeof idOrVersao === 'number'
+            ? item.id !== idOrVersao
+            : item.versao !== idOrVersao
+        );
+        localStorage.setItem('mms_local_versoes', JSON.stringify(filtered));
+        if (filtered.length > 0) {
+          localStorage.setItem('mms_cached_app_version', filtered[0].versao);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('mms_app_version_updated', {
+                detail: { versao: filtered[0].versao },
+              })
+            );
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 2. Remove do Supabase (tabela mms_versao_app)
+  try {
+    let query = supabase.from('mms_versao_app').delete();
+    if (typeof idOrVersao === 'number') {
+      query = query.eq('id', idOrVersao);
+    } else {
+      query = query.eq('versao', idOrVersao);
+    }
+    const { error } = await query;
+    if (error) {
+      console.warn('Erro ao remover versão de mms_versao_app:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('Falha na requisição de exclusão de versão:', e);
+    return false;
+  }
+}
+
+export async function cleanDatabaseFooterConfigVersion(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('configuracoes_popups')
+      .select('id, mensagem')
+      .eq('estilo', 'footer_config');
+
+    if (!error && data && data.length > 0) {
+      for (const row of data) {
+        if (row.mensagem) {
+          try {
+            const parsed = JSON.parse(row.mensagem);
+            if ('versao' in parsed) {
+              delete parsed.versao;
+              await supabase
+                .from('configuracoes_popups')
+                .update({ mensagem: JSON.stringify(parsed) })
+                .eq('id', row.id);
+            }
+          } catch (_) {}
+        }
+      }
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 
