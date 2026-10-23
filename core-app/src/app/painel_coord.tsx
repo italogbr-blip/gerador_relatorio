@@ -23,7 +23,20 @@ import {
   visualizarRelatorioHtml,
 } from '../lib/pdfManager';
 import { ReportPdfData } from '../lib/pdfHtmlGenerator';
-import { verifyCoordinatorAccess, logoutUserSession, saveSessionLocal, getSavedSessionSync, AppUserSession, unlockCoordinatorPanel, escapeOrValue } from '../lib/auth';
+import {
+  verifyCoordinatorAccess,
+  logoutUserSession,
+  saveSessionLocal,
+  getSavedSessionSync,
+  AppUserSession,
+  unlockCoordinatorPanel,
+  escapeOrValue,
+  getExigirAprovacaoCadastro,
+  setExigirAprovacaoCadastro,
+  aprovarUsuario,
+  recusarUsuario,
+  carregarHistoricoAprovacoes,
+} from '../lib/auth';
 import {
   fetchFooterConfig,
   saveFooterConfig,
@@ -133,6 +146,16 @@ export default function PainelCoordScreen() {
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [popups, setPopups] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Estados de Autorização / Aprovação de Novos Cadastros
+  const [exigirAprovacaoCadastro, setExigirAprovacaoCadastroState] = useState<boolean>(false);
+  const [salvandoExigirAprovacao, setSalvandoExigirAprovacao] = useState<boolean>(false);
+  const [historicoAprovacoes, setHistoricoAprovacoes] = useState<any[]>([]);
+  const [loadingHistoricoAprovacoes, setLoadingHistoricoAprovacoes] = useState<boolean>(false);
+
+  const usuariosPendentes = useMemo(() => {
+    return usuarios.filter((u) => u.status_aprovacao === 'pendente');
+  }, [usuarios]);
 
   // Inicialização inteligente com cache local (0ms no carregamento inicial)
   const [loadingMetricas, setLoadingMetricas] = useState<boolean>(() => {
@@ -507,9 +530,28 @@ export default function PainelCoordScreen() {
         carregarPopups(),
         carregarVersoes(),
         carregarSeguranca(),
+        carregarConfiguracaoAprovacao(),
+        carregarHistoricoAprovacoesState(),
       ]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const carregarConfiguracaoAprovacao = async () => {
+    try {
+      const exigindo = await getExigirAprovacaoCadastro();
+      setExigirAprovacaoCadastroState(exigindo);
+    } catch (_) {}
+  };
+
+  const carregarHistoricoAprovacoesState = async () => {
+    setLoadingHistoricoAprovacoes(true);
+    try {
+      const hist = await carregarHistoricoAprovacoes();
+      setHistoricoAprovacoes(hist);
+    } finally {
+      setLoadingHistoricoAprovacoes(false);
     }
   };
 
@@ -1144,7 +1186,7 @@ export default function PainelCoordScreen() {
     try {
       const { data, error } = await supabase
         .from('usuarios')
-        .select('id, nome, username, email, nivel_autoridade, data_cadastro, last_activity')
+        .select('id, nome, username, email, nivel_autoridade, data_cadastro, last_activity, status_aprovacao, aprovado_por, data_aprovacao')
         .order('id', { ascending: false });
 
       if (!error && data) {
@@ -1153,6 +1195,61 @@ export default function PainelCoordScreen() {
     } catch (e) {
       console.warn('Erro ao carregar usuários:', e);
     }
+  };
+
+  const handleToggleExigirAprovacao = async () => {
+    const novoValor = !exigirAprovacaoCadastro;
+    setSalvandoExigirAprovacao(true);
+    const ok = await setExigirAprovacaoCadastro(novoValor);
+    if (ok) {
+      setExigirAprovacaoCadastroState(novoValor);
+      showCustomAlert(
+        'Configuração Atualizada',
+        novoValor
+          ? 'Aprovação de cadastros ATIVADA! A partir de agora, novos usuários precisarão de sua liberação para acessar o sistema.'
+          : 'Aprovação de cadastros DESATIVADA! Novos usuários terão acesso liberado imediatamente após se cadastrarem.'
+      );
+    } else {
+      showCustomAlert('Erro', 'Não foi possível salvar a configuração no banco.');
+    }
+    setSalvandoExigirAprovacao(false);
+  };
+
+  const handleAprovarUsuario = (user: any) => {
+    showCustomAlert(
+      'APROVAR CADASTRO',
+      `Deseja autorizar o acesso do usuário "${user.nome || user.username}" ao Gerador de Relatórios?`,
+      async () => {
+        const executor = userSession?.user?.user_metadata?.username || 'Coordenação';
+        const res = await aprovarUsuario(user.id, executor);
+        if (res.success) {
+          showCustomAlert('Cadastro Aprovado', `O acesso de ${user.nome || user.username} foi liberado com sucesso!`);
+          carregarUsuarios();
+          carregarHistoricoAprovacoesState();
+        } else {
+          showCustomAlert('Erro ao Aprovar', res.error || 'Falha ao liberar cadastro.');
+        }
+      }
+    );
+  };
+
+  const handleRecusarUsuario = (user: any) => {
+    showCustomAlert(
+      'RECUSAR CADASTRO',
+      `Deseja realmente RECUSAR o cadastro de "${user.nome || user.username}"? O usuário será impedido de fazer login no sistema.`,
+      async () => {
+        const executor = userSession?.user?.user_metadata?.username || 'Coordenação';
+        const res = await recusarUsuario(user.id, executor);
+        if (res.success) {
+          showCustomAlert('Cadastro Recusado', `O cadastro de ${user.nome || user.username} foi recusado e registrado.`);
+          carregarUsuarios();
+          carregarHistoricoAprovacoesState();
+        } else {
+          showCustomAlert('Erro ao Recusar', res.error || 'Falha ao registrar recusa.');
+        }
+      },
+      true
+    );
   };
 
   const carregarPopups = async () => {
@@ -1888,6 +1985,39 @@ export default function PainelCoordScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Banner de Notificação de Novos Cadastros Pendentes */}
+        {usuariosPendentes.length > 0 && (
+          <TouchableOpacity
+            style={[styles.coordSecurityAlertBanner, { backgroundColor: '#fffbeb', borderColor: '#fde68a' }]}
+            onPress={() => setActiveTab('usuarios')}
+            activeOpacity={0.92}
+          >
+            <View style={styles.coordSecurityAlertBannerContent}>
+              <View style={[styles.coordSecurityAlertIconWrap, { backgroundColor: '#fef3c7', borderColor: '#fcd34d' }]}>
+                <Text style={{ fontSize: 22 }}>👥</Text>
+              </View>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                  <Text style={[styles.coordSecurityAlertTitle, { color: '#92400e' }]}>
+                    NOVO CADASTRO PENDENTE DE APROVAÇÃO
+                  </Text>
+                  <View style={[styles.coordSecurityAlertPill, { backgroundColor: '#dc2626' }]}>
+                    <Text style={styles.coordSecurityAlertPillText}>
+                      {usuariosPendentes.length} {usuariosPendentes.length === 1 ? 'PENDENTE' : 'PENDENTES'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.coordSecurityAlertSub, { color: '#78350f' }]}>
+                  Existem novos usuários cadastrados aguardando sua autorização para poderem fazer login. Clique aqui para gerenciar os cadastros.
+                </Text>
+              </View>
+              <View style={[styles.coordSecurityAlertActionBox, { backgroundColor: '#d97706' }]}>
+                <Text style={styles.coordSecurityAlertActionText}>REVISAR ›</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Filtro de KPIs / Visão Geral (Refinado) */}
         <View style={styles.overviewSummaryCardLight}>
           <View style={styles.overviewSummaryLeft}>
@@ -2062,6 +2192,24 @@ export default function PainelCoordScreen() {
               <Text style={[styles.tabNavButtonText, activeTab === 'mensagens' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
                 MENSAGENS
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tabNavButton, activeTab === 'usuarios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              onPress={() => setActiveTab('usuarios')}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 13, marginRight: 6 }}>👥</Text>
+              <Text style={[styles.tabNavButtonText, activeTab === 'usuarios' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+                USUÁRIOS
+              </Text>
+              {usuariosPendentes.length > 0 && (
+                <View style={[styles.tabNavBadge, { backgroundColor: '#dc2626' }]}>
+                  <Text style={styles.tabNavBadgeText}>
+                    {usuariosPendentes.length > 9 ? '9+' : usuariosPendentes.length}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -2780,15 +2928,184 @@ export default function PainelCoordScreen() {
           </View>
         )}
 
-        {/* ════════════════ ABA 3: USUÁRIOS & PERMISSÕES ════════════════ */}
+        {/* ════════════════ ABA 3: USUÁRIOS, APROVAÇÃO DE CADASTROS & AUDITORIA ════════════════ */}
         {activeTab === 'usuarios' && (
           <View style={styles.tabContent}>
+            {/* 1. POLÍTICA DE APROVAÇÃO DE NOVOS CADASTROS */}
             <View style={[styles.sectionCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+              <View style={[styles.sectionHeader, { justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 260 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: exigirAprovacaoCadastro ? '#ecfdf5' : '#fef3c7', borderWidth: 1, borderColor: exigirAprovacaoCadastro ? '#a7f3d0' : '#fde68a', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 24 }}>{exigirAprovacaoCadastro ? '🔒' : '⚡'}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>
+                      POLÍTICA DE CADASTRO DE USUÁRIOS
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      {exigirAprovacaoCadastro
+                        ? 'Aprovação manual ATIVADA: novos cadastros precisam da sua autorização para acessar o sistema'
+                        : 'Acesso DIRETO: novos cadastros são liberados imediatamente sem necessidade de autorização'}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: exigirAprovacaoCadastro ? '#059669' : '#d97706',
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                  onPress={handleToggleExigirAprovacao}
+                  disabled={salvandoExigirAprovacao}
+                  activeOpacity={0.85}
+                >
+                  {salvandoExigirAprovacao ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <Text style={{ fontSize: 14 }}>{exigirAprovacaoCadastro ? '✅' : '⚙️'}</Text>
+                      <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 }}>
+                        {exigirAprovacaoCadastro ? 'EXIGIR APROVAÇÃO: ATIVADO' : 'EXIGIR APROVAÇÃO: DESATIVADO'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* 2. CADASTROS PENDENTES DE APROVAÇÃO (DESTAQUE PRIORITÁRIO) */}
+            <View style={[styles.sectionCard, { marginTop: 18 }, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+              <View style={[styles.sectionHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 22 }}>🚨</Text>
+                  </View>
+                  <View>
+                    <Text style={[styles.sectionTitle, { color: '#dc2626' }]}>
+                      CADASTROS AGUARDANDO APROVAÇÃO
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Usuários que se cadastraram no formulário e aguardam liberação do acesso pela coordenação
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ backgroundColor: usuariosPendentes.length > 0 ? '#fee2e2' : '#f0fdf4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: usuariosPendentes.length > 0 ? '#fca5a5' : '#bbf7d0' }}>
+                  <Text style={{ color: usuariosPendentes.length > 0 ? '#b91c1c' : '#15803d', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                    {usuariosPendentes.length} {usuariosPendentes.length === 1 ? 'CADASTRO PENDENTE' : 'CADASTROS PENDENTES'}
+                  </Text>
+                </View>
+              </View>
+
+              {usuariosPendentes.length === 0 ? (
+                <View style={{ padding: 28, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 28, marginBottom: 8 }}>✅</Text>
+                  <Text style={{ color: '#059669', fontSize: 13, fontWeight: '800' }}>
+                    Nenhum cadastro aguardando aprovação no momento.
+                  </Text>
+                  <Text style={{ color: '#94a3b8', fontSize: 11, marginTop: 4 }}>
+                    Quando novos usuários se cadastrarem enquanto a política estiver ativa, eles aparecerão listados aqui para aprovação.
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ gap: 10, marginTop: 14 }}>
+                  {usuariosPendentes.map((u) => {
+                    const dataStr = u.data_cadastro ? new Date(u.data_cadastro).toLocaleString('pt-BR') : 'Hoje';
+                    return (
+                      <View
+                        key={u.id}
+                        style={{
+                          backgroundColor: '#fffbeb',
+                          borderWidth: 1.5,
+                          borderColor: '#fde68a',
+                          borderRadius: 12,
+                          padding: 16,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: 12,
+                        }}
+                      >
+                        <View style={{ flex: 1, minWidth: 240 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <Text style={{ color: '#0f172a', fontWeight: '900', fontSize: 14 }}>
+                              {u.nome || u.username}
+                            </Text>
+                            <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#fcd34d' }}>
+                              <Text style={{ color: '#b45309', fontSize: 10, fontWeight: '900' }}>
+                                ⏳ PENDENTE
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={{ color: '#64748b', fontSize: 12 }}>
+                            Username: <Text style={{ color: '#0f172a', fontWeight: '700' }}>@{u.username}</Text> • E-mail: <Text style={{ color: '#0f172a', fontWeight: '700' }}>{u.email}</Text>
+                          </Text>
+                          <Text style={{ color: '#94a3b8', fontSize: 11, marginTop: 2 }}>
+                            Cadastrado em: {dataStr}
+                          </Text>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <TouchableOpacity
+                            style={{
+                              backgroundColor: '#059669',
+                              paddingHorizontal: 16,
+                              paddingVertical: 9,
+                              borderRadius: 8,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}
+                            onPress={() => handleAprovarUsuario(u)}
+                            activeOpacity={0.85}
+                          >
+                            <Text style={{ fontSize: 14 }}>✅</Text>
+                            <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 11, letterSpacing: 0.5 }}>
+                              LIBERAR ACESSO
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={{
+                              backgroundColor: '#fee2e2',
+                              paddingHorizontal: 14,
+                              paddingVertical: 9,
+                              borderRadius: 8,
+                              borderWidth: 1,
+                              borderColor: '#fca5a5',
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}
+                            onPress={() => handleRecusarUsuario(u)}
+                            activeOpacity={0.85}
+                          >
+                            <Text style={{ fontSize: 14 }}>❌</Text>
+                            <Text style={{ color: '#b91c1c', fontWeight: '900', fontSize: 11, letterSpacing: 0.5 }}>
+                              RECUSAR
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+
+            {/* 3. GERENCIAMENTO DE TODOS OS USUÁRIOS */}
+            <View style={[styles.sectionCard, { marginTop: 18 }, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
               <View style={styles.sectionHeader}>
                 <Text style={{ fontSize: 24 }}>👥</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>GERENCIAMENTO DE USUÁRIOS</Text>
-                  <Text style={styles.sectionSubtitle}>Controle de permissões (Nível 1 Básico vs Nível 2 Coordenação)</Text>
+                  <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>TODOS OS USUÁRIOS</Text>
+                  <Text style={styles.sectionSubtitle}>Controle de permissões (Nível 1 Básico vs Nível 2 Coordenação) e status de conta</Text>
                 </View>
               </View>
 
@@ -2809,6 +3126,10 @@ export default function PainelCoordScreen() {
                 {usuariosFiltrados.map((u) => {
                   const nivelNum = Number(u.nivel_autoridade) || 1;
                   const isCoord = nivelNum === 2;
+                  const statusAprovacao = u.status_aprovacao || 'aprovado';
+                  const isAprovado = statusAprovacao === 'aprovado';
+                  const isPendente = statusAprovacao === 'pendente';
+                  const isRecusado = statusAprovacao === 'recusado';
 
                   return (
                     <View
@@ -2816,7 +3137,7 @@ export default function PainelCoordScreen() {
                       style={[styles.userCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}
                     >
                       <View style={styles.userCardInfo}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <Text style={[styles.userNameText, !isDarkMode && { color: '#0f172a' }]}>
                             {u.nome || u.username || 'Sem Nome'}
                           </Text>
@@ -2835,13 +3156,65 @@ export default function PainelCoordScreen() {
                               {isCoord ? '🛡️ NÍVEL 2 - COORDENAÇÃO' : '👤 NÍVEL 1 - BÁSICO'}
                             </Text>
                           </View>
+
+                          <View
+                            style={{
+                              backgroundColor: isAprovado ? '#ecfdf5' : isPendente ? '#fef3c7' : '#fee2e2',
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                              borderRadius: 4,
+                              borderWidth: 1,
+                              borderColor: isAprovado ? '#a7f3d0' : isPendente ? '#fcd34d' : '#fca5a5',
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: isAprovado ? '#059669' : isPendente ? '#b45309' : '#b91c1c',
+                                fontSize: 10,
+                                fontWeight: '900',
+                              }}
+                            >
+                              {isAprovado ? '● ACESSO LIBERADO' : isPendente ? '⏳ AGUARDANDO APROVAÇÃO' : '❌ RECUSADO'}
+                            </Text>
+                          </View>
                         </View>
                         <Text style={styles.userMetaText}>
                           Username: <Text style={{ color: '#94a3b8' }}>{u.username}</Text> | E-mail: <Text style={{ color: '#94a3b8' }}>{u.email || 'N/A'}</Text>
                         </Text>
                       </View>
 
-                      <View style={styles.userCardActions}>
+                      <View style={[styles.userCardActions, { flexDirection: 'row', gap: 8, flexWrap: 'wrap' }]}>
+                        {isPendente ? (
+                          <>
+                            <TouchableOpacity
+                              style={{ backgroundColor: '#059669', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 6 }}
+                              onPress={() => handleAprovarUsuario(u)}
+                            >
+                              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>✅ Aprovar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={{ backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 6, borderWidth: 1, borderColor: '#fca5a5' }}
+                              onPress={() => handleRecusarUsuario(u)}
+                            >
+                              <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '800' }}>❌ Recusar</Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : isRecusado ? (
+                          <TouchableOpacity
+                            style={{ backgroundColor: '#059669', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 6 }}
+                            onPress={() => handleAprovarUsuario(u)}
+                          >
+                            <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>🔓 Reativar Acesso</Text>
+                          </TouchableOpacity>
+                        ) : !isCoord ? (
+                          <TouchableOpacity
+                            style={{ backgroundColor: '#fee2e2', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#fca5a5' }}
+                            onPress={() => handleRecusarUsuario(u)}
+                          >
+                            <Text style={{ color: '#b91c1c', fontSize: 10, fontWeight: '800' }}>Suspender</Text>
+                          </TouchableOpacity>
+                        ) : null}
+
                         <TouchableOpacity
                           style={[
                             styles.toggleRoleBtn,
@@ -2850,13 +3223,128 @@ export default function PainelCoordScreen() {
                           onPress={() => handleAlterarNivelUsuario(u.id, nivelNum)}
                         >
                           <Text style={styles.toggleRoleBtnText}>
-                            {isCoord ? '⬇️ Rebaixar para Nível 1' : '⬆️ Promover para Nível 2'}
+                            {isCoord ? '⬇️ Nível 1' : '⬆️ Nível 2'}
                           </Text>
                         </TouchableOpacity>
                       </View>
                     </View>
                   );
                 })}
+              </View>
+            </View>
+
+            {/* 4. HISTÓRICO DE AUDITORIA — TODAS AS LIBERAÇÕES E RECUSAS */}
+            <View style={[styles.sectionCard, { marginTop: 18 }, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+              <View style={[styles.sectionHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 22 }}>📋</Text>
+                  </View>
+                  <View>
+                    <Text style={[styles.sectionTitle, { color: '#0369a1' }]}>
+                      HISTÓRICO DE LIBERAÇÕES E RECUSAS (AUDITORIA)
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Registro permanente de cada ação de aprovação ou recusa realizada pela coordenação
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#cbd5e1' }}
+                  onPress={carregarHistoricoAprovacoesState}
+                  disabled={loadingHistoricoAprovacoes}
+                >
+                  <Text style={{ color: '#475569', fontSize: 11, fontWeight: '800' }}>
+                    {loadingHistoricoAprovacoes ? '⏳ Carregando...' : '🔄 Atualizar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
+                <View style={styles.versionTableHeaderRow}>
+                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA / HORA</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>USUÁRIO / PREPOSTO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 120, textAlign: 'center' }]}>AÇÃO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>EXECUTADO POR</Text>
+                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>MOTIVO / DETALHES</Text>
+                </View>
+
+                {loadingHistoricoAprovacoes ? (
+                  <View style={{ padding: 24, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#0284c7" />
+                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando histórico de auditoria...</Text>
+                  </View>
+                ) : historicoAprovacoes.length === 0 ? (
+                  <View style={{ padding: 24, alignItems: 'center' }}>
+                    <Text style={{ color: '#64748b', fontSize: 12 }}>
+                      Nenhum registro de aprovação ou recusa gravado até o momento.
+                    </Text>
+                  </View>
+                ) : (
+                  historicoAprovacoes.map((item, idx) => {
+                    const dataStr = item.data_registro
+                      ? new Date(item.data_registro).toLocaleString('pt-BR')
+                      : 'N/A';
+                    const isAprov = item.acao === 'aprovado';
+
+                    return (
+                      <View
+                        key={item.id || idx}
+                        style={[
+                          styles.versionTableRow,
+                          idx % 2 === 1 && { backgroundColor: '#f8fafc' },
+                        ]}
+                      >
+                        <View style={{ width: 140 }}>
+                          <Text style={{ color: '#64748b', fontSize: 11 }}>
+                            🕒 {dataStr}
+                          </Text>
+                        </View>
+                        <View style={{ width: 180 }}>
+                          <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }} numberOfLines={1}>
+                            {item.nome || item.username}
+                          </Text>
+                          <Text style={{ color: '#64748b', fontSize: 10 }}>
+                            @{item.username}
+                          </Text>
+                        </View>
+                        <View style={{ width: 120, alignItems: 'center', justifyContent: 'center' }}>
+                          <View
+                            style={{
+                              backgroundColor: isAprov ? '#ecfdf5' : '#fee2e2',
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              borderRadius: 4,
+                              borderWidth: 1,
+                              borderColor: isAprov ? '#a7f3d0' : '#fca5a5',
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: isAprov ? '#059669' : '#b91c1c',
+                                fontSize: 10,
+                                fontWeight: '900',
+                              }}
+                            >
+                              {isAprov ? '✅ APROVADO' : '❌ RECUSADO'}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{ width: 140 }}>
+                          <Text style={{ color: '#334155', fontWeight: '700', fontSize: 11 }} numberOfLines={1}>
+                            👤 {item.executado_por || 'Coordenação'}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: '#475569', fontSize: 11 }} numberOfLines={1}>
+                            {item.motivo || '-'}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
               </View>
             </View>
           </View>
