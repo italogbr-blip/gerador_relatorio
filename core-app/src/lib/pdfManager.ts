@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { gerarHtmlPdfFidelidade, ReportPdfData } from './pdfHtmlGenerator';
+import { formatReportPdfUrl, PHP_VECTOR_PDF_ENDPOINT } from './config';
 
 /**
  * Gera o nome de arquivo idêntico ao index.php e salvar_relatorio.php:
@@ -73,7 +74,7 @@ export function compilarHtmlRelatorio(dados: ReportPdfData): { docHtml: string; 
 }
 
 /**
- * Gera o Blob do PDF real e completo (usando endpoint do servidor se disponível ou geração local de alta fidelidade)
+ * Gera o Blob do PDF 100% VETORIAL (priorizando o motor DomPDF oficial do sistema)
  */
 export async function gerarPdfBlob(
   dados: ReportPdfData,
@@ -81,135 +82,112 @@ export async function gerarPdfBlob(
 ): Promise<{ blob: Blob; nomeArquivo: string }> {
   const { docHtml, nomeArquivo } = compilarHtmlRelatorio(dados);
 
-  // 1. Se já houver uma URL do PDF no servidor, tenta baixar diretamente o arquivo oficial
+  // 1. Se já houver uma URL do PDF oficial do DomPDF salvo no servidor, baixa diretamente
   if (existingPdfUrl && Platform.OS === 'web' && typeof window !== 'undefined') {
     try {
-      const resp = await fetch(existingPdfUrl);
-      if (resp.ok) {
-        const srvBlob = await resp.blob();
-        const isPdf = srvBlob.type.includes('pdf') || (await srvBlob.slice(0, 5).text()).includes('%PDF');
-        if (isPdf && srvBlob.size > 1000) {
-          return { blob: srvBlob, nomeArquivo };
+      const formattedUrl = formatReportPdfUrl(existingPdfUrl);
+      if (formattedUrl) {
+        const resp = await fetch(formattedUrl);
+        if (resp.ok) {
+          const srvBlob = await resp.blob();
+          const firstBytes = await srvBlob.slice(0, 5).text();
+          if (firstBytes.includes('%PDF')) {
+            return { blob: srvBlob, nomeArquivo };
+          }
         }
       }
     } catch (err) {
-      console.warn('Endpoint do servidor indisponível para download direto do PDF, gerando via motor web local:', err);
+      console.warn('Endpoint do servidor indisponível para download direto do PDF oficial, tentando gerar via DomPDF remoto:', err);
     }
   }
 
-  // 2. Geração Web de Alta Resolução via jsPDF + html2canvas em iframe isolado
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
-    const engines = await getPdfEngines();
-    if (engines?.jsPDF && engines?.html2canvas) {
-      const { jsPDF: JsPdfConstructor, html2canvas: h2c } = engines;
+  // 2. Compilação direta e imediata de PDF Vetorial via DomPDF (mesma lógica e fidelidade do PHP)
+  try {
+    const payloadDompdf = {
+      grupo: dados.grupo,
+      unidade: dados.unidade,
+      data: dados.data,
+      local: dados.local,
+      modal: dados.modal,
+      preposto: dados.preposto,
+      observacao: dados.observacao,
+      observacao_nome_arquivo: dados.observacao_nome_arquivo,
+      horarios: dados.horarios,
+      info_troca: dados.info_troca,
+      pax_embarcando: dados.pax_embarcando,
+      pax_desembarcando: dados.pax_desembarcando,
+      fotos: dados.fotos,
+    };
 
-      const iframe = document.createElement('iframe');
-      iframe.id = 'mms-pdf-render-frame';
-      iframe.style.position = 'fixed';
-      iframe.style.top = '0';
-      iframe.style.left = '0';
-      iframe.style.width = '794px';
-      iframe.style.height = '1123px';
-      iframe.style.opacity = '1'; // 100% opaco para html2canvas capturar com fidelidade total (NUNCA 0.01)
-      iframe.style.pointerEvents = 'none';
-      iframe.style.border = 'none';
-      iframe.style.zIndex = '-9999'; // Posicionado atrás do layout da aplicação (invisível ao usuário)
-      iframe.style.visibility = 'visible';
-      document.body.appendChild(iframe);
+    const respDompdf = await fetch(PHP_VECTOR_PDF_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payloadDompdf),
+    });
 
-      try {
-        const frameDoc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (!frameDoc) throw new Error('Não foi possível inicializar iframe de impressão.');
+    if (respDompdf.ok) {
+      const dompdfBlob = await respDompdf.blob();
+      const firstBytes = await dompdfBlob.slice(0, 5).text();
+      if (firstBytes.includes('%PDF')) {
+        return { blob: dompdfBlob, nomeArquivo };
+      }
+    }
+  } catch (dompdfErr) {
+    console.warn('Servidor DomPDF offline ou inatingível no momento:', dompdfErr);
+  }
 
-        frameDoc.open();
-        frameDoc.write(docHtml);
-        frameDoc.close();
+  // 3. Fallback Nativo (iOS / Android em runtime React Native) - Gera PDF vetorial nativo via motor do OS
+  if (Platform.OS !== 'web') {
+    const { uri } = await Print.printToFileAsync({ html: docHtml });
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return { blob, nomeArquivo };
+  }
 
-        // Aguarda carregamento integral de imagens (logo institucional, background base64 e anexos)
-        const images = Array.from(frameDoc.images);
-        await Promise.all(
-          images.map(
-            (img) =>
-              new Promise<void>((resolve) => {
-                if (img.complete && img.naturalWidth !== 0) return resolve();
-                img.onload = () => resolve();
-                img.onerror = () => resolve();
-                setTimeout(resolve, 2000);
-              })
-          )
-        );
+  // 4. Fallback Web Offline: Gera via jsPDF vetorial nativo (sem rasterização em JPEG)
+  const engines = await getPdfEngines();
+  if (engines?.jsPDF) {
+    const { jsPDF: JsPdfConstructor } = engines;
+    const pdf = new JsPdfConstructor({
+      orientation: 'portrait',
+      unit: 'pt',
+      format: 'a4',
+      compress: true,
+    });
 
-        if (frameDoc.fonts && frameDoc.fonts.ready) {
-          await frameDoc.fonts.ready;
-        }
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'fixed';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '0';
+    tempContainer.style.width = '595.28pt';
+    tempContainer.innerHTML = docHtml;
+    document.body.appendChild(tempContainer);
 
-        // Aguarda estabilização do layout
-        await new Promise((resolve) => setTimeout(resolve, 250));
-
-        // Encontra todas as páginas .mms-pdf-page do documento
-        const pageElements = Array.from(frameDoc.querySelectorAll('.mms-pdf-page')) as HTMLElement[];
-        const targetPages = pageElements.length > 0 ? pageElements : [frameDoc.body];
-
-        const pdf = new JsPdfConstructor({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4',
-          compress: true,
-        });
-
-        for (let i = 0; i < targetPages.length; i++) {
-          const pageEl = targetPages[i];
-          if (i > 0) {
-            pdf.addPage('a4', 'portrait');
-          }
-
-          // Isola a página atual para que ela fique no topo exato (0,0) do viewport do iframe
-          targetPages.forEach((p, idx) => {
-            p.style.display = idx === i ? 'block' : 'none';
-            if (idx === i) {
-              p.style.position = 'relative';
-              p.style.top = '0';
-              p.style.left = '0';
-              p.style.margin = '0 auto';
-            }
-          });
-
-          if (iframe.contentWindow) {
-            iframe.contentWindow.scrollTo(0, 0);
-          }
-
-          const canvas = await h2c(pageEl, {
-            scale: 1.4,
-            useCORS: true,
-            allowTaint: true,
-            letterRendering: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            width: 794,
-            height: 1123,
-            windowWidth: 794,
-            windowHeight: 1123,
-            scrollX: 0,
-            scrollY: 0,
+    try {
+      if (typeof (pdf as any).html === 'function') {
+        await new Promise<void>((resolve, reject) => {
+          (pdf as any).html(tempContainer, {
+            callback: () => resolve(),
+            autoPaging: 'text',
             x: 0,
             y: 0,
-          });
-
-          const imgData = canvas.toDataURL('image/jpeg', 0.75);
-          pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-        }
-
-        const pdfBlob: Blob = pdf.output('blob');
-        return { blob: pdfBlob, nomeArquivo };
-      } finally {
-        if (iframe.parentNode) {
-          iframe.parentNode.removeChild(iframe);
-        }
+            width: 595.28,
+            windowWidth: 794,
+          }).catch(reject);
+        });
+        const vectorBlob: Blob = pdf.output('blob');
+        return { blob: vectorBlob, nomeArquivo };
+      }
+    } catch (e) {
+      console.warn('Fallback jsPDF.html vetorial:', e);
+    } finally {
+      if (tempContainer.parentNode) {
+        tempContainer.parentNode.removeChild(tempContainer);
       }
     }
   }
 
-  // 3. Fallback Nativo (iOS / Android em runtime React Native)
+  // Fallback final
   const { uri } = await Print.printToFileAsync({ html: docHtml });
   const response = await fetch(uri);
   const blob = await response.blob();
