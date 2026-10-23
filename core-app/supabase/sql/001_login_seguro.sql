@@ -9,7 +9,6 @@
 DROP TABLE IF EXISTS public.interacoes_popup CASCADE;
 DROP TABLE IF EXISTS public.mms_mensagens_lidas CASCADE;
 DROP TABLE IF EXISTS public.mms_mensagens_agendadas CASCADE;
-DROP TABLE IF EXISTS public.ips_bloqueados CASCADE;
 DROP TABLE IF EXISTS public.mms_acessos_gerador CASCADE;
 DROP TABLE IF EXISTS public.visitantes_online CASCADE;
 
