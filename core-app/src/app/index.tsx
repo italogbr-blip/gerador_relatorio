@@ -3865,6 +3865,25 @@ export default function ReportGenerator() {
 
                 <View style={styles.sucessoActionsRow}>
                   <TouchableOpacity
+                    style={styles.btnBaixarPdf}
+                    onPress={handleBaixarPdf}
+                    disabled={isExportingPdf}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.btnBaixarPdfIcon}>📥</Text>
+                    <Text style={styles.btnBaixarPdfText}>{isExportingPdf ? 'Baixando...' : 'Baixar PDF'}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.btnVisualizarPdf}
+                    onPress={() => visualizarRelatorioHtml(obterDadosRelatorioAtual())}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.btnVisualizarPdfIcon}>👁️</Text>
+                    <Text style={styles.btnVisualizarPdfText}>Visualizar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
                     style={styles.btnCompartilharPdf}
                     onPress={handleCompartilharRelatorio}
                     disabled={isExportingPdf}
@@ -3872,16 +3891,6 @@ export default function ReportGenerator() {
                   >
                     <Text style={styles.btnCompartilharPdfIcon}>🔗</Text>
                     <Text style={styles.btnCompartilharPdfText}>Compartilhar</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.btnBaixarPdf}
-                    onPress={handleBaixarPdf}
-                    disabled={isExportingPdf}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.btnBaixarPdfIcon}>📥</Text>
-                    <Text style={styles.btnBaixarPdfText}>{isExportingPdf ? 'Baixando...' : 'Baixar'}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -6347,6 +6356,31 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   btnBaixarPdfText: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 16,
+    fontFamily: corporateFont,
+  },
+  btnVisualizarPdf: {
+    flex: 1,
+    backgroundColor: '#059669',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  btnVisualizarPdfIcon: {
+    fontSize: 18,
+    color: '#ffffff',
+  },
+  btnVisualizarPdfText: {
     color: '#ffffff',
     fontWeight: '800',
     fontSize: 16,

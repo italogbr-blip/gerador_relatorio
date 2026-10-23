@@ -104,29 +104,75 @@ export async function gerarPdfBlob(
     return { blob, nomeArquivo };
   }
 
-  // 4. Fallback Web Offline: Gera via jsPDF vetorial nativo (sem rasterização em JPEG)
+  // 3. Geração no Navegador Web via iframe isolado + html2canvas + jsPDF (Renderização 100% fiel sem página em branco)
   const engines = await getPdfEngines();
-  if (engines?.jsPDF) {
+  if (engines?.jsPDF && typeof document !== 'undefined') {
     const { jsPDF: JsPdfConstructor } = engines;
-    const pdf = new JsPdfConstructor({
-      orientation: 'portrait',
-      unit: 'pt',
-      format: 'a4',
-      compress: true,
-    });
-
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'fixed';
-    tempContainer.style.left = '-9999px';
-    tempContainer.style.top = '0';
-    tempContainer.style.width = '595.28pt';
-    tempContainer.innerHTML = docHtml;
-    document.body.appendChild(tempContainer);
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.top = '0';
+    iframe.style.left = '0';
+    iframe.style.width = '794px';
+    iframe.style.height = '1123px';
+    iframe.style.zIndex = '-9999';
+    iframe.style.opacity = '0.01';
+    iframe.style.border = 'none';
+    iframe.style.pointerEvents = 'none';
+    document.body.appendChild(iframe);
 
     try {
-      if (typeof (pdf as any).html === 'function') {
+      const idoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!idoc) throw new Error('Não foi possível inicializar iframe do PDF');
+
+      idoc.open();
+      idoc.write(docHtml);
+      idoc.close();
+
+      // Aguarda renderização completa de estilos, fontes e imagens base64
+      await new Promise((r) => setTimeout(r, 450));
+
+      const pages = idoc.querySelectorAll('.mms-pdf-page');
+
+      if (pages && pages.length > 0 && engines.html2canvas) {
+        const pdf = new JsPdfConstructor({
+          orientation: 'portrait',
+          unit: 'pt',
+          format: 'a4',
+          compress: true,
+        });
+
+        for (let i = 0; i < pages.length; i++) {
+          const pageEl = pages[i] as HTMLElement;
+          const canvas = await engines.html2canvas(pageEl, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            width: 794,
+            height: 1123,
+            windowWidth: 794,
+            windowHeight: 1123,
+          });
+
+          const imgData = canvas.toDataURL('image/jpeg', 0.98);
+          if (i > 0) {
+            pdf.addPage('a4', 'portrait');
+          }
+          pdf.addImage(imgData, 'JPEG', 0, 0, 595.28, 841.89, undefined, 'FAST');
+        }
+
+        const vectorBlob: Blob = pdf.output('blob');
+        return { blob: vectorBlob, nomeArquivo };
+      } else if (typeof (JsPdfConstructor as any).prototype.html === 'function') {
+        const pdf = new JsPdfConstructor({
+          orientation: 'portrait',
+          unit: 'pt',
+          format: 'a4',
+          compress: true,
+        });
         await new Promise<void>((resolve, reject) => {
-          (pdf as any).html(tempContainer, {
+          (pdf as any).html(idoc.body, {
             callback: () => resolve(),
             autoPaging: 'text',
             x: 0,
@@ -139,10 +185,10 @@ export async function gerarPdfBlob(
         return { blob: vectorBlob, nomeArquivo };
       }
     } catch (e) {
-      console.warn('Fallback jsPDF.html vetorial:', e);
+      console.warn('Erro ao compilar PDF via iframe/canvas:', e);
     } finally {
-      if (tempContainer.parentNode) {
-        tempContainer.parentNode.removeChild(tempContainer);
+      if (iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe);
       }
     }
   }
