@@ -35,13 +35,20 @@ export function getOrCreateDeviceId(): string {
         }
       }
       if (savedId && savedId.trim() !== '') {
-        return savedId;
+        const cleaned = savedId.replace(/^MMS-/i, '');
+        if (cleaned !== savedId) {
+          localStorage.setItem(STORAGE_DEVICE_ID_KEY, cleaned);
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem(STORAGE_DEVICE_ID_KEY, cleaned);
+          }
+        }
+        return cleaned;
       }
 
-      // Gera um UUID único persistente padrão MMS-DEV-XXXXXXXX
+      // Gera um identificador único de hardware/aparelho padrão DEV-XXXXXXXX-XXXX
       const randomSegment = () => Math.random().toString(36).substring(2, 6).toUpperCase();
       const timestampSegment = Date.now().toString(36).substring(2, 6).toUpperCase();
-      const newId = `MMS-DEV-${timestampSegment}-${randomSegment()}-${randomSegment()}`;
+      const newId = `DEV-${timestampSegment}-${randomSegment()}-${randomSegment()}`;
 
       localStorage.setItem(STORAGE_DEVICE_ID_KEY, newId);
       if (typeof sessionStorage !== 'undefined') {
@@ -50,7 +57,7 @@ export function getOrCreateDeviceId(): string {
       return newId;
     } catch (_) {}
   }
-  return 'MMS-DEV-LOCAL-001';
+  return 'DEV-LOCAL-001';
 }
 
 /**

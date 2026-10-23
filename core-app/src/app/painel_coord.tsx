@@ -606,7 +606,7 @@ export default function PainelCoordScreen() {
           ...item,
           username: nomeUsuario,
           isPrepostoDetectado,
-          deviceId: meta?.deviceId || item.deviceId || 'MMS-DEV-' + (item.ip || '0').replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase(),
+          deviceId: (meta?.deviceId || item.deviceId || 'DEV-' + (item.ip || '0').replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase()).replace(/^MMS-/i, ''),
           model: meta?.model || item.model || 'Aparelho Web',
           os: meta?.os || item.os || 'Sistema',
           browser: meta?.browser || item.browser || 'Navegador Web',
@@ -645,7 +645,7 @@ export default function PainelCoordScreen() {
           ip: t.ip || '127.0.0.1',
           data_tentativa: t.timestamp,
           data_login: t.timestamp,
-          deviceId: t.deviceId,
+          deviceId: (t.deviceId ? String(t.deviceId) : 'DEV-LOCAL').replace(/^MMS-/i, ''),
           model: t.deviceModel,
           os: t.os,
           browser: t.browser,
@@ -697,7 +697,7 @@ export default function PainelCoordScreen() {
         const matchingTele = telemetriaLocal.find((t) => t.ip === lg.ip || t.usuario === lg.username);
         return {
           ...lg,
-          deviceId: matchingTele?.deviceId || lg.deviceId || 'MMS-DEV-' + String(lg.usuario_id || 'USR').padStart(4, '0') + '-' + (lg.ip || '').slice(-4).replace(/\./g, ''),
+          deviceId: (matchingTele?.deviceId || lg.deviceId || 'DEV-AUTH-' + String(lg.usuario_id || 'USR').padStart(4, '0') + '-' + (lg.ip || '').slice(-4).replace(/\./g, '')).replace(/^MMS-/i, ''),
           model: matchingTele?.deviceModel || lg.model || 'Aparelho Autorizado',
           os: matchingTele?.os || lg.os || 'Ambiente Seguro',
           browser: matchingTele?.browser || lg.browser || 'Browser',
@@ -3156,7 +3156,7 @@ export default function PainelCoordScreen() {
                         <View style={{ width: 180 }}>
                           <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#e2e8f0', alignSelf: 'flex-start' }}>
                             <Text style={{ color: '#334155', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
-                              🆔 {lg.deviceId || 'MMS-DEV-AUTH'}
+                              🆔 {String(lg.deviceId || 'DEV-AUTH').replace(/^MMS-/i, '')}
                             </Text>
                           </View>
                         </View>
@@ -3253,7 +3253,7 @@ export default function PainelCoordScreen() {
                           ID DO TELEFONE / DISPOSITIVO:
                         </Text>
                         <Text style={{ fontSize: 12, fontWeight: '800', color: '#2563eb', fontFamily: 'monospace' }} numberOfLines={1}>
-                          🔑 {ultimo.deviceId || 'MMS-DEV-...'}
+                          🔑 {String(ultimo.deviceId || 'DEV-...').replace(/^MMS-/i, '')}
                         </Text>
                       </View>
 
@@ -3337,7 +3337,7 @@ export default function PainelCoordScreen() {
                         <View style={{ width: 180 }}>
                           <View style={{ backgroundColor: '#f8fafc', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#cbd5e1', alignSelf: 'flex-start' }}>
                             <Text style={{ color: '#0f172a', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
-                              🆔 {ag.deviceId}
+                              🆔 {String(ag.deviceId || 'DEV-001').replace(/^MMS-/i, '')}
                             </Text>
                           </View>
                         </View>
@@ -3457,7 +3457,7 @@ export default function PainelCoordScreen() {
                         <View style={{ width: 180 }}>
                           <View style={{ backgroundColor: '#fff1f2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#fecdd3', alignSelf: 'flex-start' }}>
                             <Text style={{ color: '#be123c', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
-                              🆔 {af.deviceId || 'MMS-DEV-FALHA'}
+                              🆔 {String(af.deviceId || 'DEV-FALHA').replace(/^MMS-/i, '')}
                             </Text>
                           </View>
                         </View>
