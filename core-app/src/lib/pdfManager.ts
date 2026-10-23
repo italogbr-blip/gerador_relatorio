@@ -2,12 +2,9 @@ import { Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { gerarHtmlPdfFidelidade, ReportPdfData } from './pdfHtmlGenerator';
-import { formatReportPdfUrl, PHP_VECTOR_PDF_ENDPOINT } from './config';
+import { formatReportPdfUrl } from './config';
 
-/**
- * Gera o nome de arquivo idêntico ao index.php e salvar_relatorio.php:
- * Ex: P-51_18-10-2026_(08h30)_TRANSFERIDO.pdf
- */
+
 export function gerarNomeArquivoPdf(dados: {
   unidade?: string;
   data?: string;
@@ -82,7 +79,7 @@ export async function gerarPdfBlob(
 ): Promise<{ blob: Blob; nomeArquivo: string }> {
   const { docHtml, nomeArquivo } = compilarHtmlRelatorio(dados);
 
-  // 1. Se já houver uma URL do PDF oficial do DomPDF salvo no servidor, baixa diretamente
+  // 1. Se já houver uma URL do PDF legado salva no servidor, pode reaproveitar
   if (existingPdfUrl && Platform.OS === 'web' && typeof window !== 'undefined') {
     try {
       const formattedUrl = formatReportPdfUrl(existingPdfUrl);
@@ -96,47 +93,10 @@ export async function gerarPdfBlob(
           }
         }
       }
-    } catch (err) {
-      console.warn('Endpoint do servidor indisponível para download direto do PDF oficial, tentando gerar via DomPDF remoto:', err);
-    }
+    } catch (_) { }
   }
 
-  // 2. Compilação direta e imediata de PDF Vetorial via DomPDF (mesma lógica e fidelidade do PHP)
-  try {
-    const payloadDompdf = {
-      grupo: dados.grupo,
-      unidade: dados.unidade,
-      data: dados.data,
-      local: dados.local,
-      modal: dados.modal,
-      preposto: dados.preposto,
-      observacao: dados.observacao,
-      observacao_nome_arquivo: dados.observacao_nome_arquivo,
-      horarios: dados.horarios,
-      info_troca: dados.info_troca,
-      pax_embarcando: dados.pax_embarcando,
-      pax_desembarcando: dados.pax_desembarcando,
-      fotos: dados.fotos,
-    };
-
-    const respDompdf = await fetch(PHP_VECTOR_PDF_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payloadDompdf),
-    });
-
-    if (respDompdf.ok) {
-      const dompdfBlob = await respDompdf.blob();
-      const firstBytes = await dompdfBlob.slice(0, 5).text();
-      if (firstBytes.includes('%PDF')) {
-        return { blob: dompdfBlob, nomeArquivo };
-      }
-    }
-  } catch (dompdfErr) {
-    console.warn('Servidor DomPDF offline ou inatingível no momento:', dompdfErr);
-  }
-
-  // 3. Fallback Nativo (iOS / Android em runtime React Native) - Gera PDF vetorial nativo via motor do OS
+  // 2. Compilação Nativa Mobile (iOS / Android em runtime React Native) - Gera PDF vetorial nativo via motor do OS
   if (Platform.OS !== 'web') {
     const { uri } = await Print.printToFileAsync({ html: docHtml });
     const response = await fetch(uri);
@@ -275,7 +235,7 @@ export async function compartilharPdfRelatorio(
     try {
       const absoluteUrl = new URL(linkParaCompartilhar, window.location.href).href;
       linkParaCompartilhar = absoluteUrl;
-    } catch {}
+    } catch { }
 
     const shareDataUrl = {
       url: linkParaCompartilhar,
