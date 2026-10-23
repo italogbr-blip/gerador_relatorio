@@ -2849,7 +2849,7 @@ export default function ReportGenerator() {
 
           {/* Direita: Notificações e Menu */}
           <View style={styles.navRightGroup} className="mms-navbar__actions">
-            {/* Botão Atalho para o Painel da Coordenação (Apenas para Coordenadores Autenticados) */}
+            {/* Botão Atalho para o Painel da Coordenação (Apenas para Coordenadores Autenticados Nível 2) */}
             {isUserCoordinator(userSession) && (
               <TouchableOpacity
                 style={styles.navNotifBtn}
@@ -2858,7 +2858,7 @@ export default function ReportGenerator() {
                 onPress={() => router.push('/painel_coord')}
                 accessibilityLabel="Painel Coordenação"
               >
-                <Text style={{ fontSize: 16 }}>⚙️</Text>
+                <Text style={{ fontSize: 18 }}>⚙️</Text>
               </TouchableOpacity>
             )}
 
