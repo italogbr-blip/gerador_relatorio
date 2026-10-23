@@ -35,6 +35,12 @@ import {
   cleanDatabaseFooterConfigVersion,
   AppVersionRecord,
 } from '../lib/footerConfig';
+import {
+  registerDeviceAccess,
+  collectDeviceTelemetry,
+  getLocalDeviceAccessLogs,
+  DeviceTelemetryInfo,
+} from '../lib/deviceTelemetry';
 
 const modernFont = Platform.OS === 'web'
   ? "'Inter', system-ui, -apple-system, sans-serif"
@@ -80,6 +86,7 @@ export default function PainelCoordScreen() {
 
   // Estados de Segurança / Auditoria e Acessos Falhos (Logins mal sucedidos)
   const [acessosFalhos, setAcessosFalhos] = useState<any[]>([]);
+  const [acessosGerador, setAcessosGerador] = useState<any[]>([]);
   const [ultimosLogins, setUltimosLogins] = useState<any[]>([]);
   const [loadingSeguranca, setLoadingSeguranca] = useState<boolean>(false);
   const [alertaSegurancaExpandido, setAlertaSegurancaExpandido] = useState<boolean>(true);
@@ -346,7 +353,7 @@ export default function PainelCoordScreen() {
           } catch (e) { }
         }
 
-        // Grava login bem-sucedido na auditoria de segurança (localStorage + Supabase)
+        // Grava login bem-sucedido na auditoria de segurança (localStorage + Supabase + Telemetria Completa)
         const loginObj = {
           id: Date.now(),
           usuario_id: coordUser.id ? Number(coordUser.id) : 1,
@@ -370,9 +377,17 @@ export default function PainelCoordScreen() {
           }]);
         } catch (e) {}
 
+        // Telemetria detalhada de hardware / telefone
+        registerDeviceAccess('painel_coord', {
+          tipo: 'login_sucesso',
+          usuario: loginObj.username,
+          userId: loginObj.usuario_id,
+          ip: userIp || '127.0.0.1',
+        }).catch(() => {});
+
         carregarDadosIniciais();
       } else {
-        // Grava tentativa falha em coord_acessos_falhos (com redundância local imediata)
+        // Grava tentativa falha em coord_acessos_falhos (com redundância local imediata e telemetria de aparelho)
         const falhaObj = {
           id: Date.now(),
           usuario_id: null,
@@ -394,6 +409,12 @@ export default function PainelCoordScreen() {
         try {
           await supabase.from('coord_acessos_falhos').insert([falhaObj]);
         } catch (e) { }
+
+        registerDeviceAccess('painel_coord', {
+          tipo: 'login_falho',
+          usuario: usuarioDigitado || 'desconhecido',
+          ip: userIp || '127.0.0.1',
+        }).catch(() => {});
 
         setErroSenhaPainel(`${result.error || 'Usuário ou senha incorretos.'} Tentativa registrada.`);
       }
@@ -505,9 +526,10 @@ export default function PainelCoordScreen() {
         console.warn('Erro ao consultar segurança do banco:', errDb);
       }
 
-      // Lê histórico salvo em localStorage para garantir exibição mesmo com RLS ativo
+      // Lê histórico salvo em localStorage para garantir exibição imediata
       let falhosLocais: any[] = [];
       let loginsLocais: any[] = [];
+      let telemetriaLocal: any[] = [];
       if (typeof localStorage !== 'undefined') {
         try {
           const rawF = localStorage.getItem('mms_coord_acessos_falhos');
@@ -517,13 +539,72 @@ export default function PainelCoordScreen() {
         } catch (e) {}
       }
 
+      try {
+        telemetriaLocal = getLocalDeviceAccessLogs();
+      } catch (e) {}
+
+      // Listas finais para renderização
+      const listFalhos: any[] = [];
+      const listAcessosGerador: any[] = [];
+
+      // Processa e extrai a telemetria gravada no campo user_agent
+      const extrairTelemetriaItem = (item: any) => {
+        let meta: any = null;
+        if (typeof item.user_agent === 'string' && item.user_agent.trim().startsWith('{')) {
+          try {
+            meta = JSON.parse(item.user_agent);
+          } catch (e) {}
+        }
+
+        const dataRegistro = item.data_tentativa || item.data_login || item.timestamp || new Date().toISOString();
+        const enriched = {
+          ...item,
+          deviceId: meta?.deviceId || item.deviceId || 'MMS-DEV-' + (item.ip || '0').replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase(),
+          model: meta?.model || item.model || 'Aparelho Web',
+          os: meta?.os || item.os || 'Sistema',
+          browser: meta?.browser || item.browser || 'Navegador Web',
+          screen: meta?.screen || item.screen || '',
+          tipo: meta?.tipo || item.tipo || (item.username?.includes('VISITANTE') ? 'acesso_gerador' : 'login_falho'),
+          data_tentativa: dataRegistro,
+          data_login: dataRegistro,
+        };
+
+        if (enriched.tipo === 'acesso_gerador' || item.username === 'VISITANTE_INDEX' || String(item.username).startsWith('ACESSO_')) {
+          listAcessosGerador.push(enriched);
+        } else {
+          listFalhos.push(enriched);
+        }
+      };
+
+      falhosLocais.forEach(extrairTelemetriaItem);
+      falhosDb.forEach(extrairTelemetriaItem);
+
+      // Adiciona itens de telemetria locais que foram registrados neste aparelho
+      telemetriaLocal.forEach((t) => {
+        const enriched = {
+          id: t.id,
+          username: t.usuario || 'Visitante Gerador',
+          ip: t.ip || '127.0.0.1',
+          data_tentativa: t.timestamp,
+          data_login: t.timestamp,
+          deviceId: t.deviceId,
+          model: t.deviceModel,
+          os: t.os,
+          browser: t.browser,
+          screen: t.screenResolution,
+          tipo: t.tipo || (t.origem === 'gerador_relatorio' ? 'acesso_gerador' : 'login_sucesso'),
+        };
+
+        if (enriched.tipo === 'acesso_gerador') {
+          listAcessosGerador.push(enriched);
+        } else if (enriched.tipo === 'login_falho') {
+          listFalhos.push(enriched);
+        }
+      });
+
       // Mescla e desduplica acessos falhos por username, data e IP
       const mapFalhos = new Map<string, any>();
-      falhosLocais.forEach((f) => {
-        const key = `${f.username}_${f.data_tentativa}_${f.ip}`;
-        mapFalhos.set(key, f);
-      });
-      falhosDb.forEach((f) => {
+      listFalhos.forEach((f) => {
         const key = `${f.username}_${f.data_tentativa}_${f.ip}`;
         mapFalhos.set(key, f);
       });
@@ -532,7 +613,18 @@ export default function PainelCoordScreen() {
       );
       setAcessosFalhos(mergedFalhos);
 
-      // Mescla e desduplica logins bem-sucedidos
+      // Mescla e desduplica acessos ao gerador de relatórios (Index)
+      const mapAcessos = new Map<string, any>();
+      listAcessosGerador.forEach((a) => {
+        const key = `${a.deviceId}_${a.data_tentativa}_${a.ip}`;
+        mapAcessos.set(key, a);
+      });
+      const mergedAcessos = Array.from(mapAcessos.values()).sort(
+        (a, b) => new Date(b.data_tentativa).getTime() - new Date(a.data_tentativa).getTime()
+      );
+      setAcessosGerador(mergedAcessos);
+
+      // Mescla e enriquece logins bem-sucedidos com o ID do Aparelho
       const mapLogins = new Map<string, any>();
       loginsLocais.forEach((l) => {
         const key = `${l.usuario_id || l.username}_${l.data_login}_${l.ip}`;
@@ -542,7 +634,17 @@ export default function PainelCoordScreen() {
         const key = `${l.usuario_id}_${l.data_login}_${l.ip}`;
         mapLogins.set(key, l);
       });
-      const mergedLogins = Array.from(mapLogins.values()).sort(
+
+      const mergedLogins = Array.from(mapLogins.values()).map((lg) => {
+        const matchingTele = telemetriaLocal.find((t) => t.ip === lg.ip || t.usuario === lg.username);
+        return {
+          ...lg,
+          deviceId: matchingTele?.deviceId || lg.deviceId || 'MMS-DEV-' + String(lg.usuario_id || 'USR').padStart(4, '0') + '-' + (lg.ip || '').slice(-4).replace(/\./g, ''),
+          model: matchingTele?.deviceModel || lg.model || 'Aparelho Autorizado',
+          os: matchingTele?.os || lg.os || 'Ambiente Seguro',
+          browser: matchingTele?.browser || lg.browser || 'Browser',
+        };
+      }).sort(
         (a, b) => new Date(b.data_login).getTime() - new Date(a.data_login).getTime()
       );
       setUltimosLogins(mergedLogins);
@@ -2838,22 +2940,216 @@ export default function PainelCoordScreen() {
           </View>
         )}
 
-        {/* ════════════════ ABA 5: SEGURANÇA & AUDITORIA (LOGINS MAL SUCEDIDOS) ════════════════ */}
+        {/* ════════════════ ABA 5: SEGURANÇA, AUDITORIA & TELEMETRIA DE DISPOSITIVOS ════════════════ */}
         {activeTab === 'seguranca' && (
           <View style={styles.tabContent}>
-            {/* 1. TENTATIVAS DE ACESSO FALHO (LOGINS MAL SUCEDIDOS) */}
+            {/* 1. DISPOSITIVOS LOGADOS & AUDITORIA DE SESSÕES */}
             <View style={styles.cardContainer}>
               <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>⚠️</Text>
+                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 22 }}>📱</Text>
+                  </View>
+                  <View>
+                    <Text style={[styles.cardTitle, { color: '#0f172a' }]}>
+                      DISPOSITIVOS LOGADOS & AUDITORIA DE SESSÕES
+                    </Text>
+                    <Text style={styles.cardSubtitle}>
+                      Identificação de aparelhos (ID/Telefone), IP de rede, sistema operacional e sessões ativas
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#86efac' }}>
+                  <Text style={{ color: '#15803d', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                    {ultimosLogins.length} SESSÕES REGISTRADAS
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
+                <View style={styles.versionTableHeaderRow}>
+                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>USUÁRIO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>ID TELEFONE / DISPOSITIVO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>IP DE ORIGEM</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>APARELHO / MODELO</Text>
+                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA & NAVEGADOR</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>DATA / HORA</Text>
+                </View>
+
+                {loadingSeguranca ? (
+                  <View style={{ padding: 32, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#2563eb" />
+                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando auditoria de dispositivos...</Text>
+                  </View>
+                ) : ultimosLogins.length === 0 ? (
+                  <View style={{ padding: 24, alignItems: 'center' }}>
+                    <Text style={{ color: '#94a3b8', fontSize: 12 }}>Nenhum login registrado.</Text>
+                  </View>
+                ) : (
+                  ultimosLogins.map((lg, idx) => {
+                    const dataStr = lg.data_login
+                      ? new Date(lg.data_login).toLocaleString('pt-BR')
+                      : 'N/A';
+                    return (
+                      <View
+                        key={lg.id || idx}
+                        style={[
+                          styles.versionTableRow,
+                          idx % 2 === 1 && { backgroundColor: '#f8fafc' },
+                        ]}
+                      >
+                        <View style={{ width: 140 }}>
+                          <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>
+                            {lg.username || `ID ${lg.usuario_id}`}
+                          </Text>
+                          <Text style={{ color: '#16a34a', fontSize: 10, fontWeight: '700' }}>● SESSÃO AUTORIZADA</Text>
+                        </View>
+                        <View style={{ width: 180 }}>
+                          <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#e2e8f0', alignSelf: 'flex-start' }}>
+                            <Text style={{ color: '#334155', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
+                              🆔 {lg.deviceId || 'MMS-DEV-AUTH'}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{ width: 150 }}>
+                          <Text style={{ color: '#0369a1', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
+                            🌐 {lg.ip || '127.0.0.1'}
+                          </Text>
+                        </View>
+                        <View style={{ width: 180 }}>
+                          <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+                            📱 {lg.model || 'Aparelho Registrado'}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <Text style={{ color: '#475569', fontSize: 11 }} numberOfLines={1}>
+                            💻 {lg.os || 'OS'} • {lg.browser || 'Browser'}
+                          </Text>
+                        </View>
+                        <View style={{ width: 150 }}>
+                          <Text style={{ color: '#64748b', fontSize: 11 }}>
+                            🕒 {dataStr}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </View>
+
+            {/* 2. ACESSOS AO GERADOR DE RELATÓRIOS (PÁGINA INICIAL / INDEX) */}
+            <View style={[styles.cardContainer, { marginTop: 18 }]}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 22 }}>📡</Text>
+                  </View>
+                  <View>
+                    <Text style={[styles.cardTitle, { color: '#0284c7' }]}>
+                      ACESSOS AO GERADOR DE RELATÓRIOS (PÁGINA INICIAL)
+                    </Text>
+                    <Text style={styles.cardSubtitle}>
+                      Monitoramento e telemetria de cada aparelho conectado ao gerador (IP, modelo, ID e tela)
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ backgroundColor: '#e0f2fe', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#bae6fd' }}>
+                  <Text style={{ color: '#0369a1', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                    {acessosGerador.length} ACESSOS CAPTURADOS
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
+                <View style={styles.versionTableHeaderRow}>
+                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>ORIGEM / USUÁRIO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>ID DO TELEFONE / DISPOSITIVO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>IP DE ORIGEM</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>APARELHO DETECTADO</Text>
+                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA & RESOLUÇÃO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>DATA / HORA</Text>
+                </View>
+
+                {loadingSeguranca ? (
+                  <View style={{ padding: 32, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#0284c7" />
+                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando telemetria do gerador...</Text>
+                  </View>
+                ) : acessosGerador.length === 0 ? (
+                  <View style={{ padding: 28, alignItems: 'center' }}>
+                    <Text style={{ color: '#64748b', fontSize: 12 }}>
+                      Nenhum registro de acesso à página inicial gravado até o momento.
+                    </Text>
+                  </View>
+                ) : (
+                  acessosGerador.map((ag, idx) => {
+                    const dataStr = ag.data_tentativa || ag.data_login || ag.timestamp
+                      ? new Date(ag.data_tentativa || ag.data_login || ag.timestamp).toLocaleString('pt-BR')
+                      : 'N/A';
+                    return (
+                      <View
+                        key={ag.id || idx}
+                        style={[
+                          styles.versionTableRow,
+                          idx % 2 === 1 && { backgroundColor: '#f0f9ff' },
+                        ]}
+                      >
+                        <View style={{ width: 140 }}>
+                          <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>
+                            {ag.username || 'Visitante Index'}
+                          </Text>
+                          <Text style={{ color: '#0284c7', fontSize: 10, fontWeight: '700' }}>⚡ PÁGINA INICIAL</Text>
+                        </View>
+                        <View style={{ width: 180 }}>
+                          <View style={{ backgroundColor: '#f8fafc', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#cbd5e1', alignSelf: 'flex-start' }}>
+                            <Text style={{ color: '#0f172a', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
+                              🆔 {ag.deviceId}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{ width: 150 }}>
+                          <Text style={{ color: '#0284c7', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
+                            🌐 {ag.ip || '127.0.0.1'}
+                          </Text>
+                        </View>
+                        <View style={{ width: 180 }}>
+                          <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+                            📱 {ag.model || 'Aparelho Web'}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <Text style={{ color: '#475569', fontSize: 11 }} numberOfLines={1}>
+                            🖥️ {ag.os || 'OS'} • {ag.browser || 'Web'} {ag.screen ? `(${ag.screen})` : ''}
+                          </Text>
+                        </View>
+                        <View style={{ width: 150 }}>
+                          <Text style={{ color: '#64748b', fontSize: 11 }}>
+                            🕒 {dataStr}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </View>
+
+            {/* 3. TENTATIVAS DE ACESSO FALHO (LOGINS MAL SUCEDIDOS) */}
+            <View style={[styles.cardContainer, { marginTop: 18 }]}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 22 }}>⚠️</Text>
                   </View>
                   <View>
                     <Text style={[styles.cardTitle, { color: '#dc2626' }]}>
-                      ACESSOS FALHOS AO PAINEL (LOGINS MAL SUCEDIDOS)
+                      ACESSOS FALHOS AO PAINEL (TENTATIVAS BLOQUEADAS)
                     </Text>
                     <Text style={styles.cardSubtitle}>
-                      Histórico em tempo real de tentativas incorretas de login da coordenação gravadas no banco
+                      Tentativas incorretas de acesso à coordenação com identificação completa do aparelho e IP
                     </Text>
                   </View>
                 </View>
@@ -2861,7 +3157,7 @@ export default function PainelCoordScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
                     <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
-                      {acessosFalhos.length} TENTATIVAS FALHAS
+                      {acessosFalhos.length} BLOQUEIOS REGISTRADOS
                     </Text>
                   </View>
 
@@ -2882,16 +3178,18 @@ export default function PainelCoordScreen() {
               {/* Tabela de Acessos Falhos */}
               <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
                 <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 160 }]}>USUÁRIO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>IP DE ORIGEM</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>DATA / HORA</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>NAVEGADOR / DISPOSITIVO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>LOGIN DIGITADO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>ID DO DISPOSITIVO</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>IP DE ORIGEM</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>APARELHO / MODELO</Text>
+                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA / DETALHES</Text>
+                  <Text style={[styles.versionHeaderColText, { width: 150 }]}>DATA / HORA</Text>
                 </View>
 
                 {loadingSeguranca ? (
                   <View style={{ padding: 32, alignItems: 'center' }}>
                     <ActivityIndicator size="small" color="#dc2626" />
-                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando histórico de segurança...</Text>
+                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando histórico de bloqueios...</Text>
                   </View>
                 ) : acessosFalhos.length === 0 ? (
                   <View style={{ padding: 32, alignItems: 'center' }}>
@@ -2919,87 +3217,36 @@ export default function PainelCoordScreen() {
                           idx % 2 === 1 && { backgroundColor: '#fff5f5' },
                         ]}
                       >
-                        <View style={{ width: 160 }}>
+                        <View style={{ width: 140 }}>
                           <Text style={{ color: '#dc2626', fontWeight: '800', fontSize: 12 }}>
                             {af.username || 'Desconhecido'}
                           </Text>
+                          <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '700' }}>❌ SENHA INVÁLIDA</Text>
                         </View>
-                        <View style={{ width: 170 }}>
-                          <Text style={{ color: '#475569', fontSize: 12, fontFamily: 'monospace' }}>
+                        <View style={{ width: 180 }}>
+                          <View style={{ backgroundColor: '#fff1f2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#fecdd3', alignSelf: 'flex-start' }}>
+                            <Text style={{ color: '#be123c', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
+                              🆔 {af.deviceId || 'MMS-DEV-FALHA'}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{ width: 150 }}>
+                          <Text style={{ color: '#475569', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
                             🌐 {af.ip || '127.0.0.1'}
                           </Text>
                         </View>
-                        <View style={{ width: 170 }}>
-                          <Text style={{ color: '#64748b', fontSize: 12 }}>
-                            🕒 {dataStr}
+                        <View style={{ width: 180 }}>
+                          <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+                            📱 {af.model || 'Aparelho Detectado'}
                           </Text>
                         </View>
-                        <View style={{ flex: 1 }}>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
                           <Text style={{ color: '#64748b', fontSize: 11 }} numberOfLines={1}>
-                            {af.user_agent || 'App / Browser'}
+                            {af.os ? `💻 ${af.os} • ${af.browser}` : (af.user_agent || 'App / Browser')}
                           </Text>
                         </View>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
-            </View>
-
-            {/* 2. AUDITORIA DE LOGINS BEM-SUCEDIDOS */}
-            <View style={[styles.cardContainer, { marginTop: 16 }]}>
-              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>🛡️</Text>
-                  </View>
-                  <View>
-                    <Text style={[styles.cardTitle, { color: '#0f172a' }]}>
-                      AUDITORIA DE LOGINS BEM-SUCEDIDOS
-                    </Text>
-                    <Text style={styles.cardSubtitle}>
-                      Histórico de autenticações autorizadas no sistema
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
-                <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>USUÁRIO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>IP DE ACESSO</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>DATA / HORA</Text>
-                </View>
-
-                {ultimosLogins.length === 0 ? (
-                  <View style={{ padding: 24, alignItems: 'center' }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 12 }}>Nenhum login registrado.</Text>
-                  </View>
-                ) : (
-                  ultimosLogins.map((lg, idx) => {
-                    const dataStr = lg.data_login
-                      ? new Date(lg.data_login).toLocaleString('pt-BR')
-                      : 'N/A';
-                    return (
-                      <View
-                        key={lg.id || idx}
-                        style={[
-                          styles.versionTableRow,
-                          idx % 2 === 1 && { backgroundColor: '#f8fafc' },
-                        ]}
-                      >
-                        <View style={{ width: 180 }}>
-                          <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>
-                            {lg.username || `ID ${lg.usuario_id}`}
-                          </Text>
-                        </View>
-                        <View style={{ width: 180 }}>
-                          <Text style={{ color: '#475569', fontSize: 12, fontFamily: 'monospace' }}>
-                            🌐 {lg.ip || '127.0.0.1'}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: '#64748b', fontSize: 12 }}>
+                        <View style={{ width: 150 }}>
+                          <Text style={{ color: '#64748b', fontSize: 11 }}>
                             🕒 {dataStr}
                           </Text>
                         </View>
