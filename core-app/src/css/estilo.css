@@ -63,6 +63,13 @@
 html, body {
   margin: 0;
   padding: 0;
+  height: 100% !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  overscroll-behavior-y: none !important;
   font-family: var(--mms-font-sans);
   background-color: var(--mms-slate-100);
   color: var(--mms-navy-900);
@@ -79,14 +86,21 @@ html, body {
 .mms-app-layout {
   display: flex !important;
   flex-direction: column !important;
-  min-height: 100vh !important;
+  height: 100% !important;
+  max-height: 100vh !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  position: relative !important;
   background-color: var(--mms-slate-100) !important;
 }
 
 .mms-main-scroll {
   width: 100% !important;
+  height: 100% !important;
+  flex: 1 1 auto !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: contain !important;
 }
 
 .mms-main-container {
