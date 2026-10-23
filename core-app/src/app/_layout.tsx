@@ -206,7 +206,9 @@ export default function Layout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="meus_relatorios" />
       <Stack.Screen name="painel_coord" />
+      <Stack.Screen name="coord" />
       <Stack.Screen name="ver_relatorio" />
+      <Stack.Screen name="+not-found" />
     </Stack>
   );
 }
