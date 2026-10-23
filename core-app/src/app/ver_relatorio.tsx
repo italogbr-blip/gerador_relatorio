@@ -71,17 +71,18 @@ export default function VerRelatorioScreen() {
             .join('\n')
         : '');
 
-    const rawPreposto = parsed.preposto;
+    const rawPreposto = parsed.preposto || (rep as any)?.preposto;
     const hasPrepostoValido =
       rawPreposto &&
       rawPreposto !== 'undefined' &&
       rawPreposto.trim() !== '' &&
-      rawPreposto.trim().toUpperCase() !== 'N/A';
+      rawPreposto.trim().toUpperCase() !== 'N/A' &&
+      rawPreposto.trim().toUpperCase() !== 'NULL';
 
-    // Se não tiver o nome do preposto, vincula o nome da unidade / relatório ao IP
+    // Se não tiver o nome do preposto, nunca usar o nome da unidade
     const prepostoFinal = hasPrepostoValido
       ? rawPreposto.trim()
-      : (rep.unidade ? `${rep.unidade}${rep.ip_origem ? ` (IP: ${rep.ip_origem})` : ''}` : 'MMS');
+      : (rep.ip_origem && rep.ip_origem !== 'N/A' ? `Visitante (IP: ${rep.ip_origem})` : 'MMS');
 
     return {
       grupo: parsed.grupo || rep.empresa || 'MMS',

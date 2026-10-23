@@ -874,13 +874,59 @@ export default function PainelCoordScreen() {
 
   // Parser dos dados JSON
   const parseReportData = (report: any) => {
-    if (!report || !report.dados_json) return null;
-    if (typeof report.dados_json === 'object') return report.dados_json;
+    if (!report) return null;
+    const data = report.dados_json ?? report.dados_relatorio ?? report.dados;
+    if (!data) return null;
+    if (typeof data === 'object') return data;
     try {
-      return JSON.parse(report.dados_json);
+      let parsed = JSON.parse(data);
+      if (typeof parsed === 'string') {
+        try {
+          parsed = JSON.parse(parsed);
+        } catch (_) {}
+      }
+      return typeof parsed === 'object' && parsed !== null ? parsed : null;
     } catch (e) {
       return null;
     }
+  };
+
+  // Extrai nome real do preposto (nunca nome de unidade)
+  const getPrepostoFromReport = (report: any, parsedObj?: any): string | null => {
+    if (!report) return null;
+    const p = parsedObj !== undefined ? parsedObj : parseReportData(report);
+    const raw =
+      p?.preposto ||
+      p?.nome_preposto ||
+      p?.preposto_nome ||
+      p?.responsavel ||
+      (report as any)?.preposto ||
+      (report as any)?.nome_preposto;
+
+    if (
+      raw &&
+      typeof raw === 'string' &&
+      raw.trim() !== '' &&
+      raw.trim() !== 'undefined' &&
+      raw.trim().toUpperCase() !== 'N/A' &&
+      raw.trim().toUpperCase() !== 'NULL'
+    ) {
+      return raw.trim();
+    }
+
+    if (report?.usuario_id && Array.isArray(usuarios) && usuarios.length > 0) {
+      const u = usuarios.find(
+        (user) => String(user.id).trim() === String(report.usuario_id).trim()
+      );
+      if (u) {
+        const uNome = u.nome || u.username;
+        if (uNome && typeof uNome === 'string' && uNome.trim() !== '') {
+          return uNome.trim();
+        }
+      }
+    }
+
+    return null;
   };
 
   // Extrai ReportPdfData completo do relatório para geração, download e compartilhamento
@@ -909,7 +955,7 @@ export default function PainelCoordScreen() {
       data: parsed.data || (report.data_criacao ? report.data_criacao.split('T')[0] : new Date().toISOString().split('T')[0]),
       local: parsed.local || parsed.local_atendimento || report.local_atendimento || 'Macaé / Aeroporto',
       modal: parsed.modal || 'Helicóptero',
-      preposto: parsed.preposto || report.preposto || 'Coordenação',
+      preposto: getPrepostoFromReport(report, parsed) || 'Coordenação',
       observacao: parsed.observacao || parsed.observacao_nome_arquivo || '',
       observacao_nome_arquivo: parsed.observacao_nome_arquivo || parsed.observacao || '',
       horarios: parsed.horarios || {
@@ -1147,22 +1193,14 @@ export default function PainelCoordScreen() {
 
     relatorios.forEach((r) => {
       const parsed = parseReportData(r);
-      const rawPreposto = parsed?.preposto;
-      const hasPrepostoValido =
-        rawPreposto &&
-        rawPreposto !== 'undefined' &&
-        rawPreposto.trim() !== '' &&
-        rawPreposto.trim().toUpperCase() !== 'N/A';
-      const uNome = usuarios.find((u) => u.id === r.usuario_id)?.nome;
+      const preposto = getPrepostoFromReport(r, parsed);
 
       let chaveGerador = '';
-      if (hasPrepostoValido) {
-        chaveGerador = rawPreposto.trim();
-      } else if (uNome) {
-        chaveGerador = uNome.trim();
+      if (preposto) {
+        chaveGerador = preposto;
       } else {
         const ipOrigem = r.ip_origem || 'N/A';
-        chaveGerador = `🌐 IP: ${ipOrigem} (${r.unidade || 'Relatório'})`;
+        chaveGerador = ipOrigem !== 'N/A' ? `🌐 IP: ${ipOrigem}` : 'Preposto não identificado';
       }
 
       const emp = r.empresa || 'OUTROS';
@@ -1882,20 +1920,16 @@ export default function PainelCoordScreen() {
                         minute: '2-digit',
                       })
                       : 'N/A';
-                    const rawPreposto = parsed?.preposto;
-                    const hasPrepostoValido =
-                      rawPreposto &&
-                      rawPreposto !== 'undefined' &&
-                      rawPreposto.trim() !== '' &&
-                      rawPreposto.trim().toUpperCase() !== 'N/A';
-                    const preposto = hasPrepostoValido
-                      ? rawPreposto.trim()
-                      : (usuarios.find((u) => u.id === item.usuario_id)?.nome || null);
+                    const preposto = getPrepostoFromReport(item, parsed);
                     const ipOrigem = item.ip_origem || 'N/A';
                     const badgeStyle = getCompanyBadgeStyle(item.empresa);
                     const autorTexto = preposto
-                      ? `POR: 🌐 IP: ${ipOrigem} (${preposto.toUpperCase()})`
-                      : `POR: 🌐 IP: ${ipOrigem} (${(item.unidade || 'RELATÓRIO').toUpperCase()})`;
+                      ? (ipOrigem !== 'N/A'
+                          ? `POR: 🌐 IP: ${ipOrigem} (${preposto.toUpperCase()})`
+                          : `POR: (${preposto.toUpperCase()})`)
+                      : (ipOrigem !== 'N/A'
+                          ? `POR: 🌐 IP: ${ipOrigem}`
+                          : `POR: PREPOSTO NÃO INFORMADO`);
 
                     return (
                       <View key={item.id} style={styles.reportsItemCard}>
