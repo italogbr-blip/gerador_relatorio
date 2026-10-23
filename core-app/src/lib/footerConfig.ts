@@ -47,7 +47,7 @@ export async function fetchFooterConfig(): Promise<FooterConfig> {
       .eq('estilo', 'footer_config')
       .order('id', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!error && data && data.mensagem) {
       const parsed = JSON.parse(data.mensagem);
