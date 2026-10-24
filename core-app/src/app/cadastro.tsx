@@ -195,11 +195,6 @@ export default function CadastroScreen() {
             <Text style={styles.backButtonArrow}>←</Text>
             <Text style={styles.backButtonText}>Voltar ao Início</Text>
           </TouchableOpacity>
-
-          <View style={styles.brandBadge}>
-            <Text style={styles.brandTitle}>MMS</Text>
-            <Text style={styles.brandSubtitle}>RELATÓRIOS</Text>
-          </View>
         </View>
 
         {/* Card Principal de Cadastro Confortável */}
@@ -279,108 +274,105 @@ export default function CadastroScreen() {
               <Text style={styles.helperText}>Informe seu nome e sobrenome completo para identificação nos relatórios.</Text>
             </View>
 
-            {/* Linha dupla: Usuário e Confirmar Usuário */}
-            <View style={[styles.rowGroup, isMobile ? styles.rowGroupMobile : null]}>
-              <View style={[styles.inputGroup, styles.colHalf]}>
-                <Text style={styles.label}>NOME DE USUÁRIO (LOGIN) *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={username}
-                  onChangeText={setUsername}
-                  placeholder="Ex: joao.silva"
-                  placeholderTextColor="#94a3b8"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              <View style={[styles.inputGroup, styles.colHalf]}>
-                <Text style={styles.label}>CONFIRMAR USUÁRIO *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={usernameConfirm}
-                  onChangeText={setUsernameConfirm}
-                  placeholder="Repita o usuário"
-                  placeholderTextColor="#94a3b8"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
+            {/* Campo: Nome de Usuário */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>NOME DE USUÁRIO (LOGIN) *</Text>
+              <TextInput
+                style={styles.input}
+                value={username}
+                onChangeText={setUsername}
+                placeholder="Ex: joao.silva"
+                placeholderTextColor="#94a3b8"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
             </View>
 
-            {/* Linha dupla: E-mail e Confirmar E-mail */}
-            <View style={[styles.rowGroup, isMobile ? styles.rowGroupMobile : null]}>
-              <View style={[styles.inputGroup, styles.colHalf]}>
-                <Text style={styles.label}>E-MAIL CORPORATIVO *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="seu.email@empresa.com"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              <View style={[styles.inputGroup, styles.colHalf]}>
-                <Text style={styles.label}>CONFIRMAR E-MAIL *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={emailConfirm}
-                  onChangeText={setEmailConfirm}
-                  placeholder="Repita o seu e-mail"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
+            {/* Campo: Confirmar Usuário */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>CONFIRMAR USUÁRIO *</Text>
+              <TextInput
+                style={styles.input}
+                value={usernameConfirm}
+                onChangeText={setUsernameConfirm}
+                placeholder="Repita o usuário"
+                placeholderTextColor="#94a3b8"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
             </View>
 
-            {/* Linha dupla: Senha e Confirmar Senha */}
-            <View style={[styles.rowGroup, isMobile ? styles.rowGroupMobile : null]}>
-              <View style={[styles.inputGroup, styles.colHalf]}>
-                <View style={styles.labelRow}>
-                  <Text style={styles.label}>SENHA DE ACESSO *</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Text style={styles.togglePasswordText}>{showPassword ? 'Ocultar' : 'Mostrar'}</Text>
-                  </TouchableOpacity>
-                </View>
-                <TextInput
-                  style={styles.input}
-                  value={senha}
-                  onChangeText={setSenha}
-                  placeholder="Mínimo de 6 dígitos"
-                  placeholderTextColor="#94a3b8"
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
-              </View>
+            {/* Campo: E-mail Corporativo */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>E-MAIL CORPORATIVO *</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="seu.email@empresa.com"
+                placeholderTextColor="#94a3b8"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
 
-              <View style={[styles.inputGroup, styles.colHalf]}>
-                <Text style={styles.label}>CONFIRMAR SENHA *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={senhaConfirm}
-                  onChangeText={setSenhaConfirm}
-                  placeholder="Repita a sua senha"
-                  placeholderTextColor="#94a3b8"
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
+            {/* Campo: Confirmar E-mail */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>CONFIRMAR E-MAIL *</Text>
+              <TextInput
+                style={styles.input}
+                value={emailConfirm}
+                onChangeText={setEmailConfirm}
+                placeholder="Repita o seu e-mail"
+                placeholderTextColor="#94a3b8"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            {/* Campo: Senha de Acesso */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>SENHA DE ACESSO *</Text>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.togglePasswordText}>{showPassword ? 'Ocultar' : 'Mostrar'}</Text>
+                </TouchableOpacity>
               </View>
+              <TextInput
+                style={styles.input}
+                value={senha}
+                onChangeText={setSenha}
+                placeholder="Mínimo de 6 dígitos"
+                placeholderTextColor="#94a3b8"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+            </View>
+
+            {/* Campo: Confirmar Senha */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>CONFIRMAR SENHA *</Text>
+              <TextInput
+                style={styles.input}
+                value={senhaConfirm}
+                onChangeText={setSenhaConfirm}
+                placeholder="Repita a sua senha"
+                placeholderTextColor="#94a3b8"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
             </View>
 
             {/* Nota de Segurança e Boas Práticas */}
             <View style={styles.securityNotice}>
               <Text style={styles.securityNoticeIcon}>🛡️</Text>
               <Text style={styles.securityNoticeText}>
-                Seus dados serão analisados com segurança. Caso o sistema esteja em modo de aprovação restrita pela coordenação do MMS, você receberá a liberação assim que aprovado.
+                Seus dados serão analisados com segurança. Caso o sistema esteja em modo de aprovação restrita pela coordenação, você receberá a liberação assim que aprovado.
               </Text>
             </View>
 
