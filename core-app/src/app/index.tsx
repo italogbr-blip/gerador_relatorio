@@ -970,7 +970,7 @@ export default function ReportGenerator() {
     ? Math.min(1, Math.max(0.32, (windowWidth - 20) / a4BaseWidth))
     : 1;
 
-  // --- SISTEMA DE PULL-TO-REFRESH ANIMADO (EMPURRA A PÁGINA PARA BAIXO COM ÍCONE EM ROTAÇÃO) ---
+  // --- SISTEMA DE PULL-TO-REFRESH ELEGANTE E SEGURO ---
   const scrollRef = useRef<any>(null);
   const scrollYRef = useRef(0);
   const pullAnim = useRef(new Animated.Value(0)).current;
@@ -983,8 +983,8 @@ export default function ReportGenerator() {
     setIsThresholdReached(true);
 
     Animated.timing(pullAnim, {
-      toValue: 62,
-      duration: 220,
+      toValue: 54,
+      duration: 200,
       useNativeDriver: false,
     }).start();
 
@@ -992,7 +992,7 @@ export default function ReportGenerator() {
     const spinLoop = Animated.loop(
       Animated.timing(pullSpinAnim, {
         toValue: 1,
-        duration: 700,
+        duration: 750,
         useNativeDriver: false,
       })
     );
@@ -1010,20 +1010,58 @@ export default function ReportGenerator() {
           useNativeDriver: false,
         }).start();
       }
-    }, 850);
+    }, 650);
   };
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    const PULL_THRESHOLD = 75;
-    const MAX_PULL = 115;
+    const PULL_THRESHOLD = 70;
+    const MAX_PULL = 90;
     let startY = 0;
     let isDragging = false;
     let currentDist = 0;
 
+    const isInteractiveOrModalElement = (target: HTMLElement | null): boolean => {
+      if (!target) return false;
+      // Se existir qualquer modal/overlay aberto no DOM, não permite pull
+      if (document.querySelector('[data-modal-overlay="true"], [role="dialog"], .mms-dropdown, .mms-menu-popup')) {
+        return true;
+      }
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A') {
+        return true;
+      }
+      if (
+        target.closest?.(
+          'button, a, input, textarea, select, [role="button"], [role="dialog"], [data-modal-overlay="true"], .mms-dropdown, .mms-navbar, .mms-modal'
+        )
+      ) {
+        return true;
+      }
+      return false;
+    };
+
+    const isAtPageTop = (): boolean => {
+      const scrollEl = document.querySelector('.mms-main-scroll');
+      const containerScrollTop = scrollEl ? scrollEl.scrollTop : 0;
+      const windowScrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
+      return containerScrollTop <= 1 && windowScrollTop <= 1 && scrollYRef.current <= 1;
+    };
+
     const onTouchStart = (e: TouchEvent) => {
-      if (scrollYRef.current <= 2 && e.touches.length === 1) {
+      if (isRefreshing || e.touches.length !== 1) {
+        isDragging = false;
+        return;
+      }
+
+      const target = e.target as HTMLElement | null;
+      if (isInteractiveOrModalElement(target)) {
+        isDragging = false;
+        return;
+      }
+
+      if (isAtPageTop()) {
         startY = e.touches[0].clientY;
         isDragging = true;
         currentDist = 0;
@@ -1034,22 +1072,46 @@ export default function ReportGenerator() {
 
     const onTouchMove = (e: TouchEvent) => {
       if (!isDragging || isRefreshing) return;
+
+      const target = e.target as HTMLElement | null;
+      if (isInteractiveOrModalElement(target)) {
+        isDragging = false;
+        currentDist = 0;
+        setIsThresholdReached(false);
+        pullAnim.setValue(0);
+        return;
+      }
+
       const currentY = e.touches[0].clientY;
       const deltaY = currentY - startY;
 
-      if (deltaY > 0 && scrollYRef.current <= 2) {
-        if (e.cancelable) {
-          e.preventDefault();
-        }
-        const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.82) * 1.6);
-        currentDist = dist;
-        pullAnim.setValue(dist);
-
-        if (dist >= PULL_THRESHOLD && !isThresholdReached) {
-          setIsThresholdReached(true);
-        } else if (dist < PULL_THRESHOLD && isThresholdReached) {
+      if (deltaY <= 0 || !isAtPageTop()) {
+        if (currentDist > 0) {
+          currentDist = 0;
           setIsThresholdReached(false);
+          Animated.spring(pullAnim, {
+            toValue: 0,
+            friction: 8,
+            tension: 40,
+            useNativeDriver: false,
+          }).start();
         }
+        isDragging = false;
+        return;
+      }
+
+      if (deltaY > 8 && e.cancelable) {
+        e.preventDefault();
+      }
+
+      const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.76) * 1.5);
+      currentDist = dist;
+      pullAnim.setValue(dist);
+
+      if (dist >= PULL_THRESHOLD && !isThresholdReached) {
+        setIsThresholdReached(true);
+      } else if (dist < PULL_THRESHOLD && isThresholdReached) {
+        setIsThresholdReached(false);
       }
     };
 
@@ -1062,7 +1124,7 @@ export default function ReportGenerator() {
         setIsThresholdReached(false);
         Animated.spring(pullAnim, {
           toValue: 0,
-          friction: 8,
+          friction: 9,
           tension: 40,
           useNativeDriver: false,
         }).start();
@@ -1074,18 +1136,11 @@ export default function ReportGenerator() {
     let isMouseDragging = false;
 
     const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'BUTTON' ||
-          target.tagName === 'TEXTAREA' ||
-          target.closest?.('button') ||
-          target.closest?.('[role="button"]'))
-      ) {
-        return;
-      }
-      if (scrollYRef.current <= 2 && e.button === 0 && e.clientY <= 220) {
+      if (isRefreshing || e.button !== 0) return;
+      const target = e.target as HTMLElement | null;
+      if (isInteractiveOrModalElement(target)) return;
+
+      if (isAtPageTop() && e.clientY <= 90) {
         mouseStartY = e.clientY;
         isMouseDragging = true;
         currentDist = 0;
@@ -1094,17 +1149,29 @@ export default function ReportGenerator() {
 
     const onMouseMove = (e: MouseEvent) => {
       if (!isMouseDragging || isRefreshing) return;
-      const deltaY = e.clientY - mouseStartY;
-      if (deltaY > 0 && scrollYRef.current <= 2) {
-        const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.82) * 1.6);
-        currentDist = dist;
-        pullAnim.setValue(dist);
+      const target = e.target as HTMLElement | null;
+      if (isInteractiveOrModalElement(target)) {
+        isMouseDragging = false;
+        currentDist = 0;
+        setIsThresholdReached(false);
+        pullAnim.setValue(0);
+        return;
+      }
 
-        if (dist >= PULL_THRESHOLD && !isThresholdReached) {
-          setIsThresholdReached(true);
-        } else if (dist < PULL_THRESHOLD && isThresholdReached) {
-          setIsThresholdReached(false);
-        }
+      const deltaY = e.clientY - mouseStartY;
+      if (deltaY <= 0 || !isAtPageTop()) {
+        isMouseDragging = false;
+        return;
+      }
+
+      const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.76) * 1.5);
+      currentDist = dist;
+      pullAnim.setValue(dist);
+
+      if (dist >= PULL_THRESHOLD && !isThresholdReached) {
+        setIsThresholdReached(true);
+      } else if (dist < PULL_THRESHOLD && isThresholdReached) {
+        setIsThresholdReached(false);
       }
     };
 
@@ -1117,7 +1184,7 @@ export default function ReportGenerator() {
         setIsThresholdReached(false);
         Animated.spring(pullAnim, {
           toValue: 0,
-          friction: 8,
+          friction: 9,
           tension: 40,
           useNativeDriver: false,
         }).start();
@@ -1158,7 +1225,7 @@ export default function ReportGenerator() {
   });
 
   const pullRotationInterpolate = pullAnim.interpolate({
-    inputRange: [0, 75],
+    inputRange: [0, 70],
     outputRange: ['0deg', '360deg'],
     extrapolate: 'clamp',
   });
@@ -3076,21 +3143,21 @@ export default function ReportGenerator() {
         }}
         scrollEventThrottle={16}
       >
-        {/* Sistema de Pull-To-Refresh Animado que empurra a página para baixo */}
+        {/* Sistema de Pull-To-Refresh Elegante e Moderno */}
         <Animated.View
           style={[
             styles.pullRefreshWrapper,
             {
               height: pullAnim,
               opacity: pullAnim.interpolate({
-                inputRange: [0, 8, 45],
-                outputRange: [0, 0.6, 1],
+                inputRange: [0, 8, 40],
+                outputRange: [0, 0.4, 1],
                 extrapolate: 'clamp',
               }),
             },
           ]}
         >
-          <View style={styles.pullRefreshInner}>
+          <View style={styles.pullRefreshPill}>
             <Animated.View
               style={[
                 styles.pullRefreshIconBox,
@@ -3102,10 +3169,10 @@ export default function ReportGenerator() {
                     },
                     {
                       scale: isRefreshing
-                        ? 1.12
+                        ? 1.05
                         : pullAnim.interpolate({
-                            inputRange: [0, 35, 75],
-                            outputRange: [0.75, 0.95, 1.2],
+                            inputRange: [0, 35, 70],
+                            outputRange: [0.85, 0.95, 1.1],
                             extrapolate: 'clamp',
                           }),
                     },
@@ -3116,48 +3183,34 @@ export default function ReportGenerator() {
               {Platform.OS === 'web' ? (
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="22"
-                  height="22"
+                  width="17"
+                  height="17"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke={isThresholdReached || isRefreshing ? '#10b981' : '#38bdf8'}
-                  strokeWidth="2.8"
+                  stroke={isThresholdReached || isRefreshing ? '#34d399' : '#38bdf8'}
+                  strokeWidth="2.4"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
                 </svg>
               ) : (
-                <Text style={{ fontSize: 20 }}>🔄</Text>
+                <Text style={{ fontSize: 16 }}>🔄</Text>
               )}
             </Animated.View>
 
-            <View style={styles.pullRefreshTextGroup}>
-              <Text style={[styles.pullRefreshLabel, (isThresholdReached || isRefreshing) && styles.pullRefreshLabelActive]}>
-                {isRefreshing
-                  ? 'Atualizando sistema...'
-                  : isThresholdReached
-                  ? '⚡ Solte para atualizar!'
-                  : 'Puxe para baixo para atualizar'}
-              </Text>
-              <View style={styles.pullRefreshTrack}>
-                <Animated.View
-                  style={[
-                    styles.pullRefreshBar,
-                    {
-                      width: isRefreshing
-                        ? '100%'
-                        : pullAnim.interpolate({
-                            inputRange: [0, 75],
-                            outputRange: ['0%', '100%'],
-                            extrapolate: 'clamp',
-                          }),
-                      backgroundColor: isThresholdReached || isRefreshing ? '#10b981' : '#0284c7',
-                    },
-                  ]}
-                />
-              </View>
-            </View>
+            <Text
+              style={[
+                styles.pullRefreshLabel,
+                (isThresholdReached || isRefreshing) && styles.pullRefreshLabelActive,
+              ]}
+            >
+              {isRefreshing
+                ? 'Atualizando página...'
+                : isThresholdReached
+                ? 'Solte para atualizar'
+                : 'Puxe para atualizar'}
+            </Text>
           </View>
         </Animated.View>
 
@@ -3404,8 +3457,11 @@ export default function ReportGenerator() {
                       style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100, marginTop: 4 }]}
                       onPress={() => {
                         toggleMenu();
-                        setAuthMode('cadastro');
-                        setIsAuthModalVisible(true);
+                        if (typeof window !== 'undefined') {
+                          window.location.href = '/cadastro';
+                        } else {
+                          router.push('/cadastro' as any);
+                        }
                       }}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -4566,20 +4622,12 @@ export default function ReportGenerator() {
               showsVerticalScrollIndicator={false}
               style={{ width: '100%' }}
             >
-              <View style={[styles.authCard, { padding: 0, overflow: 'hidden', maxWidth: 420 }]}>
-                <TouchableOpacity
-                  style={styles.authCloseBtn}
-                  onPress={() => setIsAuthModalVisible(false)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                >
-                  <Text style={styles.authCloseText}>✕</Text>
-                </TouchableOpacity>
-
-                {/* Abas Superiores: Entrar / Criar Conta (idêntico ao index.php linhas 734-739) */}
+              <View style={[styles.authCard, { padding: 0, overflow: 'hidden', maxWidth: 430, borderRadius: 16 }]}>
+                {/* Abas Superiores com Botão Fechar Integrado (Sem Sobreposição de Elementos) */}
                 <View
                   style={{
                     flexDirection: 'row',
+                    alignItems: 'stretch',
                     borderBottomWidth: 1,
                     borderBottomColor: colors.slate200,
                     backgroundColor: colors.slate50,
@@ -4588,7 +4636,7 @@ export default function ReportGenerator() {
                   <TouchableOpacity
                     style={{
                       flex: 1,
-                      paddingVertical: 15,
+                      paddingVertical: 16,
                       alignItems: 'center',
                       borderBottomWidth: 2,
                       borderBottomColor: authMode === 'login' ? colors.blue600 : 'transparent',
@@ -4598,6 +4646,7 @@ export default function ReportGenerator() {
                       setAuthMsg(null);
                       setAuthMode('login');
                     }}
+                    activeOpacity={0.7}
                   >
                     <Text
                       style={{
@@ -4616,16 +4665,21 @@ export default function ReportGenerator() {
                   <TouchableOpacity
                     style={{
                       flex: 1,
-                      paddingVertical: 15,
+                      paddingVertical: 16,
                       alignItems: 'center',
                       borderBottomWidth: 2,
-                      borderBottomColor: authMode === 'cadastro' ? colors.blue600 : 'transparent',
+                      borderBottomColor: authMode === 'cadastro' ? colors.emerald600 : 'transparent',
                       backgroundColor: authMode === 'cadastro' ? colors.white : 'transparent',
                     }}
                     onPress={() => {
-                      setAuthMsg(null);
-                      setAuthMode('cadastro');
+                      setIsAuthModalVisible(false);
+                      if (typeof window !== 'undefined') {
+                        window.location.href = '/cadastro';
+                      } else {
+                        router.push('/cadastro' as any);
+                      }
                     }}
+                    activeOpacity={0.7}
                   >
                     <Text
                       style={{
@@ -4633,12 +4687,29 @@ export default function ReportGenerator() {
                         fontWeight: '900',
                         letterSpacing: 1,
                         textTransform: 'uppercase',
-                        color: authMode === 'cadastro' ? colors.blue600 : colors.slate400,
+                        color: colors.slate500,
                         fontFamily: modernFont,
                       }}
                     >
                       Criar Conta
                     </Text>
+                  </TouchableOpacity>
+
+                  {/* Botão Fechar [X] Integrado no Header - Nunca se Sobrepõe aos Textos */}
+                  <TouchableOpacity
+                    style={{
+                      width: 50,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderLeftWidth: 1,
+                      borderLeftColor: colors.slate200,
+                      backgroundColor: colors.slate100,
+                    }}
+                    onPress={() => setIsAuthModalVisible(false)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={{ fontSize: 16, color: colors.slate600, fontWeight: '800' }}>✕</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -4699,9 +4770,71 @@ export default function ReportGenerator() {
                           <Text style={styles.btnAuthSubmitText}>ACESSAR PLATAFORMA</Text>
                         )}
                       </TouchableOpacity>
+
+                      <View
+                        style={{
+                          marginTop: 18,
+                          paddingTop: 16,
+                          borderTopWidth: 1,
+                          borderTopColor: colors.slate100,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, color: colors.slate500, marginBottom: 8, fontFamily: modernFont }}>
+                          Não possui uma conta cadastrada?
+                        </Text>
+                        <TouchableOpacity
+                          style={{
+                            paddingVertical: 9,
+                            paddingHorizontal: 16,
+                            borderRadius: 8,
+                            backgroundColor: '#f0fdf4',
+                            borderWidth: 1,
+                            borderColor: '#bbf7d0',
+                          }}
+                          onPress={() => {
+                            setIsAuthModalVisible(false);
+                            if (typeof window !== 'undefined') {
+                              window.location.href = '/cadastro';
+                            } else {
+                              router.push('/cadastro' as any);
+                            }
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: '#16a34a', fontFamily: modernFont }}>
+                            Abrir Página Exclusiva de Cadastro →
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     </>
                   ) : (
                     <>
+                      <TouchableOpacity
+                        style={{
+                          marginBottom: 16,
+                          padding: 12,
+                          backgroundColor: '#ecfdf5',
+                          borderWidth: 1,
+                          borderColor: '#a7f3d0',
+                          borderRadius: 10,
+                          alignItems: 'center',
+                        }}
+                        onPress={() => {
+                          setIsAuthModalVisible(false);
+                          if (typeof window !== 'undefined') {
+                            window.location.href = '/cadastro';
+                          } else {
+                            router.push('/cadastro' as any);
+                          }
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#065f46', fontFamily: modernFont, textAlign: 'center' }}>
+                          ✨ Prefere preencher na tela cheia com mais conforto?{'\n'}
+                          <Text style={{ textDecorationLine: 'underline' }}>Ir para Página Exclusiva de Cadastro →</Text>
+                        </Text>
+                      </TouchableOpacity>
                       <View style={styles.authField}>
                         <Text style={styles.authLabel}>NOME COMPLETO</Text>
                         <TextInput
@@ -5021,68 +5154,50 @@ const styles = StyleSheet.create({
   },
   pullRefreshWrapper: {
     width: '100%',
-    backgroundColor: '#090e1a',
+    backgroundColor: '#0b1120',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 101,
   },
-  pullRefreshInner: {
+  pullRefreshPill: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 10,
     paddingHorizontal: 16,
-    height: '100%',
+    paddingVertical: 7,
+    borderRadius: 24,
+    backgroundColor: 'rgba(30, 41, 59, 0.75)',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.2)',
   },
   pullRefreshIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#1e293b',
-    borderWidth: 1.5,
-    borderColor: '#38bdf8',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#38bdf8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
   },
   pullRefreshIconBoxActive: {
-    borderColor: '#10b981',
+    borderColor: '#34d399',
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    shadowColor: '#10b981',
-    shadowOpacity: 0.6,
-  },
-  pullRefreshTextGroup: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 4,
   },
   pullRefreshLabel: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#94a3b8',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+    fontFamily: modernFont,
   },
   pullRefreshLabelActive: {
     color: '#34d399',
-    fontWeight: '800',
-  },
-  pullRefreshTrack: {
-    width: 140,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#334155',
-    overflow: 'hidden',
-  },
-  pullRefreshBar: {
-    height: '100%',
-    borderRadius: 2,
+    fontWeight: '700',
   },
   navbar: {
     minHeight: 60,

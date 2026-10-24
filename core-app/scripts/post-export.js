@@ -5,7 +5,7 @@ const distDir = path.resolve(__dirname, '../dist');
 const indexHtmlPath = path.join(distDir, 'index.html');
 
 if (fs.existsSync(indexHtmlPath)) {
-  const routes = ['painel_coord', 'meus_relatorios', 'coord', 'ver_relatorio'];
+  const routes = ['painel_coord', 'meus_relatorios', 'coord', 'ver_relatorio', 'cadastro'];
 
   routes.forEach((route) => {
     // 1. Arquivo plano: dist/painel_coord.html
