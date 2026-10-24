@@ -130,6 +130,48 @@ export default function Layout() {
             overscroll-behavior-y: none !important;
           }
 
+          /* Centralização Perfeita de Data no iOS Safari e Web */
+          .mms-date-input-container {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            height: 48px !important;
+            min-height: 48px !important;
+          }
+
+          input[type="date"],
+          input.mms-date-input-field,
+          .mms-date-input-field {
+            text-align: center !important;
+            height: 48px !important;
+            min-height: 48px !important;
+            line-height: 46px !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+
+          input[type="date"]::-webkit-date-and-time-value,
+          input.mms-date-input-field::-webkit-date-and-time-value,
+          .mms-date-input-field::-webkit-date-and-time-value {
+            text-align: center !important;
+            height: 46px !important;
+            min-height: 46px !important;
+            line-height: 46px !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+
+          input[type="date"]::-webkit-inner-spin-button,
+          input[type="date"]::-webkit-clear-button {
+            display: none !important;
+            -webkit-appearance: none !important;
+          }
+
           /* Scrollbar Estilizado Customizado (#0f172a Padrão) */
           ::-webkit-scrollbar {
             width: 14px;
