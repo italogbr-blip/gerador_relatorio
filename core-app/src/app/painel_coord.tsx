@@ -324,14 +324,15 @@ export default function PainelCoordScreen() {
     try {
       const syncSession = getSavedSessionSync();
       if (syncSession?.user) {
-        return syncSession.user.user_metadata?.name || syncSession.user.user_metadata?.username || syncSession.user.email?.split('@')[0] || 'Ítalo Gabriel';
+        return (
+          syncSession.user.user_metadata?.username ||
+          syncSession.user.user_metadata?.name ||
+          syncSession.user.email ||
+          ''
+        );
       }
     } catch (e) {}
-    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('mms_last_coord_user');
-      if (saved) return saved;
-    }
-    return 'Ítalo Gabriel';
+    return '';
   });
   const [inputSenhaPainel, setInputSenhaPainel] = useState<string>('');
   const [erroSenhaPainel, setErroSenhaPainel] = useState<string | null>(null);
@@ -342,9 +343,9 @@ export default function PainelCoordScreen() {
   useEffect(() => {
     if (userSession?.user) {
       const nomeAtual =
-        userSession.user.user_metadata?.name ||
         userSession.user.user_metadata?.username ||
-        userSession.user.email?.split('@')[0];
+        userSession.user.user_metadata?.name ||
+        userSession.user.email;
       if (nomeAtual) {
         setInputUsuarioPainel(nomeAtual);
       }
@@ -358,13 +359,19 @@ export default function PainelCoordScreen() {
       userSession?.user?.email ||
       ''
     ).trim();
-    const loginParaValidar = usuarioDigitado || 'italogabriel';
     const senhaDigitada = inputSenhaPainel.trim();
+
+    if (!usuarioDigitado) {
+      setErroSenhaPainel('Por favor, informe seu usuário ou e-mail de acesso.');
+      return;
+    }
 
     if (!senhaDigitada) {
       setErroSenhaPainel('Por favor, digite a senha do painel.');
       return;
     }
+
+    const loginParaValidar = usuarioDigitado;
 
     setValidandoSenhaPainel(true);
     setErroSenhaPainel(null);
@@ -399,7 +406,7 @@ export default function PainelCoordScreen() {
           usuario_id: coordUser.id ? Number(coordUser.id) : 1,
           ip: userIp || '127.0.0.1',
           data_login: new Date().toISOString(),
-          username: coordUser.username || usuarioDigitado || 'italogabriel',
+          username: coordUser.username || usuarioDigitado || 'coordenador',
         };
         if (typeof localStorage !== 'undefined') {
           try {
@@ -1819,14 +1826,40 @@ export default function PainelCoordScreen() {
             )}
 
             <View style={styles.coordLockInputGroup}>
-              <Text style={[styles.coordLockInputLabel, { color: '#475569' }]}>
-                USUÁRIO
-              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={[styles.coordLockInputLabel, { color: '#475569', marginBottom: 0 }]}>
+                  {userSession?.user ? 'USUÁRIO CONECTADO' : 'USUÁRIO OU E-MAIL'}
+                </Text>
+                {userSession?.user && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      logoutUserSession();
+                      setUserSession(null);
+                      setInputUsuarioPainel('');
+                      setInputSenhaPainel('');
+                      setErroSenhaPainel(null);
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={{ fontSize: 11, color: '#0284c7', fontWeight: '700' }}>Trocar conta</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               <TextInput
-                style={[styles.coordLockInput, styles.coordLockInputLight, { opacity: 0.75, backgroundColor: '#f1f5f9', color: '#64748b' }]}
+                style={[
+                  styles.coordLockInput,
+                  styles.coordLockInputLight,
+                  userSession?.user
+                    ? { opacity: 0.85, backgroundColor: '#f1f5f9', color: '#334155', fontWeight: '600' }
+                    : { backgroundColor: '#ffffff', color: '#0f172a' }
+                ]}
                 value={inputUsuarioPainel}
-                editable={false}
-                selectTextOnFocus={false}
+                onChangeText={setInputUsuarioPainel}
+                editable={!userSession?.user}
+                placeholder="Digite seu usuário ou e-mail..."
+                placeholderTextColor="#94a3b8"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             </View>
 
@@ -1896,7 +1929,7 @@ export default function PainelCoordScreen() {
 
             <View style={styles.coordNavUserGroup} className="coord-nav-user-group">
               <Text style={styles.coordNavUserGreeting}>
-                Olá, <Text style={styles.coordNavUserName}>{userSession?.user?.user_metadata?.name || inputUsuarioPainel || 'Ítalo Gabriel'}</Text>
+                Olá, <Text style={styles.coordNavUserName}>{userSession?.user?.user_metadata?.name || userSession?.user?.user_metadata?.username || inputUsuarioPainel || 'Coordenador'}</Text>
               </Text>
 
               <View style={styles.coordNavButtonsGroup} className="coord-nav-buttons-group">
