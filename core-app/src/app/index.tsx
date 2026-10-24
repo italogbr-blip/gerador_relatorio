@@ -1325,8 +1325,125 @@ export default function ReportGenerator() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState<boolean>(false);
 
+  // Armazena IDs de popups fechados durante a sessão atual para NUNCA reabrir após fechar
+  const dismissedPopupsThisSession = useRef<Set<any>>(new Set());
+
+  // Valida se a notificação é destinada ao usuário atual (Coordenação Nível 2 vs Usuários/Visitantes)
+  const isNotificationForUser = (notif: any, sessionParam?: AppUserSession | null): boolean => {
+    const session = sessionParam !== undefined ? sessionParam : getSavedSessionSync();
+    const isCoord = Boolean(isUserCoordinator(session));
+    const isLoggedIn = Boolean(session?.user);
+
+    const regraStr = String(notif.regra_exibicao || '').toLowerCase();
+    const tituloStr = String(notif.titulo || '').toLowerCase();
+    const msgStr = String(notif.mensagem || '').toLowerCase();
+
+    // Notificações destinadas exclusivamente para a Coordenação (Nível 2)
+    const isCoordOnly =
+      regraStr.includes(':coord') ||
+      notif.destinatario === 'coordenadores' ||
+      notif.nivel_minimo >= 2 ||
+      tituloStr.includes('cadastro pendente') ||
+      tituloStr.includes('coordenação') ||
+      tituloStr.includes('coordenador') ||
+      msgStr.includes('painel de coordenação') ||
+      msgStr.includes('aguarda sua aprovação');
+
+    if (isCoordOnly) {
+      return isCoord;
+    }
+
+    // Notificações para usuários autenticados (Nível 1 e 2)
+    if (regraStr.includes(':user') || notif.destinatario === 'usuarios_logados') {
+      return isLoggedIn;
+    }
+
+    return true;
+  };
+
+  // Avalia se o pop-up modal deve ser exibido baseado em sessão, regras de frequência e histórico local
+  const shouldDisplayPopup = (notif: any, sessionParam?: AppUserSession | null): boolean => {
+    if (!notif) return false;
+    if (!isNotificationForUser(notif, sessionParam)) return false;
+
+    // Se o usuário já fechou este popup durante esta sessão do navegador, NUNCA reabre!
+    if (dismissedPopupsThisSession.current.has(notif.id)) return false;
+
+    if (typeof localStorage === 'undefined') return true;
+
+    const storageKey = 'mms_popup_hist_' + notif.id;
+    const rawHist = localStorage.getItem(storageKey);
+    let hist: { count: number; lastSeen: number; lastDate: string } = { count: 0, lastSeen: 0, lastDate: '' };
+    if (rawHist) {
+      try {
+        hist = JSON.parse(rawHist);
+      } catch (_) {}
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const now = Date.now();
+    const regra = String(notif.regra_exibicao || '1x').toLowerCase();
+
+    // 1. Exibir apenas 1 vez (nunca mais após fechar)
+    if (regra.startsWith('1x') && !regra.startsWith('1x_dia') && !regra.startsWith('1x_sem')) {
+      if (hist.count >= 1 || localStorage.getItem('mms_popup_visto_' + notif.id)) {
+        return false;
+      }
+    }
+
+    // 2. 1 vez ao dia
+    if (regra.startsWith('1x_dia') || regra.startsWith('diario')) {
+      if (hist.lastDate === today && hist.count >= 1) {
+        return false;
+      }
+    }
+
+    // 3. 2 vezes ao dia
+    if (regra.startsWith('2x_dia')) {
+      if (hist.lastDate === today && hist.count >= 2) {
+        return false;
+      }
+    }
+
+    // 4. 3 vezes ao dia
+    if (regra.startsWith('3x_dia')) {
+      if (hist.lastDate === today && hist.count >= 3) {
+        return false;
+      }
+    }
+
+    // 5. 1 vez por semana (7 dias)
+    if (regra.startsWith('1x_sem') || regra.startsWith('semanal')) {
+      if (hist.lastSeen && (now - hist.lastSeen) < 7 * 24 * 60 * 60 * 1000) {
+        return false;
+      }
+    }
+
+    // 6. Por tempo determinado (dias_X)
+    if (regra.startsWith('dias_')) {
+      const match = regra.match(/dias_(\d+)/);
+      const dias = match ? parseInt(match[1], 10) : 3;
+      const created = new Date(notif.data_criacao || notif.created_at || now).getTime();
+      if (now - created > dias * 24 * 60 * 60 * 1000) {
+        return false; // Expirado por tempo
+      }
+      if (hist.lastDate === today && hist.count >= 1) {
+        return false; // No máximo 1x por dia enquanto ativo
+      }
+    }
+
+    // 7. Sempre (1x por sessão; bloqueado por dismissedPopupsThisSession após fechar)
+    if (regra.startsWith('sempre')) {
+      return true;
+    }
+
+    return true;
+  };
+
   const carregarNotificacoesInApp = async () => {
     try {
+      const currentSession = getSavedSessionSync();
+
       // 1. Busca comunicados da coordenação (tabela notificacoes)
       let popupAtivo: any = null;
       let allNotifs: any[] = [];
@@ -1337,8 +1454,10 @@ export default function ReportGenerator() {
           .order('id', { ascending: false })
           .limit(20);
         if (pops && pops.length > 0) {
-          allNotifs = pops;
-          popupAtivo = pops.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
+          // Filtra comunicados de acordo com o nível do usuário
+          const filteredPops = pops.filter((p: any) => isNotificationForUser(p, currentSession));
+          allNotifs = filteredPops;
+          popupAtivo = filteredPops.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
         }
       } catch (e) { }
 
@@ -1347,7 +1466,7 @@ export default function ReportGenerator() {
         try {
           const rawP = localStorage.getItem('mms_popups_store') || localStorage.getItem('mms_popups_local');
           if (rawP) {
-            const listP = JSON.parse(rawP);
+            const listP = JSON.parse(rawP).filter((p: any) => isNotificationForUser(p, currentSession));
             if (!popupAtivo) {
               popupAtivo = listP.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
             }
@@ -1360,18 +1479,10 @@ export default function ReportGenerator() {
         } catch (e) { }
       }
 
-      // Se houver comunicado ativo, aciona o pop-up modal na tela se ainda não visto
-      if (popupAtivo) {
+      // Se houver comunicado ativo e elegível pela regra de frequência/duração
+      if (popupAtivo && shouldDisplayPopup(popupAtivo, currentSession)) {
         setActivePopup(popupAtivo);
-        const popKey = 'mms_popup_visto_' + popupAtivo.id;
-        if (typeof localStorage !== 'undefined') {
-          const jaVisto = localStorage.getItem(popKey);
-          if (!jaVisto || popupAtivo.regra_exibicao === 'sempre') {
-            setIsPopupModalOpen(true);
-          }
-        } else {
-          setIsPopupModalOpen(true);
-        }
+        setIsPopupModalOpen(true);
       }
 
       // 2. Busca mensagens diretas in-app (mms_mensagens)
@@ -1454,8 +1565,27 @@ export default function ReportGenerator() {
 
   const handleFecharPopup = () => {
     setIsPopupModalOpen(false);
-    if (activePopup && typeof localStorage !== 'undefined') {
-      localStorage.setItem('mms_popup_visto_' + activePopup.id, 'true');
+    if (activePopup) {
+      dismissedPopupsThisSession.current.add(activePopup.id);
+      if (typeof localStorage !== 'undefined') {
+        const storageKey = 'mms_popup_hist_' + activePopup.id;
+        const rawHist = localStorage.getItem(storageKey);
+        let hist = { count: 0, lastSeen: 0, lastDate: '' };
+        if (rawHist) {
+          try {
+            hist = JSON.parse(rawHist);
+          } catch (_) {}
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const countToday = hist.lastDate === today ? (hist.count || 0) : 0;
+        const updated = {
+          count: countToday + 1,
+          lastSeen: Date.now(),
+          lastDate: today,
+        };
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+        localStorage.setItem('mms_popup_visto_' + activePopup.id, 'true');
+      }
     }
   };
 

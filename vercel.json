@@ -19,10 +19,6 @@
       "destination": "/ver_relatorio/index.html"
     },
     {
-      "source": "/cadastro",
-      "destination": "/cadastro/index.html"
-    },
-    {
       "source": "/((?!assets/|_expo/|.*\\..*).*)",
       "destination": "/index.html"
     }

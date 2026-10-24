@@ -880,7 +880,7 @@ export async function registerUser(params: {
             mensagem: `O usuário ${nome} (@${user} - ${email}) realizou cadastro e aguarda sua aprovação no Painel de Coordenação.`,
             tipo: 'aviso',
             ativa: 1,
-            regra_exibicao: 'sempre',
+            regra_exibicao: '1x:coord',
             mostrar_feedback: 0,
           },
         ]);

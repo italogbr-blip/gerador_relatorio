@@ -288,6 +288,8 @@ export default function PainelCoordScreen() {
   const [novoPopupTitulo, setNovoPopupTitulo] = useState<string>('');
   const [novoPopupMensagem, setNovoPopupMensagem] = useState<string>('');
   const [novoPopupTipo, setNovoPopupTipo] = useState<'aviso' | 'urgente' | 'feedback'>('aviso');
+  const [novoPopupFrequencia, setNovoPopupFrequencia] = useState<'1x' | '1x_dia' | '2x_dia' | '1x_sem' | 'dias_3' | 'dias_7' | 'sempre'>('1x');
+  const [novoPopupDestinatario, setNovoPopupDestinatario] = useState<'todos' | 'coord' | 'user'>('todos');
   const [salvandoPopup, setSalvandoPopup] = useState<boolean>(false);
 
   // Personalização do Rodapé / Versão
@@ -1616,13 +1618,15 @@ export default function PainelCoordScreen() {
 
     setSalvandoPopup(true);
     try {
+      const regraFinal = `${novoPopupFrequencia}${novoPopupDestinatario !== 'todos' ? ':' + novoPopupDestinatario : ''}`;
+
       const { data, error } = await supabase.from('notificacoes').insert([
         {
           titulo: novoPopupTitulo.trim(),
           mensagem: novoPopupMensagem.trim(),
           tipo: novoPopupTipo,
           ativa: 1,
-          regra_exibicao: 'sempre',
+          regra_exibicao: regraFinal,
           mostrar_feedback: 1,
         },
       ]).select();
@@ -1636,6 +1640,7 @@ export default function PainelCoordScreen() {
           mensagem: novoPopupMensagem.trim(),
           tipo: novoPopupTipo,
           ativa: 1,
+          regra_exibicao: regraFinal,
           data_criacao: new Date().toISOString(),
         };
         if (typeof localStorage !== 'undefined') {
@@ -1652,6 +1657,8 @@ export default function PainelCoordScreen() {
         }
         setNovoPopupTitulo('');
         setNovoPopupMensagem('');
+        setNovoPopupFrequencia('1x');
+        setNovoPopupDestinatario('todos');
         setIsNovoPopupModalVisible(false);
         carregarPopups();
         showCustomAlert('Sucesso', 'Comunicado publicado com sucesso!');
@@ -3428,13 +3435,35 @@ export default function PainelCoordScreen() {
                 ) : (
                   popups.map((p) => {
                     const ativa = p.ativa === 1 || p.ativa === true;
+                    const regraStr = String(p.regra_exibicao || '').toLowerCase();
+                    const isCoordOnly = regraStr.includes(':coord') || /cadastro|coordenação|aprovação/i.test(p.titulo || '');
+                    const isUserOnly = regraStr.includes(':user');
+                    const audienceLabel = isCoordOnly ? '🛡️ Coordenação' : isUserOnly ? '👤 Logados' : '👥 Todos';
+                    const freqLabel = regraStr.startsWith('1x_dia')
+                      ? '1x ao dia'
+                      : regraStr.startsWith('2x_dia')
+                      ? '2x ao dia'
+                      : regraStr.startsWith('1x_sem')
+                      ? '1x por semana'
+                      : regraStr.startsWith('dias_')
+                      ? 'Temporário'
+                      : regraStr.startsWith('sempre')
+                      ? 'Por sessão'
+                      : 'Apenas 1 vez';
+
                     return (
                       <View key={p.id} style={[styles.popupCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
                         <View style={styles.popupCardHeader}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
                             <Text style={[styles.popupTitleText, !isDarkMode && { color: '#0f172a' }]}>{p.titulo}</Text>
                             <View style={[styles.popupTypeBadge, p.tipo === 'urgente' ? styles.badgeUrgente : styles.badgeAviso]}>
                               <Text style={styles.popupTypeBadgeText}>{p.tipo?.toUpperCase() || 'AVISO'}</Text>
+                            </View>
+                            <View style={[styles.popupTypeBadge, { backgroundColor: isCoordOnly ? '#3b82f6' : '#64748b' }]}>
+                              <Text style={styles.popupTypeBadgeText}>{audienceLabel}</Text>
+                            </View>
+                            <View style={[styles.popupTypeBadge, { backgroundColor: '#0284c7' }]}>
+                              <Text style={styles.popupTypeBadgeText}>⏱️ {freqLabel}</Text>
                             </View>
                           </View>
 
@@ -4711,67 +4740,196 @@ export default function PainelCoordScreen() {
           dataSet={{ modalOverlay: 'true' }}
           style={styles.modalOverlay}
         >
-          <View style={[styles.novoPopupContent, !isDarkMode && { backgroundColor: '#ffffff' }]}>
+          <View style={[styles.novoPopupContent, { maxWidth: 560, maxHeight: '90%' }, !isDarkMode && { backgroundColor: '#ffffff' }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, !isDarkMode && { color: '#0f172a' }]}>NOVO COMUNICADO GLOBAL</Text>
+              <Text style={[styles.modalTitle, !isDarkMode && { color: '#0f172a' }]}>NOVO COMUNICADO / NOTIFICAÇÃO</Text>
               <TouchableOpacity onPress={() => setIsNovoPopupModalVisible(false)}>
                 <Text style={styles.modalCloseBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={{ gap: 12, paddingVertical: 12 }}>
-              <View>
-                <Text style={styles.inputFieldLabel}>TÍTULO DO COMUNICADO</Text>
-                <TextInput
-                  style={[styles.modalTextInput, !isDarkMode && { color: '#0f172a', borderColor: '#cbd5e1', backgroundColor: '#f8fafc' }]}
-                  placeholder="Ex: Manutenção Programada do Sistema"
-                  placeholderTextColor="#64748b"
-                  value={novoPopupTitulo}
-                  onChangeText={setNovoPopupTitulo}
-                />
-              </View>
-
-              <View>
-                <Text style={styles.inputFieldLabel}>TIPO</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {(['aviso', 'urgente', 'feedback'] as const).map((t) => (
-                    <TouchableOpacity
-                      key={t}
-                      style={[
-                        styles.popupTypeChoice,
-                        novoPopupTipo === t && styles.popupTypeChoiceActive,
-                      ]}
-                      onPress={() => setNovoPopupTipo(t)}
-                    >
-                      <Text
-                        style={[
-                          styles.popupTypeChoiceText,
-                          novoPopupTipo === t && styles.popupTypeChoiceTextActive,
-                        ]}
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 1, marginVertical: 8 }}>
+              <View style={{ gap: 14, paddingVertical: 6 }}>
+                {/* 1. Sugestões Rápidas (1-Clique) */}
+                <View>
+                  <Text style={styles.inputFieldLabel}>💡 SUGESTÕES RÁPIDAS (CLIQUE PARA PREENCHER)</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <TouchableOpacity
+                        style={[styles.suggestionChip, !isDarkMode && { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}
+                        onPress={() => {
+                          setNovoPopupTitulo('Comunicado Geral Importante');
+                          setNovoPopupMensagem('Prezados colaboradores, solicitamos atenção às novas orientações operacionais no preenchimento dos relatórios.');
+                          setNovoPopupTipo('aviso');
+                          setNovoPopupDestinatario('todos');
+                          setNovoPopupFrequencia('1x');
+                        }}
                       >
-                        {t.toUpperCase()}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <Text style={[styles.suggestionChipText, !isDarkMode && { color: '#166534' }]}>📢 Geral (1x)</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.suggestionChip, !isDarkMode && { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}
+                        onPress={() => {
+                          setNovoPopupTitulo('Aviso Exclusivo da Coordenação');
+                          setNovoPopupMensagem('Atenção coordenadores: existem pendências de aprovação de novos cadastros e validação de relatórios.');
+                          setNovoPopupTipo('aviso');
+                          setNovoPopupDestinatario('coord');
+                          setNovoPopupFrequencia('1x_dia');
+                        }}
+                      >
+                        <Text style={[styles.suggestionChipText, { color: '#2563eb' }, !isDarkMode && { color: '#1e40af' }]}>🛡️ Coordenação (1x/dia)</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.suggestionChip, !isDarkMode && { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}
+                        onPress={() => {
+                          setNovoPopupTitulo('Alerta Operacional Diário');
+                          setNovoPopupMensagem('Lembramos que todas as trocas de turma devem conter os dados de horários reais e previsão preenchidos.');
+                          setNovoPopupTipo('urgente');
+                          setNovoPopupDestinatario('todos');
+                          setNovoPopupFrequencia('1x_dia');
+                        }}
+                      >
+                        <Text style={[styles.suggestionChipText, { color: '#ef4444' }, !isDarkMode && { color: '#991b1b' }]}>⚡ Alerta Diário (1x/dia)</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.suggestionChip, !isDarkMode && { backgroundColor: '#faf5ff', borderColor: '#e9d5ff' }]}
+                        onPress={() => {
+                          setNovoPopupTitulo('Manutenção Programada do Sistema');
+                          setNovoPopupMensagem('Informamos que realizaremos melhorias no servidor. Os relatórios já sincronizados estão 100% seguros na nuvem.');
+                          setNovoPopupTipo('aviso');
+                          setNovoPopupDestinatario('todos');
+                          setNovoPopupFrequencia('dias_3');
+                        }}
+                      >
+                        <Text style={[styles.suggestionChipText, { color: '#a855f7' }, !isDarkMode && { color: '#6b21a8' }]}>🛠️ Manutenção (3 dias)</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+
+                {/* 2. Título */}
+                <View>
+                  <Text style={styles.inputFieldLabel}>TÍTULO DO COMUNICADO *</Text>
+                  <TextInput
+                    style={[styles.modalTextInput, !isDarkMode && { color: '#0f172a', borderColor: '#cbd5e1', backgroundColor: '#f8fafc' }]}
+                    placeholder="Ex: Manutenção Programada do Sistema"
+                    placeholderTextColor="#64748b"
+                    value={novoPopupTitulo}
+                    onChangeText={setNovoPopupTitulo}
+                  />
+                </View>
+
+                {/* 3. Tipo e Gravidade */}
+                <View>
+                  <Text style={styles.inputFieldLabel}>TIPO VISUAL</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {(['aviso', 'urgente', 'feedback'] as const).map((t) => (
+                      <TouchableOpacity
+                        key={t}
+                        style={[
+                          styles.popupTypeChoice,
+                          novoPopupTipo === t && styles.popupTypeChoiceActive,
+                        ]}
+                        onPress={() => setNovoPopupTipo(t)}
+                      >
+                        <Text
+                          style={[
+                            styles.popupTypeChoiceText,
+                            novoPopupTipo === t && styles.popupTypeChoiceTextActive,
+                          ]}
+                        >
+                          {t.toUpperCase()}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* 4. Público-Alvo / Destinatário */}
+                <View>
+                  <Text style={styles.inputFieldLabel}>PÚBLICO-ALVO (QUEM RECEBERÁ O AVISO?)</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                    {[
+                      { id: 'todos', label: '👥 Todos (Geral & Visitantes)' },
+                      { id: 'coord', label: '🛡️ Apenas Coordenação (Nível 2)' },
+                      { id: 'user', label: '👤 Usuários Logados (Nível 1 e 2)' },
+                    ].map((dest) => (
+                      <TouchableOpacity
+                        key={dest.id}
+                        style={[
+                          styles.popupTypeChoice,
+                          novoPopupDestinatario === dest.id && styles.popupTypeChoiceActive,
+                        ]}
+                        onPress={() => setNovoPopupDestinatario(dest.id as any)}
+                      >
+                        <Text
+                          style={[
+                            styles.popupTypeChoiceText,
+                            novoPopupDestinatario === dest.id && styles.popupTypeChoiceTextActive,
+                          ]}
+                        >
+                          {dest.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* 5. Frequência e Duração */}
+                <View>
+                  <Text style={styles.inputFieldLabel}>DURAÇÃO E FREQUÊNCIA DE EXIBIÇÃO</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                    {[
+                      { id: '1x', label: 'Apenas 1 vez (nunca mais após fechar)' },
+                      { id: '1x_dia', label: '1 vez ao dia' },
+                      { id: '2x_dia', label: '2 vezes ao dia' },
+                      { id: '1x_sem', label: '1 vez por semana' },
+                      { id: 'dias_3', label: 'Durante 3 dias' },
+                      { id: 'dias_7', label: 'Durante 7 dias' },
+                      { id: 'sempre', label: 'A cada nova sessão' },
+                    ].map((freq) => (
+                      <TouchableOpacity
+                        key={freq.id}
+                        style={[
+                          styles.popupTypeChoice,
+                          novoPopupFrequencia === freq.id && styles.popupTypeChoiceActive,
+                        ]}
+                        onPress={() => setNovoPopupFrequencia(freq.id as any)}
+                      >
+                        <Text
+                          style={[
+                            styles.popupTypeChoiceText,
+                            novoPopupFrequencia === freq.id && styles.popupTypeChoiceTextActive,
+                          ]}
+                        >
+                          {freq.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* 6. Mensagem */}
+                <View>
+                  <Text style={styles.inputFieldLabel}>MENSAGEM DO COMUNICADO *</Text>
+                  <TextInput
+                    style={[
+                      styles.modalTextInput,
+                      { height: 95, textAlignVertical: 'top' },
+                      !isDarkMode && { color: '#0f172a', borderColor: '#cbd5e1', backgroundColor: '#f8fafc' },
+                    ]}
+                    multiline
+                    placeholder="Digite a mensagem completa a ser exibida..."
+                    placeholderTextColor="#64748b"
+                    value={novoPopupMensagem}
+                    onChangeText={setNovoPopupMensagem}
+                  />
                 </View>
               </View>
-
-              <View>
-                <Text style={styles.inputFieldLabel}>MENSAGEM</Text>
-                <TextInput
-                  style={[
-                    styles.modalTextInput,
-                    { height: 100, textAlignVertical: 'top' },
-                    !isDarkMode && { color: '#0f172a', borderColor: '#cbd5e1', backgroundColor: '#f8fafc' },
-                  ]}
-                  multiline
-                  placeholder="Digite a mensagem completa a ser exibida..."
-                  placeholderTextColor="#64748b"
-                  value={novoPopupMensagem}
-                  onChangeText={setNovoPopupMensagem}
-                />
-              </View>
-            </View>
+            </ScrollView>
 
             <View style={styles.modalActionRow}>
               <TouchableOpacity
@@ -5857,6 +6015,19 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     padding: 10,
     fontSize: 13,
+  },
+  suggestionChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+  },
+  suggestionChipText: {
+    fontSize: 11,
+    color: '#38bdf8',
+    fontWeight: '700',
   },
   popupTypeChoice: {
     paddingHorizontal: 12,
