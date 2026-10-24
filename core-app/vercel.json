@@ -1,10 +1,25 @@
 {
-  "buildCommand": "npx expo export -p web",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/painel_coord",
+      "destination": "/painel_coord/index.html"
+    },
+    {
+      "source": "/meus_relatorios",
+      "destination": "/meus_relatorios/index.html"
+    },
+    {
+      "source": "/coord",
+      "destination": "/coord/index.html"
+    },
+    {
+      "source": "/ver_relatorio",
+      "destination": "/ver_relatorio/index.html"
+    },
+    {
+      "source": "/((?!assets/|_expo/|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]

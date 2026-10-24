@@ -1,10 +1,25 @@
 {
-  "buildCommand": "cd core-app && npm install && npx expo export -p web",
+  "buildCommand": "cd core-app && npm install && npm run build",
   "outputDirectory": "core-app/dist",
-  "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/painel_coord",
+      "destination": "/painel_coord/index.html"
+    },
+    {
+      "source": "/meus_relatorios",
+      "destination": "/meus_relatorios/index.html"
+    },
+    {
+      "source": "/coord",
+      "destination": "/coord/index.html"
+    },
+    {
+      "source": "/ver_relatorio",
+      "destination": "/ver_relatorio/index.html"
+    },
+    {
+      "source": "/((?!assets/|_expo/|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]
