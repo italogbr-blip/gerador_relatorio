@@ -979,6 +979,7 @@ export default function ReportGenerator() {
   const [isThresholdReached, setIsThresholdReached] = useState(false);
 
   const executeRefresh = () => {
+    if (isRefreshing) return;
     setIsRefreshing(true);
     setIsThresholdReached(true);
 
@@ -1108,8 +1109,11 @@ export default function ReportGenerator() {
       currentDist = dist;
       pullAnim.setValue(dist);
 
-      if (dist >= PULL_THRESHOLD && !isThresholdReached) {
+      if (dist >= PULL_THRESHOLD) {
         setIsThresholdReached(true);
+        isDragging = false;
+        executeRefresh();
+        return;
       } else if (dist < PULL_THRESHOLD && isThresholdReached) {
         setIsThresholdReached(false);
       }
@@ -1168,8 +1172,11 @@ export default function ReportGenerator() {
       currentDist = dist;
       pullAnim.setValue(dist);
 
-      if (dist >= PULL_THRESHOLD && !isThresholdReached) {
+      if (dist >= PULL_THRESHOLD) {
         setIsThresholdReached(true);
+        isMouseDragging = false;
+        executeRefresh();
+        return;
       } else if (dist < PULL_THRESHOLD && isThresholdReached) {
         setIsThresholdReached(false);
       }
@@ -1208,6 +1215,39 @@ export default function ReportGenerator() {
     window.addEventListener('mousemove', onMouseMove, { passive: true });
     window.addEventListener('mouseup', onMouseUp, { passive: true });
 
+    let wheelAccum = 0;
+    let wheelTimer: any = null;
+    const onWheel = (e: WheelEvent) => {
+      if (isRefreshing) return;
+      if (isInteractiveOrModalElement(e.target as HTMLElement | null)) return;
+      if (isAtPageTop() && e.deltaY < 0) {
+        wheelAccum += Math.abs(e.deltaY) * 0.4;
+        const dist = Math.min(MAX_PULL, wheelAccum);
+        pullAnim.setValue(dist);
+
+        if (dist >= PULL_THRESHOLD) {
+          setIsThresholdReached(true);
+          wheelAccum = 0;
+          clearTimeout(wheelTimer);
+          executeRefresh();
+          return;
+        }
+
+        clearTimeout(wheelTimer);
+        wheelTimer = setTimeout(() => {
+          wheelAccum = 0;
+          setIsThresholdReached(false);
+          Animated.spring(pullAnim, {
+            toValue: 0,
+            friction: 9,
+            tension: 40,
+            useNativeDriver: false,
+          }).start();
+        }, 220);
+      }
+    };
+    window.addEventListener('wheel', onWheel, { passive: true });
+
     return () => {
       scrollEl?.removeEventListener('scroll', handleElScroll);
       window.removeEventListener('touchstart', onTouchStart);
@@ -1216,6 +1256,7 @@ export default function ReportGenerator() {
       window.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('wheel', onWheel);
     };
   }, [isRefreshing, isThresholdReached]);
 
@@ -2221,6 +2262,11 @@ export default function ReportGenerator() {
       const inputStr = authEmail.trim();
       if (!inputStr || !authPassword) {
         setAuthMsg({ type: 'erro', text: 'Preencha todos os campos.' });
+        return;
+      }
+
+      if (/\s/.test(inputStr) || /[^a-zA-Z0-9._-]/.test(inputStr)) {
+        setAuthMsg({ type: 'erro', text: 'No login não são permitidos espaços ou caracteres especiais.' });
         return;
       }
 
@@ -3282,7 +3328,11 @@ export default function ReportGenerator() {
         contentContainerStyle={{ flexGrow: 1 }}
         className="mms-main-scroll"
         onScroll={(e) => {
-          scrollYRef.current = e.nativeEvent.contentOffset.y;
+          const y = e.nativeEvent.contentOffset.y;
+          scrollYRef.current = y;
+          if (y < -55 && !isRefreshing) {
+            executeRefresh();
+          }
         }}
         scrollEventThrottle={16}
       >
@@ -4889,7 +4939,11 @@ export default function ReportGenerator() {
                           placeholderTextColor={colors.slate400}
                           autoCapitalize="none"
                           value={authEmail}
-                          onChangeText={setAuthEmail}
+                          onChangeText={(text) => {
+                            // Não aceita espaços nem caracteres especiais
+                            const sanitized = text.replace(/\s+/g, '').replace(/[^a-zA-Z0-9._-]/g, '');
+                            setAuthEmail(sanitized);
+                          }}
                         />
                       </View>
 
@@ -4918,42 +4972,7 @@ export default function ReportGenerator() {
                         )}
                       </TouchableOpacity>
 
-                      <View
-                        style={{
-                          marginTop: 18,
-                          paddingTop: 16,
-                          borderTopWidth: 1,
-                          borderTopColor: colors.slate100,
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Text style={{ fontSize: 12, color: colors.slate500, marginBottom: 8, fontFamily: modernFont }}>
-                          Não possui uma conta cadastrada?
-                        </Text>
-                        <TouchableOpacity
-                          style={{
-                            paddingVertical: 9,
-                            paddingHorizontal: 16,
-                            borderRadius: 8,
-                            backgroundColor: '#f0fdf4',
-                            borderWidth: 1,
-                            borderColor: '#bbf7d0',
-                          }}
-                          onPress={() => {
-                            setIsAuthModalVisible(false);
-                            if (typeof window !== 'undefined') {
-                              window.location.href = '/cadastro';
-                            } else {
-                              router.push('/cadastro' as any);
-                            }
-                          }}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={{ fontSize: 12, fontWeight: '800', color: '#16a34a', fontFamily: modernFont }}>
-                            Abrir Página Exclusiva de Cadastro →
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
+
                     </>
                   ) : (
                     <>
@@ -5636,7 +5655,7 @@ const styles = StyleSheet.create({
   },
   cloudBannerWrapper: {
     width: '100%',
-    maxWidth: 672,
+    maxWidth: 674,
     marginBottom: 16,
     alignSelf: 'center',
   },
@@ -5766,7 +5785,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 20,
     width: '100%',
-    maxWidth: 672,
+    maxWidth: 674,
     alignItems: 'stretch',
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
@@ -7327,7 +7346,7 @@ const styles = StyleSheet.create({
   },
   previewWrap: {
     width: '100%',
-    maxWidth: 794,
+    maxWidth: 796,
     alignItems: 'center',
     alignSelf: 'center',
   },

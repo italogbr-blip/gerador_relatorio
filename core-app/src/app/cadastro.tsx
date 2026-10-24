@@ -403,10 +403,6 @@ export default function CadastroScreen() {
           </View>
         </View>
 
-        {/* Rodapé Institucional */}
-        <View style={styles.pageFooter}>
-          <Text style={styles.pageFooterText}>MMS LOGÍSTICA &bull; GERADOR DE RELATÓRIOS SEGURO</Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

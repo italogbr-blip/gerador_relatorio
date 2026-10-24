@@ -368,6 +368,11 @@ export default function PainelCoordScreen() {
       return;
     }
 
+    if (/\s/.test(usuarioDigitado) || /[^a-zA-Z0-9._-]/.test(usuarioDigitado)) {
+      setErroSenhaPainel('No login não são permitidos espaços ou caracteres especiais.');
+      return;
+    }
+
     if (!senhaDigitada) {
       setErroSenhaPainel('Por favor, digite a senha do painel.');
       return;
@@ -1861,7 +1866,7 @@ export default function PainelCoordScreen() {
                     : { backgroundColor: '#ffffff', color: '#0f172a' }
                 ]}
                 value={inputUsuarioPainel}
-                onChangeText={setInputUsuarioPainel}
+                onChangeText={(text) => setInputUsuarioPainel(text.replace(/\s+/g, '').replace(/[^a-zA-Z0-9._-]/g, ''))}
                 editable={!userSession?.user}
                 placeholder="Digite seu usuário ou e-mail..."
                 placeholderTextColor="#94a3b8"
