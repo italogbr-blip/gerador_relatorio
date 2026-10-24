@@ -103,6 +103,7 @@
     RewriteRule ^logout$ logout.php [L]
     RewriteRule ^meus_relatorios$ meus_relatorios.php [L,QSA]
     RewriteRule ^ver_relatorio$ ver_relatorio.php [L,QSA]
+    RewriteRule ^painel_coord/?$ index.html [L,QSA]
     RewriteRule ^coord$ coord.php [L,QSA]
     RewriteRule ^editar_relatorio$ editar_relatorio.php [L,QSA]
     RewriteRule ^download_pdf$ download_pdf.php [L,QSA]
