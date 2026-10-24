@@ -1443,6 +1443,14 @@ export default function ReportGenerator() {
   const carregarNotificacoesInApp = async () => {
     try {
       const currentSession = getSavedSessionSync();
+      const isCoord = Boolean(isUserCoordinator(currentSession));
+
+      // Se o usuário NÃO for coordenador nível 2, fecha e limpa notificações da coordenação
+      if (!isCoord) {
+        setMensagensList([]);
+        setUnreadCount(0);
+        setIsNotifDropdownOpen(false);
+      }
 
       // 1. Busca comunicados da coordenação (tabela notificacoes)
       let popupAtivo: any = null;
@@ -1483,6 +1491,11 @@ export default function ReportGenerator() {
       if (popupAtivo && shouldDisplayPopup(popupAtivo, currentSession)) {
         setActivePopup(popupAtivo);
         setIsPopupModalOpen(true);
+      }
+
+      // 2. Mensagens e histórico do sininho: EXCLUSIVO PARA COORDENAÇÃO (NÍVEL 2)
+      if (!isCoord) {
+        return;
       }
 
       // 2. Busca mensagens diretas in-app (mms_mensagens)
@@ -3383,10 +3396,11 @@ export default function ReportGenerator() {
               </TouchableOpacity>
             )}
 
-            {/* Botão de Notificações com Badge e Ação Real */}
-            <TouchableOpacity
-              style={styles.navNotifBtn}
-              className="mms-navbar__notif-btn"
+            {/* Botão de Notificações com Badge e Ação Real (Apenas Coordenação Nível 2) */}
+            {isUserCoordinator(userSession) && (
+              <TouchableOpacity
+                style={styles.navNotifBtn}
+                className="mms-navbar__notif-btn"
               activeOpacity={0.7}
               onPress={() => {
                 setIsNotifDropdownOpen(!isNotifDropdownOpen);
@@ -3405,7 +3419,8 @@ export default function ReportGenerator() {
                   <Text style={styles.notifBadgeCircleText}>{unreadCount}</Text>
                 </View>
               )}
-            </TouchableOpacity>
+              </TouchableOpacity>
+            )}
 
             {/* Botão Menu Hamburger / Avatar */}
             <TouchableOpacity
@@ -3606,7 +3621,8 @@ export default function ReportGenerator() {
           </TouchableOpacity>
         </Modal>
 
-        {/* Dropdown de Notificações / Mensagens da Coordenação */}
+        {/* Dropdown de Notificações / Mensagens da Coordenação (Apenas Coordenação Nível 2) */}
+        {isUserCoordinator(userSession) && (
         <Modal
           visible={isNotifDropdownOpen}
           transparent
@@ -3657,6 +3673,7 @@ export default function ReportGenerator() {
             </View>
           </TouchableOpacity>
         </Modal>
+        )}
 
         {/* Modal de Comunicado / Pop-up Global da Coordenação */}
         {activePopup && (
