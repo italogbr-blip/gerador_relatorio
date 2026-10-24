@@ -2147,11 +2147,12 @@ export default function PainelCoordScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ width: '100%', marginBottom: 16 }}
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, width: '100%', minWidth: '100%' }}
+          className="coord-tabs-scroll"
         >
-          <View style={styles.tabsBarRow}>
+          <View style={[styles.tabsBarRow, { width: '100%', minWidth: '100%' }]} className="coord-tabs-bar">
             <TouchableOpacity
-              style={[styles.tabNavButton, activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('relatorios')}
               activeOpacity={0.85}
             >
@@ -2162,7 +2163,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('ranking')}
               activeOpacity={0.85}
             >
@@ -2173,7 +2174,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('popups')}
               activeOpacity={0.85}
             >
@@ -2184,7 +2185,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('mensagens')}
               activeOpacity={0.85}
             >
@@ -2195,7 +2196,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, activeTab === 'usuarios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'usuarios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('usuarios')}
               activeOpacity={0.85}
             >
@@ -2213,7 +2214,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={handleIrParaSeguranca}
               activeOpacity={0.85}
             >
@@ -2231,7 +2232,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('sistema')}
               activeOpacity={0.85}
             >
@@ -2242,7 +2243,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('version')}
               activeOpacity={0.85}
             >
@@ -7220,12 +7221,16 @@ const styles = StyleSheet.create({
   tabsBarRow: {
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.8)',
+    borderColor: '#e2e8f0',
     borderRadius: 14,
     padding: 6,
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
+    alignItems: 'center',
     gap: 6,
+    width: '100%',
+    minWidth: '100%',
+    boxSizing: 'border-box' as any,
     marginBottom: 20,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
@@ -7235,12 +7240,11 @@ const styles = StyleSheet.create({
   },
   tabNavButton: {
     flex: 1,
-    minWidth: 110,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     borderRadius: 10,
   },
   tabNavButtonActive: {
