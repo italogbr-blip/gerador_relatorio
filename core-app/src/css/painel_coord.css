@@ -215,18 +215,28 @@
   background: #94a3b8;
 }
 
-/* ─── ABAS DE NAVEGAÇÃO HORIZONTAL EM MOBILE ─── */
+/* ─── ABAS DE NAVEGAÇÃO HORIZONTAL E RESPONSIVA PROPORCIONAL AO LAYOUT ─── */
 .coord-tabs-scroll {
+  width: 100% !important;
+  max-width: 100% !important;
   display: flex !important;
   flex-direction: row !important;
   overflow-x: auto !important;
   -webkit-overflow-scrolling: touch !important;
   scrollbar-width: none !important;
-  padding-bottom: 4px !important;
 }
 
 .coord-tabs-scroll::-webkit-scrollbar {
   display: none !important;
+}
+
+.coord-tabs-bar {
+  width: 100% !important;
+  min-width: 100% !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  box-sizing: border-box !important;
 }
 
 /* ─── CARD DE LOGIN / BLOQUEIO ─── */
