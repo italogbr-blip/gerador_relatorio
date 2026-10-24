@@ -2695,11 +2695,6 @@ export default function ReportGenerator() {
         if (updErr) {
           console.warn('Falha ao atualizar relatório no Supabase:', updErr.message);
           showCustomAlert('ERRO AO ATUALIZAR', 'Não foi possível atualizar o relatório na nuvem: ' + updErr.message);
-        } else {
-          showCustomAlert(
-            'RELATÓRIO ATUALIZADO',
-            `O relatório #${editingReportId} (${currentData.unidade}) foi atualizado com sucesso no banco de dados central!`
-          );
         }
         return;
       }
@@ -2762,11 +2757,6 @@ export default function ReportGenerator() {
         showCustomAlert(
           'SALVO LOCALMENTE (OFFLINE)',
           'Houve uma oscilação na conexão com a nuvem, mas seu relatório foi salvo com segurança na memória local do aparelho.'
-        );
-      } else {
-        showCustomAlert(
-          'RELATÓRIO SALVO NA NUVEM',
-          'Seu relatório foi gerado e salvo com sucesso na nuvem! Você pode visualizá-lo a qualquer momento na página "Meus Relatórios".'
         );
       }
     } catch (err: any) {
@@ -3683,6 +3673,13 @@ export default function ReportGenerator() {
                     }}
                     onBlur={() => setIsDateInputFocused(false)}
                     className={`mms-date-input-field ${fieldErrors.data ? 'mms-date-input-error' : ''}`}
+                    style={{
+                      width: '100%',
+                      height: '48px',
+                      minHeight: '48px',
+                      lineHeight: '46px',
+                      textAlign: 'center',
+                    }}
                   />
                 </View>
               ) : (
@@ -5834,6 +5831,10 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: '100%',
     minWidth: 0,
+    height: 48,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
     overflow: 'hidden',
   },
   label: {
