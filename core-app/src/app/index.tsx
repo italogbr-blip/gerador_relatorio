@@ -1013,12 +1013,6 @@ export default function ReportGenerator() {
     }, 850);
   };
 
-  const triggerManualRefresh = () => {
-    if (isRefreshing) return;
-    scrollRef.current?.scrollTo?.({ y: 0, animated: true });
-    executeRefresh();
-  };
-
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
@@ -1080,7 +1074,18 @@ export default function ReportGenerator() {
     let isMouseDragging = false;
 
     const onMouseDown = (e: MouseEvent) => {
-      if (scrollYRef.current <= 2 && e.button === 0 && e.clientY <= 90) {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'BUTTON' ||
+          target.tagName === 'TEXTAREA' ||
+          target.closest?.('button') ||
+          target.closest?.('[role="button"]'))
+      ) {
+        return;
+      }
+      if (scrollYRef.current <= 2 && e.button === 0 && e.clientY <= 220) {
         mouseStartY = e.clientY;
         isMouseDragging = true;
         currentDist = 0;
@@ -3204,16 +3209,6 @@ export default function ReportGenerator() {
                 <Text style={{ fontSize: 18 }}>⚙️</Text>
               </TouchableOpacity>
             )}
-
-            {/* Botão de Atualizar / Refresh animado */}
-            <TouchableOpacity
-              style={styles.navNotifBtn}
-              activeOpacity={0.7}
-              onPress={triggerManualRefresh}
-              accessibilityLabel="Atualizar Página"
-            >
-              <Text style={{ fontSize: 16 }}>🔄</Text>
-            </TouchableOpacity>
 
             {/* Botão de Notificações com Badge e Ação Real */}
             <TouchableOpacity
