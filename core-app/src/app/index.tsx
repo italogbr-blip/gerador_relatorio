@@ -858,7 +858,8 @@ export default function ReportGenerator() {
         const item = localStorage.getItem('mms_tab_' + i);
         if (item) {
           try {
-            initial[i] = JSON.parse(item);
+            const parsed = JSON.parse(item);
+            initial[i] = { ...createDefaultTab(), ...parsed };
             foundAny = true;
           } catch (e) { }
         }
@@ -1017,8 +1018,8 @@ export default function ReportGenerator() {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    const PULL_THRESHOLD = 70;
-    const MAX_PULL = 90;
+    const PULL_THRESHOLD = 95;
+    const MAX_PULL = 125;
     let startY = 0;
     let isDragging = false;
     let currentDist = 0;
@@ -1105,7 +1106,7 @@ export default function ReportGenerator() {
         e.preventDefault();
       }
 
-      const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.76) * 1.5);
+      const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.72) * 1.2);
       currentDist = dist;
       pullAnim.setValue(dist);
 
@@ -1168,7 +1169,7 @@ export default function ReportGenerator() {
         return;
       }
 
-      const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.76) * 1.5);
+      const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.72) * 1.2);
       currentDist = dist;
       pullAnim.setValue(dist);
 
@@ -1221,7 +1222,7 @@ export default function ReportGenerator() {
       if (isRefreshing) return;
       if (isInteractiveOrModalElement(e.target as HTMLElement | null)) return;
       if (isAtPageTop() && e.deltaY < 0) {
-        wheelAccum += Math.abs(e.deltaY) * 0.4;
+        wheelAccum += Math.abs(e.deltaY) * 0.18;
         const dist = Math.min(MAX_PULL, wheelAccum);
         pullAnim.setValue(dist);
 
@@ -1266,7 +1267,7 @@ export default function ReportGenerator() {
   });
 
   const pullRotationInterpolate = pullAnim.interpolate({
-    inputRange: [0, 70],
+    inputRange: [0, 95],
     outputRange: ['0deg', '360deg'],
     extrapolate: 'clamp',
   });
@@ -1950,7 +1951,7 @@ export default function ReportGenerator() {
     };
   }, []);
 
-  const currentData = tabStore[activeTab] || createDefaultTab();
+  const currentData: TabData = { ...createDefaultTab(), ...(tabStore[activeTab] || {}) };
 
   const updateCurrentTab = (updater: Partial<TabData> | ((prev: TabData) => TabData)) => {
     setTabStore((prev) => {
@@ -3330,7 +3331,7 @@ export default function ReportGenerator() {
         onScroll={(e) => {
           const y = e.nativeEvent.contentOffset.y;
           scrollYRef.current = y;
-          if (y < -55 && !isRefreshing) {
+          if (y < -85 && !isRefreshing) {
             executeRefresh();
           }
         }}
@@ -3364,7 +3365,7 @@ export default function ReportGenerator() {
                       scale: isRefreshing
                         ? 1.05
                         : pullAnim.interpolate({
-                            inputRange: [0, 35, 70],
+                            inputRange: [0, 45, 95],
                             outputRange: [0.85, 0.95, 1.1],
                             extrapolate: 'clamp',
                           }),
@@ -5655,7 +5656,7 @@ const styles = StyleSheet.create({
   },
   cloudBannerWrapper: {
     width: '100%',
-    maxWidth: 674,
+    maxWidth: 676,
     marginBottom: 16,
     alignSelf: 'center',
   },
@@ -5785,7 +5786,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 20,
     width: '100%',
-    maxWidth: 674,
+    maxWidth: 676,
     alignItems: 'stretch',
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
@@ -7346,7 +7347,7 @@ const styles = StyleSheet.create({
   },
   previewWrap: {
     width: '100%',
-    maxWidth: 796,
+    maxWidth: 798,
     alignItems: 'center',
     alignSelf: 'center',
   },
