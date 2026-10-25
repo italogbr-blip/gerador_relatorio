@@ -1921,17 +1921,17 @@ export default function PainelCoordScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: '#f1f5f9' }]}>
       {/* Navbar Principal com Cabeçalho Customizado (Tema Escuro Idêntico ao index.tsx - Fixo / Sticky) */}
       <View style={styles.coordNavbar} className="coord-navbar coord-navbar-sticky">
-        <View style={styles.coordNavbarInner} className="coord-navbar-inner">
+        <View style={[styles.coordNavbarInner, isMobile && { paddingHorizontal: 10, gap: 8 }]} className="coord-navbar-inner">
           {/* Esquerda: Logo + Título */}
-          <View style={styles.coordNavLeft} className="coord-nav-left">
+          <View style={[styles.coordNavLeft, isMobile && { gap: 8 }]} className="coord-nav-left">
             <View style={styles.coordNavLogoIcon} className="coord-nav-logo-icon">
               <Text style={styles.coordNavLogoRay}>⚡</Text>
             </View>
-            <Text style={styles.coordNavLogoText} className="coord-nav-logo-text">COORDENAÇÃO</Text>
+            <Text style={[styles.coordNavLogoText, isMobile && { fontSize: 14, letterSpacing: 0.6 }]} className="coord-nav-logo-text">COORDENAÇÃO</Text>
           </View>
 
           {/* Direita: IP / Data-Hora, Usuário, Notificação, Voltar e Sair (Alinhados no Top Right) */}
-          <View style={styles.coordNavRight} className="coord-nav-right">
+          <View style={[styles.coordNavRight, isMobile && { gap: 8 }]} className="coord-nav-right">
             {!isMobile && (
               <View style={styles.coordNavDateTimeGroup} className="coord-nav-datetime-group">
                 <Text style={styles.coordNavDateTimeText}>{dataHoraAtual}</Text>
@@ -1940,11 +1940,13 @@ export default function PainelCoordScreen() {
             )}
 
             <View style={styles.coordNavUserGroup} className="coord-nav-user-group">
-              <Text style={styles.coordNavUserGreeting}>
-                Olá, <Text style={styles.coordNavUserName}>{userSession?.user?.user_metadata?.name || userSession?.user?.user_metadata?.username || inputUsuarioPainel || 'Coordenador'}</Text>
-              </Text>
+              {!isMobile && (
+                <Text style={styles.coordNavUserGreeting}>
+                  Olá, <Text style={styles.coordNavUserName}>{userSession?.user?.user_metadata?.name || userSession?.user?.user_metadata?.username || inputUsuarioPainel || 'Coordenador'}</Text>
+                </Text>
+              )}
 
-              <View style={styles.coordNavButtonsGroup} className="coord-nav-buttons-group">
+              <View style={[styles.coordNavButtonsGroup, isMobile && { gap: 6 }]} className="coord-nav-buttons-group">
                 <TouchableOpacity
                   style={styles.coordNavNotificationBtn}
                   className="coord-nav-btn-notif"
@@ -1963,7 +1965,7 @@ export default function PainelCoordScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.coordNavVoltarBtn}
+                  style={[styles.coordNavVoltarBtn, isMobile && { paddingHorizontal: 10, paddingVertical: 7 }]}
                   className="coord-nav-btn-voltar"
                   onPress={handleVoltarAoGerador}
                   activeOpacity={0.8}
@@ -1972,7 +1974,7 @@ export default function PainelCoordScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.coordNavSairBtn}
+                  style={[styles.coordNavSairBtn, isMobile && { paddingHorizontal: 10, paddingVertical: 7 }]}
                   className="coord-nav-btn-sair"
                   onPress={handleBloquearPainel}
                   activeOpacity={0.8}
@@ -2192,12 +2194,25 @@ export default function PainelCoordScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ width: '100%', marginBottom: 16 }}
-          contentContainerStyle={{ flexGrow: 1, width: '100%', minWidth: '100%' }}
+          contentContainerStyle={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: isMobile ? 2 : 0,
+            flexGrow: isMobile ? 0 : 1,
+          }}
           className="coord-tabs-scroll"
         >
-          <View style={[styles.tabsBarRow, { width: '100%', minWidth: '100%' }]} className="coord-tabs-bar">
+          <View
+            style={[
+              styles.tabsBarRow,
+              isMobile
+                ? { width: 'auto', minWidth: 'auto', flexWrap: 'nowrap', marginBottom: 4 }
+                : { width: '100%', minWidth: '100%' }
+            ]}
+            className="coord-tabs-bar"
+          >
             <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('relatorios')}
               activeOpacity={0.85}
             >
@@ -2208,7 +2223,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('ranking')}
               activeOpacity={0.85}
             >
@@ -2219,7 +2234,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('popups')}
               activeOpacity={0.85}
             >
@@ -2230,7 +2245,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('mensagens')}
               activeOpacity={0.85}
             >
@@ -2241,7 +2256,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'usuarios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'usuarios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('usuarios')}
               activeOpacity={0.85}
             >
@@ -2259,7 +2274,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={handleIrParaSeguranca}
               activeOpacity={0.85}
             >
@@ -2277,7 +2292,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('sistema')}
               activeOpacity={0.85}
             >
@@ -2288,7 +2303,7 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: width >= 1024 ? 0 : 115 }, activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('version')}
               activeOpacity={0.85}
             >
@@ -3704,12 +3719,12 @@ export default function PainelCoordScreen() {
         {activeTab === 'mensagens' && (
           <View style={styles.tabContent}>
             <View style={styles.cardContainer}>
-              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: isMobile ? 0 : 1, width: isMobile ? '100%' : 'auto' }}>
                   <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontSize: 20 }}>💬</Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[styles.cardTitle, { color: '#0f172a' }]}>
                       MENSAGENS & COMUNICADOS DIRETOS
                     </Text>
@@ -3720,7 +3735,7 @@ export default function PainelCoordScreen() {
                 </View>
 
                 <TouchableOpacity
-                  style={{ backgroundColor: '#2563eb', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+                  style={[{ backgroundColor: '#2563eb', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }, isMobile && { alignSelf: 'flex-start' }]}
                   onPress={() => setIsNovoPopupModalVisible(true)}
                   activeOpacity={0.85}
                 >
@@ -3730,43 +3745,76 @@ export default function PainelCoordScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
-                <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>TÍTULO</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>MENSAGEM</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 120 }]}>TIPO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA</Text>
-                </View>
-
-                {popups.length === 0 ? (
-                  <View style={{ padding: 28, alignItems: 'center' }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma mensagem cadastrada.</Text>
-                  </View>
-                ) : (
-                  popups.map((p, idx) => (
-                    <View key={p.id || idx} style={[styles.versionTableRow, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
-                      <View style={{ width: 180 }}>
-                        <Text style={{ fontWeight: '800', color: '#0f172a', fontSize: 12 }}>{p.titulo}</Text>
-                      </View>
-                      <View style={{ flex: 1, paddingRight: 8 }}>
-                        <Text style={{ color: '#475569', fontSize: 12 }} numberOfLines={2}>{p.mensagem}</Text>
-                      </View>
-                      <View style={{ width: 120 }}>
-                        <View style={{ backgroundColor: p.tipo === 'urgente' ? '#fee2e2' : '#e0f2fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' }}>
-                          <Text style={{ fontSize: 10, fontWeight: '800', color: p.tipo === 'urgente' ? '#dc2626' : '#0284c7', textTransform: 'uppercase' }}>
-                            {p.tipo || 'aviso'}
+              {isMobile ? (
+                <View style={styles.mobileCardsList}>
+                  {popups.length === 0 ? (
+                    <View style={{ padding: 28, alignItems: 'center' }}>
+                      <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma mensagem cadastrada.</Text>
+                    </View>
+                  ) : (
+                    popups.map((p, idx) => (
+                      <View key={p.id || idx} style={styles.mobileCard}>
+                        <View style={styles.mobileCardHeader}>
+                          <Text style={[styles.mobileCardTitle, { flex: 1 }]}>{p.titulo}</Text>
+                          <View style={{ backgroundColor: p.tipo === 'urgente' ? '#fee2e2' : '#e0f2fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: p.tipo === 'urgente' ? '#dc2626' : '#0284c7', textTransform: 'uppercase' }}>
+                              {p.tipo || 'aviso'}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.mobileCardBody}>
+                          <Text style={{ color: '#475569', fontSize: 13, lineHeight: 18 }}>{p.mensagem}</Text>
+                        </View>
+                        <View style={styles.mobileCardFooter}>
+                          <Text style={{ color: '#94a3b8', fontSize: 11 }}>
+                            🕒 {p.data_criacao ? new Date(p.data_criacao).toLocaleDateString('pt-BR') : 'N/A'}
                           </Text>
                         </View>
                       </View>
-                      <View style={{ width: 140 }}>
-                        <Text style={{ color: '#64748b', fontSize: 11 }}>
-                          {p.data_criacao ? new Date(p.data_criacao).toLocaleDateString('pt-BR') : 'N/A'}
-                        </Text>
-                      </View>
+                    ))
+                  )}
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ minWidth: 700 }}>
+                  <View style={[styles.versionTableContainer, { marginTop: 14, minWidth: 700 }]}>
+                    <View style={styles.versionTableHeaderRow}>
+                      <Text style={[styles.versionHeaderColText, { width: 180 }]}>TÍTULO</Text>
+                      <Text style={[styles.versionHeaderColText, { flex: 1 }]}>MENSAGEM</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 120 }]}>TIPO</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA</Text>
                     </View>
-                  ))
-                )}
-              </View>
+
+                    {popups.length === 0 ? (
+                      <View style={{ padding: 28, alignItems: 'center' }}>
+                        <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma mensagem cadastrada.</Text>
+                      </View>
+                    ) : (
+                      popups.map((p, idx) => (
+                        <View key={p.id || idx} style={[styles.versionTableRow, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
+                          <View style={{ width: 180 }}>
+                            <Text style={{ fontWeight: '800', color: '#0f172a', fontSize: 12 }}>{p.titulo}</Text>
+                          </View>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={{ color: '#475569', fontSize: 12 }} numberOfLines={2}>{p.mensagem}</Text>
+                          </View>
+                          <View style={{ width: 120 }}>
+                            <View style={{ backgroundColor: p.tipo === 'urgente' ? '#fee2e2' : '#e0f2fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' }}>
+                              <Text style={{ fontSize: 10, fontWeight: '800', color: p.tipo === 'urgente' ? '#dc2626' : '#0284c7', textTransform: 'uppercase' }}>
+                                {p.tipo || 'aviso'}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: '#64748b', fontSize: 11 }}>
+                              {p.data_criacao ? new Date(p.data_criacao).toLocaleDateString('pt-BR') : 'N/A'}
+                            </Text>
+                          </View>
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </ScrollView>
+              )}
             </View>
           </View>
         )}
@@ -3776,12 +3824,12 @@ export default function PainelCoordScreen() {
           <View style={styles.tabContent}>
             {/* 1. DISPOSITIVOS LOGADOS & AUDITORIA DE SESSÕES */}
             <View style={styles.cardContainer}>
-              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: isMobile ? 0 : 1, width: isMobile ? '100%' : 'auto' }}>
                   <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontSize: 22 }}>📱</Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[styles.cardTitle, { color: '#0f172a' }]}>
                       DISPOSITIVOS LOGADOS & AUDITORIA DE SESSÕES
                     </Text>
@@ -3791,124 +3839,200 @@ export default function PainelCoordScreen() {
                   </View>
                 </View>
 
-                <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#86efac' }}>
+                <View style={[{ backgroundColor: '#dcfce7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#86efac' }, isMobile && { alignSelf: 'flex-start' }]}>
                   <Text style={{ color: '#15803d', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
                     {ultimosLogins.length} SESSÕES REGISTRADAS
                   </Text>
                 </View>
               </View>
 
-              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
-                <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>USUÁRIO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>ID TELEFONE / DISPOSITIVO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>IP DE ORIGEM</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 160 }]}>APARELHO / MODELO</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA & NAVEGADOR</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA / HORA</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
+              {loadingSeguranca ? (
+                <View style={{ padding: 32, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color="#2563eb" />
+                  <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando auditoria de dispositivos...</Text>
                 </View>
-
-                {loadingSeguranca ? (
-                  <View style={{ padding: 32, alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#2563eb" />
-                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando auditoria de dispositivos...</Text>
-                  </View>
-                ) : ultimosLogins.length === 0 ? (
-                  <View style={{ padding: 24, alignItems: 'center' }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 12 }}>Nenhum login registrado.</Text>
-                  </View>
-                ) : (
-                  ultimosLogins.map((lg, idx) => {
+              ) : ultimosLogins.length === 0 ? (
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: '#94a3b8', fontSize: 12 }}>Nenhum login registrado.</Text>
+                </View>
+              ) : isMobile ? (
+                <View style={styles.mobileCardsList}>
+                  {ultimosLogins.map((lg, idx) => {
                     const dataStr = lg.data_login
                       ? new Date(lg.data_login).toLocaleString('pt-BR')
                       : 'N/A';
+                    const isBloqueado = blockedIpsSet.has(lg.ip);
                     return (
-                      <View
-                        key={lg.id || idx}
-                        style={[
-                          styles.versionTableRow,
-                          idx % 2 === 1 && { backgroundColor: '#f8fafc' },
-                        ]}
-                      >
-                        <View style={{ width: 140 }}>
-                          <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>
-                            {lg.username || `ID ${lg.usuario_id}`}
-                          </Text>
-                          <Text style={{ color: '#16a34a', fontSize: 10, fontWeight: '700' }}>● SESSÃO AUTORIZADA</Text>
-                        </View>
-                        <View style={{ width: 170 }}>
-                          <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#e2e8f0', alignSelf: 'flex-start' }}>
-                            <Text style={{ color: '#334155', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
+                      <View key={lg.id || idx} style={styles.mobileCard}>
+                        <View style={styles.mobileCardHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center', justifyContent: 'center' }}>
+                              <Text style={{ fontSize: 18 }}>📱</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.mobileCardTitle} numberOfLines={1}>
+                                {lg.username || `ID ${lg.usuario_id}`}
+                              </Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#16a34a' }} />
+                                <Text style={{ color: '#16a34a', fontSize: 10, fontWeight: '800' }}>SESSÃO AUTORIZADA</Text>
+                              </View>
+                            </View>
+                          </View>
+                          <View style={styles.mobileBadgeDevice}>
+                            <Text style={styles.mobileBadgeDeviceText}>
                               🆔 {String(lg.deviceId || 'DEV-AUTH').replace(/^MMS-/i, '')}
                             </Text>
                           </View>
                         </View>
-                        <View style={{ width: 140 }}>
-                          <Text style={{ color: '#0369a1', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
-                            🌐 {lg.ip || '127.0.0.1'}
-                          </Text>
+
+                        <View style={styles.mobileCardBody}>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>IP de Origem:</Text>
+                            <Text style={styles.mobileCardValueMono}>🌐 {lg.ip || '127.0.0.1'}</Text>
+                          </View>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Aparelho:</Text>
+                            <Text style={styles.mobileCardValue} numberOfLines={1}>📱 {lg.model || 'Aparelho Registrado'}</Text>
+                          </View>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Sistema:</Text>
+                            <Text style={styles.mobileCardValue} numberOfLines={1}>💻 {lg.os || 'OS'} • {lg.browser || 'Browser'}</Text>
+                          </View>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Data / Hora:</Text>
+                            <Text style={styles.mobileCardValueMuted}>🕒 {dataStr}</Text>
+                          </View>
                         </View>
-                        <View style={{ width: 160 }}>
-                          <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
-                            📱 {lg.model || 'Aparelho Registrado'}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <Text style={{ color: '#475569', fontSize: 11 }} numberOfLines={1}>
-                            💻 {lg.os || 'OS'} • {lg.browser || 'Browser'}
-                          </Text>
-                        </View>
-                        <View style={{ width: 140 }}>
-                          <Text style={{ color: '#64748b', fontSize: 11 }}>
-                            🕒 {dataStr}
-                          </Text>
-                        </View>
-                        <View style={{ width: 130, alignItems: 'center', justifyContent: 'center' }}>
-                          {lg.ip && lg.ip !== '127.0.0.1' ? (
+
+                        {lg.ip && lg.ip !== '127.0.0.1' && (
+                          <View style={styles.mobileCardFooter}>
                             <TouchableOpacity
-                              onPress={() => handleToggleBloquearIp(lg.ip, blockedIpsSet.has(lg.ip))}
-                              style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                gap: 4,
-                                paddingHorizontal: 8,
-                                paddingVertical: 5,
-                                borderRadius: 6,
-                                backgroundColor: blockedIpsSet.has(lg.ip) ? '#fee2e2' : '#f8fafc',
-                                borderWidth: 1,
-                                borderColor: blockedIpsSet.has(lg.ip) ? '#fca5a5' : '#cbd5e1',
-                              }}
-                              activeOpacity={0.7}
+                              onPress={() => handleToggleBloquearIp(lg.ip, isBloqueado)}
+                              style={[
+                                styles.mobileActionBtn,
+                                isBloqueado ? styles.mobileActionBtnDangerActive : styles.mobileActionBtnDangerOutline
+                              ]}
+                              activeOpacity={0.75}
                             >
-                              <Text style={{ fontSize: 12 }}>{blockedIpsSet.has(lg.ip) ? '🚫' : '🔒'}</Text>
-                              <Text style={{
-                                fontSize: 10,
-                                fontWeight: '900',
-                                color: blockedIpsSet.has(lg.ip) ? '#b91c1c' : '#475569',
-                              }}>
-                                {blockedIpsSet.has(lg.ip) ? 'BLOQUEADO' : 'BLOQUEAR'}
+                              <Text style={{ fontSize: 13 }}>{isBloqueado ? '🚫' : '🔒'}</Text>
+                              <Text style={[
+                                styles.mobileActionBtnText,
+                                { color: isBloqueado ? '#b91c1c' : '#dc2626' }
+                              ]}>
+                                {isBloqueado ? 'IP BLOQUEADO (DESBLOQUEAR)' : 'BLOQUEAR ESTE IP'}
                               </Text>
                             </TouchableOpacity>
-                          ) : (
-                            <Text style={{ fontSize: 10, color: '#94a3b8' }}>-</Text>
-                          )}
-                        </View>
+                          </View>
+                        )}
                       </View>
                     );
-                  })
-                )}
-              </View>
+                  })}
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ minWidth: 1000 }}>
+                  <View style={[styles.versionTableContainer, { marginTop: 14, minWidth: 1000 }]}>
+                    <View style={styles.versionTableHeaderRow}>
+                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>USUÁRIO</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 170 }]}>ID TELEFONE / DISPOSITIVO</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>IP DE ORIGEM</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 160 }]}>APARELHO / MODELO</Text>
+                      <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA & NAVEGADOR</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA / HORA</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
+                    </View>
+
+                    {ultimosLogins.map((lg, idx) => {
+                      const dataStr = lg.data_login
+                        ? new Date(lg.data_login).toLocaleString('pt-BR')
+                        : 'N/A';
+                      return (
+                        <View
+                          key={lg.id || idx}
+                          style={[
+                            styles.versionTableRow,
+                            idx % 2 === 1 && { backgroundColor: '#f8fafc' },
+                          ]}
+                        >
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 12 }}>
+                              {lg.username || `ID ${lg.usuario_id}`}
+                            </Text>
+                            <Text style={{ color: '#16a34a', fontSize: 10, fontWeight: '700' }}>● SESSÃO AUTORIZADA</Text>
+                          </View>
+                          <View style={{ width: 170 }}>
+                            <View style={{ backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#e2e8f0', alignSelf: 'flex-start' }}>
+                              <Text style={{ color: '#334155', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
+                                🆔 {String(lg.deviceId || 'DEV-AUTH').replace(/^MMS-/i, '')}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: '#0369a1', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
+                              🌐 {lg.ip || '127.0.0.1'}
+                            </Text>
+                          </View>
+                          <View style={{ width: 160 }}>
+                            <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+                              📱 {lg.model || 'Aparelho Registrado'}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={{ color: '#475569', fontSize: 11 }} numberOfLines={1}>
+                              💻 {lg.os || 'OS'} • {lg.browser || 'Browser'}
+                            </Text>
+                          </View>
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: '#64748b', fontSize: 11 }}>
+                              🕒 {dataStr}
+                            </Text>
+                          </View>
+                          <View style={{ width: 130, alignItems: 'center', justifyContent: 'center' }}>
+                            {lg.ip && lg.ip !== '127.0.0.1' ? (
+                              <TouchableOpacity
+                                onPress={() => handleToggleBloquearIp(lg.ip, blockedIpsSet.has(lg.ip))}
+                                style={{
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  paddingHorizontal: 8,
+                                  paddingVertical: 5,
+                                  borderRadius: 6,
+                                  backgroundColor: blockedIpsSet.has(lg.ip) ? '#fee2e2' : '#f8fafc',
+                                  borderWidth: 1,
+                                  borderColor: blockedIpsSet.has(lg.ip) ? '#fca5a5' : '#cbd5e1',
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={{ fontSize: 12 }}>{blockedIpsSet.has(lg.ip) ? '🚫' : '🔒'}</Text>
+                                <Text style={{
+                                  fontSize: 10,
+                                  fontWeight: '900',
+                                  color: blockedIpsSet.has(lg.ip) ? '#b91c1c' : '#475569',
+                                }}>
+                                  {blockedIpsSet.has(lg.ip) ? 'BLOQUEADO' : 'BLOQUEAR'}
+                                </Text>
+                              </TouchableOpacity>
+                            ) : (
+                              <Text style={{ fontSize: 10, color: '#94a3b8' }}>-</Text>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
             </View>
 
             {/* 2. ACESSOS AO GERADOR DE RELATÓRIOS (PÁGINA INICIAL / INDEX) */}
             <View style={[styles.cardContainer, { marginTop: 18 }]}>
-              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: isMobile ? 0 : 1, width: isMobile ? '100%' : 'auto' }}>
                   <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontSize: 22 }}>📡</Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[styles.cardTitle, { color: '#0284c7' }]}>
                       ACESSOS AO GERADOR DE RELATÓRIOS (PÁGINA INICIAL)
                     </Text>
@@ -3918,7 +4042,7 @@ export default function PainelCoordScreen() {
                   </View>
                 </View>
 
-                <View style={{ backgroundColor: '#e0f2fe', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#bae6fd' }}>
+                <View style={[{ backgroundColor: '#e0f2fe', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#bae6fd' }, isMobile && { alignSelf: 'flex-start' }]}>
                   <Text style={{ color: '#0369a1', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
                     {acessosGerador.length} ACESSOS CAPTURADOS
                   </Text>
@@ -3953,7 +4077,7 @@ export default function PainelCoordScreen() {
                     </View>
 
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                      <View style={{ flex: 1, minWidth: 170, backgroundColor: ultimo.isPrepostoDetectado ? '#f0fdf4' : '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: ultimo.isPrepostoDetectado ? '#86efac' : '#e2e8f0' }}>
+                      <View style={{ flex: 1, minWidth: isMobile ? '100%' : 170, backgroundColor: ultimo.isPrepostoDetectado ? '#f0fdf4' : '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: ultimo.isPrepostoDetectado ? '#86efac' : '#e2e8f0' }}>
                         <Text style={{ fontSize: 10, fontWeight: '800', color: ultimo.isPrepostoDetectado ? '#15803d' : '#64748b', marginBottom: 2 }}>
                           {ultimo.isPrepostoDetectado ? 'PREPOSTO IDENTIFICADO:' : 'USUÁRIO / ORIGEM:'}
                         </Text>
@@ -3962,7 +4086,7 @@ export default function PainelCoordScreen() {
                         </Text>
                       </View>
 
-                      <View style={{ flex: 1, minWidth: 170, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                      <View style={{ flex: 1, minWidth: isMobile ? '100%' : 170, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
                         <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
                           ID DO TELEFONE / DISPOSITIVO:
                         </Text>
@@ -3971,7 +4095,7 @@ export default function PainelCoordScreen() {
                         </Text>
                       </View>
 
-                      <View style={{ flex: 1, minWidth: 150, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                      <View style={{ flex: 1, minWidth: isMobile ? '100%' : 150, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
                         <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
                           IP DETECTADO (NUVEM):
                         </Text>
@@ -4003,7 +4127,7 @@ export default function PainelCoordScreen() {
                         )}
                       </View>
 
-                      <View style={{ flex: 1, minWidth: 170, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                      <View style={{ flex: 1, minWidth: isMobile ? '100%' : 170, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
                         <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
                           APARELHO / MODELO:
                         </Text>
@@ -4012,7 +4136,7 @@ export default function PainelCoordScreen() {
                         </Text>
                       </View>
 
-                      <View style={{ flex: 1, minWidth: 190, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                      <View style={{ flex: 1, minWidth: isMobile ? '100%' : 190, backgroundColor: '#ffffff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
                         <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
                           SISTEMA & NAVEGADOR:
                         </Text>
@@ -4025,125 +4149,204 @@ export default function PainelCoordScreen() {
                 );
               })()}
 
-              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
-                <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>ORIGEM / USUÁRIO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>ID DO TELEFONE / DISPOSITIVO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>IP DE ORIGEM</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 160 }]}>APARELHO DETECTADO</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA & RESOLUÇÃO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA / HORA</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
+              {loadingSeguranca ? (
+                <View style={{ padding: 32, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color="#0284c7" />
+                  <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando telemetria do gerador...</Text>
                 </View>
-
-                {loadingSeguranca ? (
-                  <View style={{ padding: 32, alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#0284c7" />
-                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando telemetria do gerador...</Text>
-                  </View>
-                ) : acessosGerador.length === 0 ? (
-                  <View style={{ padding: 28, alignItems: 'center' }}>
-                    <Text style={{ color: '#64748b', fontSize: 12 }}>
-                      Nenhum registro de acesso à página inicial gravado até o momento.
-                    </Text>
-                  </View>
-                ) : (
-                  acessosGerador.map((ag, idx) => {
+              ) : acessosGerador.length === 0 ? (
+                <View style={{ padding: 28, alignItems: 'center' }}>
+                  <Text style={{ color: '#64748b', fontSize: 12 }}>
+                    Nenhum registro de acesso à página inicial gravado até o momento.
+                  </Text>
+                </View>
+              ) : isMobile ? (
+                <View style={styles.mobileCardsList}>
+                  {acessosGerador.map((ag, idx) => {
                     const dataStr = ag.data_tentativa || ag.data_login || ag.timestamp
                       ? new Date(ag.data_tentativa || ag.data_login || ag.timestamp).toLocaleString('pt-BR')
                       : 'N/A';
+                    const isBloqueado = blockedIpsSet.has(ag.ip);
                     return (
-                      <View
-                        key={ag.id || idx}
-                        style={[
-                          styles.versionTableRow,
-                          idx % 2 === 1 && { backgroundColor: '#f0f9ff' },
-                        ]}
-                      >
-                        <View style={{ width: 140 }}>
-                          <Text style={{ color: ag.isPrepostoDetectado ? '#047857' : '#0f172a', fontWeight: '800', fontSize: 12 }} numberOfLines={1}>
-                            {ag.username || 'Visitante Index'}
-                          </Text>
-                          {ag.isPrepostoDetectado ? (
-                            <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 2, borderWidth: 1, borderColor: '#a7f3d0' }}>
-                              <Text style={{ color: '#065f46', fontSize: 9, fontWeight: '800' }}>📋 PREPOSTO (DO RELATÓRIO)</Text>
+                      <View key={ag.id || idx} style={styles.mobileCard}>
+                        <View style={styles.mobileCardHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center' }}>
+                              <Text style={{ fontSize: 18 }}>📡</Text>
                             </View>
-                          ) : (
-                            <Text style={{ color: '#0284c7', fontSize: 10, fontWeight: '700', marginTop: 2 }}>⚡ PÁGINA INICIAL</Text>
-                          )}
-                        </View>
-                        <View style={{ width: 170 }}>
-                          <View style={{ backgroundColor: '#f8fafc', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#cbd5e1', alignSelf: 'flex-start' }}>
-                            <Text style={{ color: '#0f172a', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.mobileCardTitle, ag.isPrepostoDetectado && { color: '#047857' }]} numberOfLines={1}>
+                                {ag.username || 'Visitante Index'}
+                              </Text>
+                              {ag.isPrepostoDetectado ? (
+                                <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 3, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                                  <Text style={{ color: '#065f46', fontSize: 9, fontWeight: '800' }}>📋 PREPOSTO (DO RELATÓRIO)</Text>
+                                </View>
+                              ) : (
+                                <Text style={{ color: '#0284c7', fontSize: 10, fontWeight: '700', marginTop: 2 }}>⚡ PÁGINA INICIAL</Text>
+                              )}
+                            </View>
+                          </View>
+                          <View style={styles.mobileBadgeDevice}>
+                            <Text style={styles.mobileBadgeDeviceText}>
                               🆔 {String(ag.deviceId || 'DEV-001').replace(/^MMS-/i, '')}
                             </Text>
                           </View>
                         </View>
-                        <View style={{ width: 140 }}>
-                          <Text style={{ color: '#0284c7', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
-                            🌐 {ag.ip || '127.0.0.1'}
-                          </Text>
+
+                        <View style={styles.mobileCardBody}>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>IP Detectado:</Text>
+                            <Text style={styles.mobileCardValueMono}>🌐 {ag.ip || '127.0.0.1'}</Text>
+                          </View>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Aparelho:</Text>
+                            <Text style={styles.mobileCardValue} numberOfLines={1}>📱 {ag.model || 'Aparelho Web'}</Text>
+                          </View>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Sistema:</Text>
+                            <Text style={styles.mobileCardValue} numberOfLines={1}>🖥️ {ag.os || 'OS'} • {ag.browser || 'Web'} {ag.screen ? `(${ag.screen})` : ''}</Text>
+                          </View>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Data / Hora:</Text>
+                            <Text style={styles.mobileCardValueMuted}>🕒 {dataStr}</Text>
+                          </View>
                         </View>
-                        <View style={{ width: 160 }}>
-                          <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
-                            📱 {ag.model || 'Aparelho Web'}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <Text style={{ color: '#475569', fontSize: 11 }} numberOfLines={1}>
-                            🖥️ {ag.os || 'OS'} • {ag.browser || 'Web'} {ag.screen ? `(${ag.screen})` : ''}
-                          </Text>
-                        </View>
-                        <View style={{ width: 140 }}>
-                          <Text style={{ color: '#64748b', fontSize: 11 }}>
-                            🕒 {dataStr}
-                          </Text>
-                        </View>
-                        <View style={{ width: 130, alignItems: 'center', justifyContent: 'center' }}>
-                          {ag.ip && ag.ip !== '127.0.0.1' ? (
+
+                        {ag.ip && ag.ip !== '127.0.0.1' && (
+                          <View style={styles.mobileCardFooter}>
                             <TouchableOpacity
-                              onPress={() => handleToggleBloquearIp(ag.ip, blockedIpsSet.has(ag.ip))}
-                              style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                gap: 4,
-                                paddingHorizontal: 8,
-                                paddingVertical: 5,
-                                borderRadius: 6,
-                                backgroundColor: blockedIpsSet.has(ag.ip) ? '#fee2e2' : '#f8fafc',
-                                borderWidth: 1,
-                                borderColor: blockedIpsSet.has(ag.ip) ? '#fca5a5' : '#cbd5e1',
-                              }}
-                              activeOpacity={0.7}
+                              onPress={() => handleToggleBloquearIp(ag.ip, isBloqueado)}
+                              style={[
+                                styles.mobileActionBtn,
+                                isBloqueado ? styles.mobileActionBtnDangerActive : styles.mobileActionBtnDangerOutline
+                              ]}
+                              activeOpacity={0.75}
                             >
-                              <Text style={{ fontSize: 12 }}>{blockedIpsSet.has(ag.ip) ? '🚫' : '🔒'}</Text>
-                              <Text style={{
-                                fontSize: 10,
-                                fontWeight: '900',
-                                color: blockedIpsSet.has(ag.ip) ? '#b91c1c' : '#475569',
-                              }}>
-                                {blockedIpsSet.has(ag.ip) ? 'BLOQUEADO' : 'BLOQUEAR'}
+                              <Text style={{ fontSize: 13 }}>{isBloqueado ? '🚫' : '🔒'}</Text>
+                              <Text style={[
+                                styles.mobileActionBtnText,
+                                { color: isBloqueado ? '#b91c1c' : '#dc2626' }
+                              ]}>
+                                {isBloqueado ? 'IP BLOQUEADO (DESBLOQUEAR)' : 'BLOQUEAR ESTE IP'}
                               </Text>
                             </TouchableOpacity>
-                          ) : (
-                            <Text style={{ fontSize: 10, color: '#94a3b8' }}>-</Text>
-                          )}
-                        </View>
+                          </View>
+                        )}
                       </View>
                     );
-                  })
-                )}
-              </View>
+                  })}
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ minWidth: 1000 }}>
+                  <View style={[styles.versionTableContainer, { marginTop: 14, minWidth: 1000 }]}>
+                    <View style={styles.versionTableHeaderRow}>
+                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>ORIGEM / USUÁRIO</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 170 }]}>ID DO TELEFONE / DISPOSITIVO</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>IP DE ORIGEM</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 160 }]}>APARELHO DETECTADO</Text>
+                      <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA & RESOLUÇÃO</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA / HORA</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
+                    </View>
+
+                    {acessosGerador.map((ag, idx) => {
+                      const dataStr = ag.data_tentativa || ag.data_login || ag.timestamp
+                        ? new Date(ag.data_tentativa || ag.data_login || ag.timestamp).toLocaleString('pt-BR')
+                        : 'N/A';
+                      return (
+                        <View
+                          key={ag.id || idx}
+                          style={[
+                            styles.versionTableRow,
+                            idx % 2 === 1 && { backgroundColor: '#f0f9ff' },
+                          ]}
+                        >
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: ag.isPrepostoDetectado ? '#047857' : '#0f172a', fontWeight: '800', fontSize: 12 }} numberOfLines={1}>
+                              {ag.username || 'Visitante Index'}
+                            </Text>
+                            {ag.isPrepostoDetectado ? (
+                              <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 2, borderWidth: 1, borderColor: '#a7f3d0' }}>
+                                <Text style={{ color: '#065f46', fontSize: 9, fontWeight: '800' }}>📋 PREPOSTO (DO RELATÓRIO)</Text>
+                              </View>
+                            ) : (
+                              <Text style={{ color: '#0284c7', fontSize: 10, fontWeight: '700', marginTop: 2 }}>⚡ PÁGINA INICIAL</Text>
+                            )}
+                          </View>
+                          <View style={{ width: 170 }}>
+                            <View style={{ backgroundColor: '#f8fafc', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#cbd5e1', alignSelf: 'flex-start' }}>
+                              <Text style={{ color: '#0f172a', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
+                                🆔 {String(ag.deviceId || 'DEV-001').replace(/^MMS-/i, '')}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: '#0284c7', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
+                              🌐 {ag.ip || '127.0.0.1'}
+                            </Text>
+                          </View>
+                          <View style={{ width: 160 }}>
+                            <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+                              📱 {ag.model || 'Aparelho Web'}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={{ color: '#475569', fontSize: 11 }} numberOfLines={1}>
+                              🖥️ {ag.os || 'OS'} • {ag.browser || 'Web'} {ag.screen ? `(${ag.screen})` : ''}
+                            </Text>
+                          </View>
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: '#64748b', fontSize: 11 }}>
+                              🕒 {dataStr}
+                            </Text>
+                          </View>
+                          <View style={{ width: 130, alignItems: 'center', justifyContent: 'center' }}>
+                            {ag.ip && ag.ip !== '127.0.0.1' ? (
+                              <TouchableOpacity
+                                onPress={() => handleToggleBloquearIp(ag.ip, blockedIpsSet.has(ag.ip))}
+                                style={{
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  paddingHorizontal: 8,
+                                  paddingVertical: 5,
+                                  borderRadius: 6,
+                                  backgroundColor: blockedIpsSet.has(ag.ip) ? '#fee2e2' : '#f8fafc',
+                                  borderWidth: 1,
+                                  borderColor: blockedIpsSet.has(ag.ip) ? '#fca5a5' : '#cbd5e1',
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={{ fontSize: 12 }}>{blockedIpsSet.has(ag.ip) ? '🚫' : '🔒'}</Text>
+                                <Text style={{
+                                  fontSize: 10,
+                                  fontWeight: '900',
+                                  color: blockedIpsSet.has(ag.ip) ? '#b91c1c' : '#475569',
+                                }}>
+                                  {blockedIpsSet.has(ag.ip) ? 'BLOQUEADO' : 'BLOQUEAR'}
+                                </Text>
+                              </TouchableOpacity>
+                            ) : (
+                              <Text style={{ fontSize: 10, color: '#94a3b8' }}>-</Text>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
             </View>
 
             {/* 3. TENTATIVAS DE ACESSO FALHO (LOGINS MAL SUCEDIDOS) */}
             <View style={[styles.cardContainer, { marginTop: 18 }]}>
-              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: isMobile ? 0 : 1, width: isMobile ? '100%' : 'auto' }}>
                   <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontSize: 22 }}>⚠️</Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[styles.cardTitle, { color: '#dc2626' }]}>
                       ACESSOS FALHOS AO PAINEL (TENTATIVAS BLOQUEADAS)
                     </Text>
@@ -4153,7 +4356,7 @@ export default function PainelCoordScreen() {
                   </View>
                 </View>
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 10 }, isMobile && { alignSelf: 'flex-start', flexWrap: 'wrap' }]}>
                   <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
                     <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
                       {acessosFalhos.length} BLOQUEIOS REGISTRADOS
@@ -4174,31 +4377,21 @@ export default function PainelCoordScreen() {
                 </View>
               </View>
 
-              {/* Tabela de Acessos Falhos */}
-              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
-                <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>LOGIN DIGITADO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 170 }]}>ID DO DISPOSITIVO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>IP DE ORIGEM</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 160 }]}>APARELHO / MODELO</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA / DETALHES</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA / HORA</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
+              {/* Tabela ou Cards de Acessos Falhos */}
+              {loadingSeguranca ? (
+                <View style={{ padding: 32, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color="#dc2626" />
+                  <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando histórico de bloqueios...</Text>
                 </View>
-
-                {loadingSeguranca ? (
-                  <View style={{ padding: 32, alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#dc2626" />
-                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando histórico de bloqueios...</Text>
-                  </View>
-                ) : acessosFalhos.length === 0 ? (
-                  <View style={{ padding: 32, alignItems: 'center' }}>
-                    <Text style={{ color: '#059669', fontSize: 13, fontWeight: '700' }}>
-                      ✅ Nenhuma tentativa de acesso falha registrada.
-                    </Text>
-                  </View>
-                ) : (
-                  acessosFalhos.map((af, idx) => {
+              ) : acessosFalhos.length === 0 ? (
+                <View style={{ padding: 32, alignItems: 'center' }}>
+                  <Text style={{ color: '#059669', fontSize: 13, fontWeight: '700' }}>
+                    ✅ Nenhuma tentativa de acesso falha registrada.
+                  </Text>
+                </View>
+              ) : isMobile ? (
+                <View style={styles.mobileCardsList}>
+                  {acessosFalhos.map((af, idx) => {
                     const dataStr = af.data_tentativa
                       ? new Date(af.data_tentativa).toLocaleString('pt-BR', {
                         day: '2-digit',
@@ -4209,92 +4402,184 @@ export default function PainelCoordScreen() {
                         second: '2-digit',
                       })
                       : 'N/A';
+                    const isBloqueado = blockedIpsSet.has(af.ip);
                     return (
-                      <View
-                        key={af.id || idx}
-                        style={[
-                          styles.versionTableRow,
-                          idx % 2 === 1 && { backgroundColor: '#fff5f5' },
-                        ]}
-                      >
-                        <View style={{ width: 140 }}>
-                          <Text style={{ color: '#dc2626', fontWeight: '800', fontSize: 12 }}>
-                            {af.username || 'Desconhecido'}
-                          </Text>
-                          <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '700' }}>❌ SENHA INVÁLIDA</Text>
-                        </View>
-                        <View style={{ width: 170 }}>
-                          <View style={{ backgroundColor: '#fff1f2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#fecdd3', alignSelf: 'flex-start' }}>
-                            <Text style={{ color: '#be123c', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
+                      <View key={af.id || idx} style={[styles.mobileCard, { borderColor: '#fecaca', backgroundColor: '#fffafa' }]}>
+                        <View style={styles.mobileCardHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fca5a5', alignItems: 'center', justifyContent: 'center' }}>
+                              <Text style={{ fontSize: 18 }}>⚠️</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.mobileCardTitle, { color: '#dc2626' }]} numberOfLines={1}>
+                                {af.username || 'Desconhecido'}
+                              </Text>
+                              <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '800', marginTop: 2 }}>❌ SENHA INVÁLIDA</Text>
+                            </View>
+                          </View>
+                          <View style={[styles.mobileBadgeDevice, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}>
+                            <Text style={[styles.mobileBadgeDeviceText, { color: '#be123c' }]}>
                               🆔 {String(af.deviceId || 'DEV-FALHA').replace(/^MMS-/i, '')}
                             </Text>
                           </View>
                         </View>
-                        <View style={{ width: 140 }}>
-                          <Text style={{ color: '#475569', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
-                            🌐 {af.ip || '127.0.0.1'}
-                          </Text>
+
+                        <View style={styles.mobileCardBody}>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>IP de Origem:</Text>
+                            <Text style={[styles.mobileCardValueMono, { color: '#991b1b' }]}>🌐 {af.ip || '127.0.0.1'}</Text>
+                          </View>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Aparelho:</Text>
+                            <Text style={styles.mobileCardValue} numberOfLines={1}>📱 {af.model || 'Aparelho Detectado'}</Text>
+                          </View>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Detalhes:</Text>
+                            <Text style={styles.mobileCardValue} numberOfLines={1}>
+                              {af.os ? `💻 ${af.os} • ${af.browser}` : (af.user_agent || 'App / Browser')}
+                            </Text>
+                          </View>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Data / Hora:</Text>
+                            <Text style={styles.mobileCardValueMuted}>🕒 {dataStr}</Text>
+                          </View>
                         </View>
-                        <View style={{ width: 160 }}>
-                          <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
-                            📱 {af.model || 'Aparelho Detectado'}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <Text style={{ color: '#64748b', fontSize: 11 }} numberOfLines={1}>
-                            {af.os ? `💻 ${af.os} • ${af.browser}` : (af.user_agent || 'App / Browser')}
-                          </Text>
-                        </View>
-                        <View style={{ width: 140 }}>
-                          <Text style={{ color: '#64748b', fontSize: 11 }}>
-                            🕒 {dataStr}
-                          </Text>
-                        </View>
-                        <View style={{ width: 130, alignItems: 'center', justifyContent: 'center' }}>
-                          {af.ip && af.ip !== '127.0.0.1' ? (
+
+                        {af.ip && af.ip !== '127.0.0.1' && (
+                          <View style={styles.mobileCardFooter}>
                             <TouchableOpacity
-                              onPress={() => handleToggleBloquearIp(af.ip, blockedIpsSet.has(af.ip))}
-                              style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                gap: 4,
-                                paddingHorizontal: 8,
-                                paddingVertical: 5,
-                                borderRadius: 6,
-                                backgroundColor: blockedIpsSet.has(af.ip) ? '#fee2e2' : '#f8fafc',
-                                borderWidth: 1,
-                                borderColor: blockedIpsSet.has(af.ip) ? '#fca5a5' : '#cbd5e1',
-                              }}
-                              activeOpacity={0.7}
+                              onPress={() => handleToggleBloquearIp(af.ip, isBloqueado)}
+                              style={[
+                                styles.mobileActionBtn,
+                                isBloqueado ? styles.mobileActionBtnDangerActive : styles.mobileActionBtnDangerOutline
+                              ]}
+                              activeOpacity={0.75}
                             >
-                              <Text style={{ fontSize: 12 }}>{blockedIpsSet.has(af.ip) ? '🚫' : '🔒'}</Text>
-                              <Text style={{
-                                fontSize: 10,
-                                fontWeight: '900',
-                                color: blockedIpsSet.has(af.ip) ? '#b91c1c' : '#475569',
-                              }}>
-                                {blockedIpsSet.has(af.ip) ? 'BLOQUEADO' : 'BLOQUEAR'}
+                              <Text style={{ fontSize: 13 }}>{isBloqueado ? '🚫' : '🔒'}</Text>
+                              <Text style={[
+                                styles.mobileActionBtnText,
+                                { color: isBloqueado ? '#b91c1c' : '#dc2626' }
+                              ]}>
+                                {isBloqueado ? 'IP BLOQUEADO (DESBLOQUEAR)' : 'BLOQUEAR ESTE IP'}
                               </Text>
                             </TouchableOpacity>
-                          ) : (
-                            <Text style={{ fontSize: 10, color: '#94a3b8' }}>-</Text>
-                          )}
-                        </View>
+                          </View>
+                        )}
                       </View>
                     );
-                  })
-                )}
-              </View>
+                  })}
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ minWidth: 1000 }}>
+                  <View style={[styles.versionTableContainer, { marginTop: 14, minWidth: 1000 }]}>
+                    <View style={styles.versionTableHeaderRow}>
+                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>LOGIN DIGITADO</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 170 }]}>ID DO DISPOSITIVO</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>IP DE ORIGEM</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 160 }]}>APARELHO / MODELO</Text>
+                      <Text style={[styles.versionHeaderColText, { flex: 1 }]}>SISTEMA / DETALHES</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA / HORA</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
+                    </View>
+
+                    {acessosFalhos.map((af, idx) => {
+                      const dataStr = af.data_tentativa
+                        ? new Date(af.data_tentativa).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })
+                        : 'N/A';
+                      return (
+                        <View
+                          key={af.id || idx}
+                          style={[
+                            styles.versionTableRow,
+                            idx % 2 === 1 && { backgroundColor: '#fff5f5' },
+                          ]}
+                        >
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: '#dc2626', fontWeight: '800', fontSize: 12 }}>
+                              {af.username || 'Desconhecido'}
+                            </Text>
+                            <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '700' }}>❌ SENHA INVÁLIDA</Text>
+                          </View>
+                          <View style={{ width: 170 }}>
+                            <View style={{ backgroundColor: '#fff1f2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#fecdd3', alignSelf: 'flex-start' }}>
+                              <Text style={{ color: '#be123c', fontSize: 10, fontFamily: 'monospace', fontWeight: '800' }}>
+                                🆔 {String(af.deviceId || 'DEV-FALHA').replace(/^MMS-/i, '')}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: '#475569', fontSize: 11, fontFamily: 'monospace', fontWeight: '700' }}>
+                              🌐 {af.ip || '127.0.0.1'}
+                            </Text>
+                          </View>
+                          <View style={{ width: 160 }}>
+                            <Text style={{ color: '#0f172a', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+                              📱 {af.model || 'Aparelho Detectado'}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={{ color: '#64748b', fontSize: 11 }} numberOfLines={1}>
+                              {af.os ? `💻 ${af.os} • ${af.browser}` : (af.user_agent || 'App / Browser')}
+                            </Text>
+                          </View>
+                          <View style={{ width: 140 }}>
+                            <Text style={{ color: '#64748b', fontSize: 11 }}>
+                              🕒 {dataStr}
+                            </Text>
+                          </View>
+                          <View style={{ width: 130, alignItems: 'center', justifyContent: 'center' }}>
+                            {af.ip && af.ip !== '127.0.0.1' ? (
+                              <TouchableOpacity
+                                onPress={() => handleToggleBloquearIp(af.ip, blockedIpsSet.has(af.ip))}
+                                style={{
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  paddingHorizontal: 8,
+                                  paddingVertical: 5,
+                                  borderRadius: 6,
+                                  backgroundColor: blockedIpsSet.has(af.ip) ? '#fee2e2' : '#f8fafc',
+                                  borderWidth: 1,
+                                  borderColor: blockedIpsSet.has(af.ip) ? '#fca5a5' : '#cbd5e1',
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={{ fontSize: 12 }}>{blockedIpsSet.has(af.ip) ? '🚫' : '🔒'}</Text>
+                                <Text style={{
+                                  fontSize: 10,
+                                  fontWeight: '900',
+                                  color: blockedIpsSet.has(af.ip) ? '#b91c1c' : '#475569',
+                                }}>
+                                  {blockedIpsSet.has(af.ip) ? 'BLOQUEADO' : 'BLOQUEAR'}
+                                </Text>
+                              </TouchableOpacity>
+                            ) : (
+                              <Text style={{ fontSize: 10, color: '#94a3b8' }}>-</Text>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
             </View>
 
             {/* 4. FIREWALL DO GERADOR — IPS BLOQUEADOS */}
             <View style={[styles.cardContainer, { marginTop: 18 }]}>
-              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+              <View style={[styles.cardHeader, { borderBottomColor: '#f1f5f9', paddingBottom: 14 }, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: isMobile ? 0 : 1, width: isMobile ? '100%' : 'auto' }}>
                   <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ fontSize: 22 }}>🚫</Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={[styles.cardTitle, { color: '#dc2626' }]}>
                       FIREWALL DO GERADOR — IPS BLOQUEADOS
                     </Text>
@@ -4304,7 +4589,7 @@ export default function PainelCoordScreen() {
                   </View>
                 </View>
 
-                <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}>
+                <View style={[{ backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }, isMobile && { alignSelf: 'flex-start' }]}>
                   <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
                     {ipsBloqueados.length} IPS BLOQUEADOS
                   </Text>
@@ -4320,7 +4605,7 @@ export default function PainelCoordScreen() {
                   <TextInput
                     style={{
                       flex: 1,
-                      minWidth: 200,
+                      minWidth: isMobile ? '100%' : 200,
                       backgroundColor: '#ffffff',
                       borderWidth: 1,
                       borderColor: '#cbd5e1',
@@ -4345,7 +4630,9 @@ export default function PainelCoordScreen() {
                       borderRadius: 8,
                       flexDirection: 'row',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       gap: 6,
+                      width: isMobile ? '100%' : 'auto',
                     }}
                     onPress={handleBloquearIpManual}
                     disabled={salvandoBloqueioIp}
@@ -4365,81 +4652,132 @@ export default function PainelCoordScreen() {
                 </View>
               </View>
 
-              {/* Tabela de IPs Bloqueados */}
-              <View style={[styles.versionTableContainer, { marginTop: 14 }]}>
-                <View style={styles.versionTableHeaderRow}>
-                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>ENDEREÇO IP BLOQUEADO</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 180 }]}>DATA DO BLOQUEIO</Text>
-                  <Text style={[styles.versionHeaderColText, { flex: 1 }]}>BLOQUEADO POR</Text>
-                  <Text style={[styles.versionHeaderColText, { width: 140, textAlign: 'center' }]}>AÇÃO</Text>
+              {/* Tabela ou Cards de IPs Bloqueados */}
+              {loadingSeguranca ? (
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color="#dc2626" />
+                  <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando lista de IPs bloqueados...</Text>
                 </View>
-
-                {loadingSeguranca ? (
-                  <View style={{ padding: 24, alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#dc2626" />
-                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando lista de IPs bloqueados...</Text>
-                  </View>
-                ) : ipsBloqueados.length === 0 ? (
-                  <View style={{ padding: 24, alignItems: 'center' }}>
-                    <Text style={{ color: '#059669', fontSize: 12, fontWeight: '700' }}>
-                      ✅ Nenhum IP bloqueado no momento. Todos os dispositivos possuem acesso ao gerador.
-                    </Text>
-                  </View>
-                ) : (
-                  ipsBloqueados.map((item, idx) => {
+              ) : ipsBloqueados.length === 0 ? (
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: '#059669', fontSize: 12, fontWeight: '700' }}>
+                    ✅ Nenhum IP bloqueado no momento. Todos os dispositivos possuem acesso ao gerador.
+                  </Text>
+                </View>
+              ) : isMobile ? (
+                <View style={styles.mobileCardsList}>
+                  {ipsBloqueados.map((item, idx) => {
                     const dataStr = item.data_bloqueio
                       ? new Date(item.data_bloqueio).toLocaleString('pt-BR')
                       : 'N/A';
                     return (
-                      <View
-                        key={item.ip || idx}
-                        style={[
-                          styles.versionTableRow,
-                          idx % 2 === 1 && { backgroundColor: '#fff5f5' },
-                        ]}
-                      >
-                        <View style={{ width: 180 }}>
-                          <Text style={{ color: '#dc2626', fontFamily: 'monospace', fontWeight: '800', fontSize: 12 }}>
-                            🚫 {item.ip}
-                          </Text>
+                      <View key={item.ip || idx} style={[styles.mobileCard, { borderColor: '#fca5a5', backgroundColor: '#fff5f5' }]}>
+                        <View style={styles.mobileCardHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fca5a5', alignItems: 'center', justifyContent: 'center' }}>
+                              <Text style={{ fontSize: 18 }}>🚫</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontSize: 13, fontFamily: 'monospace', fontWeight: '900', color: '#dc2626' }}>
+                                {item.ip}
+                              </Text>
+                              <Text style={{ color: '#991b1b', fontSize: 10, fontWeight: '800', marginTop: 2 }}>IP BLOQUEADO NO FIREWALL</Text>
+                            </View>
+                          </View>
                         </View>
-                        <View style={{ width: 180 }}>
-                          <Text style={{ color: '#64748b', fontSize: 11 }}>
-                            🕒 {dataStr}
-                          </Text>
+
+                        <View style={styles.mobileCardBody}>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Bloqueado por:</Text>
+                            <Text style={styles.mobileCardValue}>👤 {item.bloqueado_por || 'Coordenação'}</Text>
+                          </View>
+                          <View style={styles.mobileCardRow}>
+                            <Text style={styles.mobileCardLabel}>Data do Bloqueio:</Text>
+                            <Text style={styles.mobileCardValueMuted}>🕒 {dataStr}</Text>
+                          </View>
                         </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: '#0f172a', fontWeight: '700', fontSize: 11 }}>
-                            👤 {item.bloqueado_por || 'Coordenação'}
-                          </Text>
-                        </View>
-                        <View style={{ width: 140, alignItems: 'center', justifyContent: 'center' }}>
+
+                        <View style={styles.mobileCardFooter}>
                           <TouchableOpacity
                             onPress={() => handleToggleBloquearIp(item.ip, true)}
-                            style={{
-                              backgroundColor: '#fee2e2',
-                              paddingHorizontal: 10,
-                              paddingVertical: 5,
-                              borderRadius: 6,
-                              borderWidth: 1,
-                              borderColor: '#fca5a5',
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                            activeOpacity={0.7}
+                            style={[styles.mobileActionBtn, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}
+                            activeOpacity={0.75}
                           >
-                            <Text style={{ fontSize: 12 }}>🔓</Text>
-                            <Text style={{ color: '#b91c1c', fontSize: 10, fontWeight: '800' }}>
-                              DESBLOQUEAR
+                            <Text style={{ fontSize: 13 }}>🔓</Text>
+                            <Text style={[styles.mobileActionBtnText, { color: '#b91c1c' }]}>
+                              DESBLOQUEAR ESTE IP
                             </Text>
                           </TouchableOpacity>
                         </View>
                       </View>
                     );
-                  })
-                )}
-              </View>
+                  })}
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ minWidth: 700 }}>
+                  <View style={[styles.versionTableContainer, { marginTop: 14, minWidth: 700 }]}>
+                    <View style={styles.versionTableHeaderRow}>
+                      <Text style={[styles.versionHeaderColText, { width: 180 }]}>ENDEREÇO IP BLOQUEADO</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 180 }]}>DATA DO BLOQUEIO</Text>
+                      <Text style={[styles.versionHeaderColText, { flex: 1 }]}>BLOQUEADO POR</Text>
+                      <Text style={[styles.versionHeaderColText, { width: 140, textAlign: 'center' }]}>AÇÃO</Text>
+                    </View>
+
+                    {ipsBloqueados.map((item, idx) => {
+                      const dataStr = item.data_bloqueio
+                        ? new Date(item.data_bloqueio).toLocaleString('pt-BR')
+                        : 'N/A';
+                      return (
+                        <View
+                          key={item.ip || idx}
+                          style={[
+                            styles.versionTableRow,
+                            idx % 2 === 1 && { backgroundColor: '#fff5f5' },
+                          ]}
+                        >
+                          <View style={{ width: 180 }}>
+                            <Text style={{ color: '#dc2626', fontFamily: 'monospace', fontWeight: '800', fontSize: 12 }}>
+                              🚫 {item.ip}
+                            </Text>
+                          </View>
+                          <View style={{ width: 180 }}>
+                            <Text style={{ color: '#64748b', fontSize: 11 }}>
+                              🕒 {dataStr}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: '#0f172a', fontWeight: '700', fontSize: 11 }}>
+                              👤 {item.bloqueado_por || 'Coordenação'}
+                            </Text>
+                          </View>
+                          <View style={{ width: 140, alignItems: 'center', justifyContent: 'center' }}>
+                            <TouchableOpacity
+                              onPress={() => handleToggleBloquearIp(item.ip, true)}
+                              style={{
+                                backgroundColor: '#fee2e2',
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 6,
+                                borderWidth: 1,
+                                borderColor: '#fca5a5',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={{ fontSize: 12 }}>🔓</Text>
+                              <Text style={{ color: '#b91c1c', fontSize: 10, fontWeight: '800' }}>
+                                DESBLOQUEAR
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
             </View>
           </View>
         )}
@@ -6793,6 +7131,118 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
+    fontFamily: modernFont,
+  },
+  /* ─── CARDS RESPONSIVOS PARA DISPOSITIVOS MOBILE ─── */
+  mobileCardsList: {
+    gap: 12,
+    marginTop: 14,
+  },
+  mobileCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 14,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  mobileCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    gap: 8,
+  },
+  mobileCardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  mobileBadgeDevice: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  mobileBadgeDeviceText: {
+    color: '#334155',
+    fontSize: 10,
+    fontFamily: 'monospace',
+    fontWeight: '800',
+  },
+  mobileCardBody: {
+    paddingVertical: 10,
+    gap: 8,
+  },
+  mobileCardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+  },
+  mobileCardLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b',
+    fontFamily: modernFont,
+  },
+  mobileCardValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+    textAlign: 'right',
+    flex: 1,
+    fontFamily: modernFont,
+  },
+  mobileCardValueMono: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0284c7',
+    fontFamily: 'monospace',
+    textAlign: 'right',
+  },
+  mobileCardValueMuted: {
+    fontSize: 11,
+    color: '#64748b',
+    textAlign: 'right',
+    fontFamily: modernFont,
+  },
+  mobileCardFooter: {
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  mobileActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  mobileActionBtnDangerOutline: {
+    backgroundColor: '#fff5f5',
+    borderColor: '#fecaca',
+  },
+  mobileActionBtnDangerActive: {
+    backgroundColor: '#fee2e2',
+    borderColor: '#fca5a5',
+  },
+  mobileActionBtnText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
     fontFamily: modernFont,
   },
   versionTableContainer: {
