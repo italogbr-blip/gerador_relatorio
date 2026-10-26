@@ -2066,20 +2066,20 @@ export default function PainelCoordScreen() {
         )}
 
         {/* Filtro de KPIs / Visão Geral (Refinado) */}
-        <View style={styles.overviewSummaryCardLight}>
-          <View style={styles.overviewSummaryLeft}>
+        <View style={[styles.overviewSummaryCardLight, isMobile && { flexDirection: 'column', alignItems: 'stretch', gap: 12, padding: 14 }]}>
+          <View style={[styles.overviewSummaryLeft, isMobile && { width: '100%' }]}>
             <View style={styles.overviewSummaryIconBox}>
               <Text style={{ fontSize: 22, color: '#ffffff' }}>📊</Text>
             </View>
-            <View>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.overviewSummaryTitle}>VISÃO GERAL</Text>
               <Text style={styles.overviewSummarySubtitle}>Análise de métricas e performance</Text>
             </View>
           </View>
 
-          <View style={styles.overviewSummaryRight}>
+          <View style={[styles.overviewSummaryRight, isMobile && { width: '100%', justifyContent: 'space-between' }]}>
             <TouchableOpacity
-              style={styles.overviewMonthSelectorLight}
+              style={[styles.overviewMonthSelectorLight, isMobile && { flex: 1 }]}
               onPress={() => setIsMonthPickerOpen(true)}
               activeOpacity={0.75}
               accessibilityLabel="Selecionar Mês e Ano"
@@ -2106,10 +2106,9 @@ export default function PainelCoordScreen() {
         </View>
 
         {/* Seção de 4 KPIs / Métricas Principais */}
-        {/* Seção de 4 KPIs / Métricas Principais */}
-        <View style={styles.kpiCardsGrid} className="coord-kpi-cards-grid">
+        <View style={[styles.kpiCardsGrid, isMobile && { gap: 10 }]} className="coord-kpi-cards-grid">
           {/* Card 1: Hoje (Relatórios gerados hoje em primeiro) */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardHoje]} className="coord-interactive-card">
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardHoje, isMobile && { minWidth: '100%', width: '100%', padding: 14 }]} className="coord-interactive-card">
             <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#ea580c' }]}>HOJE</Text>
               <Text style={{ fontSize: 14 }}>⚡</Text>
@@ -2129,7 +2128,7 @@ export default function PainelCoordScreen() {
           </View>
 
           {/* Card 2: Neste Mês / Mês Filtrado */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardMes]} className="coord-interactive-card">
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardMes, isMobile && { minWidth: '100%', width: '100%', padding: 14 }]} className="coord-interactive-card">
             <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#0284c7' }]}>{mesAnoCurto.toUpperCase()}</Text>
               <Text style={{ fontSize: 14 }}>📅</Text>
@@ -2149,7 +2148,7 @@ export default function PainelCoordScreen() {
           </View>
 
           {/* Card 3: Total Geral */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardTotal]} className="coord-interactive-card">
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardTotal, isMobile && { minWidth: '100%', width: '100%', padding: 14 }]} className="coord-interactive-card">
             <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#2563eb' }]}>TOTAL GERAL</Text>
               <Text style={{ fontSize: 14 }}>📊</Text>
@@ -2169,7 +2168,7 @@ export default function PainelCoordScreen() {
           </View>
 
           {/* Card 4: Usuários */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardUsuarios]} className="coord-interactive-card">
+          <View style={[styles.kpiMetricCard, styles.kpiMetricCardUsuarios, isMobile && { minWidth: '100%', width: '100%', padding: 14 }]} className="coord-interactive-card">
             <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#7c3aed' }]}>USUÁRIOS</Text>
               <Text style={{ fontSize: 14 }}>👥</Text>
@@ -2527,9 +2526,9 @@ export default function PainelCoordScreen() {
                           : `POR: PREPOSTO NÃO INFORMADO`);
 
                     return (
-                      <View key={item.id} style={styles.reportsItemCard}>
-                        <View style={styles.reportsItemTop}>
-                          <Text style={styles.reportsItemUnidade} numberOfLines={1}>
+                      <View key={item.id} style={[styles.reportsItemCard, isMobile && { paddingHorizontal: 12, paddingVertical: 12 }]}>
+                        <View style={[styles.reportsItemTop, isMobile && { gap: 6 }]}>
+                          <Text style={styles.reportsItemUnidade}>
                             {item.unidade || 'SEM UNIDADE'}
                           </Text>
                           <View style={[styles.reportsEmpresaBadge, { backgroundColor: badgeStyle.bg }]}>
@@ -2539,7 +2538,7 @@ export default function PainelCoordScreen() {
                           </View>
                         </View>
 
-                        <Text style={styles.reportsItemSub} numberOfLines={1}>
+                        <Text style={styles.reportsItemSub}>
                           {autorTexto}
                         </Text>
 
@@ -2789,12 +2788,12 @@ export default function PainelCoordScreen() {
                                   {item.nome.replace(/[^a-zA-Z0-9]/g, '').charAt(0).toUpperCase() || 'P'}
                                 </Text>
                               </View>
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.rankingUserName} numberOfLines={1}>
+                              <View style={{ flex: 1, minWidth: 0 }}>
+                                <Text style={styles.rankingUserName}>
                                   {item.nome}
                                 </Text>
                                 {isMobile && item.ultimaEmpresa && (
-                                  <Text style={styles.rankingUserSubText} numberOfLines={1}>
+                                  <Text style={styles.rankingUserSubText}>
                                     🏢 {item.ultimaEmpresa}
                                   </Text>
                                 )}
@@ -2918,8 +2917,8 @@ export default function PainelCoordScreen() {
                               <View style={styles.rankingCompanyIconBox}>
                                 <Text style={{ fontSize: 16 }}>🏢</Text>
                               </View>
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.rankingUserName} numberOfLines={1}>
+                              <View style={{ flex: 1, minWidth: 0 }}>
+                                <Text style={styles.rankingUserName}>
                                   {item.empresa}
                                 </Text>
                                 {isMobile && (
@@ -3085,17 +3084,19 @@ export default function PainelCoordScreen() {
                           borderWidth: 1.5,
                           borderColor: '#fde68a',
                           borderRadius: 12,
-                          padding: 16,
-                          flexDirection: 'row',
-                          alignItems: 'center',
+                          padding: isMobile ? 12 : 16,
+                          flexDirection: isMobile ? 'column' : 'row',
+                          alignItems: isMobile ? 'stretch' : 'center',
                           justifyContent: 'space-between',
-                          flexWrap: 'wrap',
                           gap: 12,
+                          width: '100%',
+                          boxSizing: 'border-box' as any,
+                          overflow: 'hidden',
                         }}
                       >
-                        <View style={{ flex: 1, minWidth: 240 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                            <Text style={{ color: '#0f172a', fontWeight: '900', fontSize: 14 }}>
+                        <View style={{ flex: 1, minWidth: 0, width: '100%' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                            <Text style={{ color: '#0f172a', fontWeight: '900', fontSize: 14, flexShrink: 1, flexWrap: 'wrap' }}>
                               {u.nome || u.username}
                             </Text>
                             <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#fcd34d' }}>
@@ -3104,7 +3105,7 @@ export default function PainelCoordScreen() {
                               </Text>
                             </View>
                           </View>
-                          <Text style={{ color: '#64748b', fontSize: 12 }}>
+                          <Text style={{ color: '#64748b', fontSize: 12, flexWrap: 'wrap', ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}) }}>
                             Username: <Text style={{ color: '#0f172a', fontWeight: '700' }}>@{u.username}</Text> • E-mail: <Text style={{ color: '#0f172a', fontWeight: '700' }}>{u.email}</Text>
                           </Text>
                           <Text style={{ color: '#94a3b8', fontSize: 11, marginTop: 2 }}>
@@ -3112,7 +3113,7 @@ export default function PainelCoordScreen() {
                           </Text>
                         </View>
 
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, isMobile && { width: '100%', justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 4 }]}>
                           <TouchableOpacity
                             style={{
                               backgroundColor: '#059669',
@@ -3210,11 +3211,15 @@ export default function PainelCoordScreen() {
                   return (
                     <View
                       key={u.id}
-                      style={[styles.userCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}
+                      style={[
+                        styles.userCard,
+                        !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' },
+                        isMobile && { flexDirection: 'column', alignItems: 'stretch', gap: 10, padding: 12 }
+                      ]}
                     >
-                      <View style={styles.userCardInfo}>
+                      <View style={[styles.userCardInfo, { flex: 1, minWidth: 0, width: '100%' }]}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <Text style={[styles.userNameText, !isDarkMode && { color: '#0f172a' }]}>
+                          <Text style={[styles.userNameText, !isDarkMode && { color: '#0f172a' }, { flexShrink: 1, flexWrap: 'wrap' }]}>
                             {u.nome || u.username || 'Sem Nome'}
                           </Text>
                           <View
@@ -3254,12 +3259,12 @@ export default function PainelCoordScreen() {
                             </Text>
                           </View>
                         </View>
-                        <Text style={styles.userMetaText}>
-                          Username: <Text style={{ color: '#94a3b8' }}>{u.username}</Text> | E-mail: <Text style={{ color: '#94a3b8' }}>{u.email || 'N/A'}</Text>
+                        <Text style={[styles.userMetaText, { flexWrap: 'wrap', ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}) }]}>
+                          Username: <Text style={{ color: isDarkMode ? '#94a3b8' : '#334155', fontWeight: '700' }}>@{u.username}</Text> | E-mail: <Text style={{ color: isDarkMode ? '#94a3b8' : '#334155', fontWeight: '700' }}>{u.email || 'N/A'}</Text>
                         </Text>
                       </View>
 
-                      <View style={[styles.userCardActions, { flexDirection: 'row', gap: 8, flexWrap: 'wrap' }]}>
+                      <View style={[styles.userCardActions, { flexDirection: 'row', gap: 8, flexWrap: 'wrap' }, isMobile && { width: '100%', justifyContent: 'flex-end', marginTop: 4 }]}>
                         {isPendente ? (
                           <>
                             <TouchableOpacity
@@ -3865,15 +3870,15 @@ export default function PainelCoordScreen() {
                     return (
                       <View key={lg.id || idx} style={styles.mobileCard}>
                         <View style={styles.mobileCardHeader}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center', justifyContent: 'center' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <Text style={{ fontSize: 18 }}>📱</Text>
                             </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.mobileCardTitle} numberOfLines={1}>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={styles.mobileCardTitle}>
                                 {lg.username || `ID ${lg.usuario_id}`}
                               </Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2, flexWrap: 'wrap' }}>
                                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#16a34a' }} />
                                 <Text style={{ color: '#16a34a', fontSize: 10, fontWeight: '800' }}>SESSÃO AUTORIZADA</Text>
                               </View>
@@ -3893,11 +3898,11 @@ export default function PainelCoordScreen() {
                           </View>
                           <View style={styles.mobileCardRow}>
                             <Text style={styles.mobileCardLabel}>Aparelho:</Text>
-                            <Text style={styles.mobileCardValue} numberOfLines={1}>📱 {lg.model || 'Aparelho Registrado'}</Text>
+                            <Text style={styles.mobileCardValue}>📱 {lg.model || 'Aparelho Registrado'}</Text>
                           </View>
                           <View style={styles.mobileCardRow}>
                             <Text style={styles.mobileCardLabel}>Sistema:</Text>
-                            <Text style={styles.mobileCardValue} numberOfLines={1}>💻 {lg.os || 'OS'} • {lg.browser || 'Browser'}</Text>
+                            <Text style={styles.mobileCardValue}>💻 {lg.os || 'OS'} • {lg.browser || 'Browser'}</Text>
                           </View>
                           <View style={styles.mobileCardRow}>
                             <Text style={styles.mobileCardLabel}>Data / Hora:</Text>
@@ -4081,7 +4086,7 @@ export default function PainelCoordScreen() {
                         <Text style={{ fontSize: 10, fontWeight: '800', color: ultimo.isPrepostoDetectado ? '#15803d' : '#64748b', marginBottom: 2 }}>
                           {ultimo.isPrepostoDetectado ? 'PREPOSTO IDENTIFICADO:' : 'USUÁRIO / ORIGEM:'}
                         </Text>
-                        <Text style={{ fontSize: 12, fontWeight: '900', color: ultimo.isPrepostoDetectado ? '#166534' : '#0f172a' }} numberOfLines={1}>
+                        <Text style={{ fontSize: 12, fontWeight: '900', color: ultimo.isPrepostoDetectado ? '#166534' : '#0f172a' }}>
                           👤 {ultimo.username || 'Visitante Index'}
                         </Text>
                       </View>
@@ -4090,7 +4095,7 @@ export default function PainelCoordScreen() {
                         <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
                           ID DO TELEFONE / DISPOSITIVO:
                         </Text>
-                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#2563eb', fontFamily: 'monospace' }} numberOfLines={1}>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#2563eb', fontFamily: 'monospace' }}>
                           🔑 {String(ultimo.deviceId || 'DEV-...').replace(/^MMS-/i, '')}
                         </Text>
                       </View>
@@ -4099,7 +4104,7 @@ export default function PainelCoordScreen() {
                         <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
                           IP DETECTADO (NUVEM):
                         </Text>
-                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#0284c7', fontFamily: 'monospace' }} numberOfLines={1}>
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#0284c7', fontFamily: 'monospace' }}>
                           🌐 {ultimo.ip || '127.0.0.1'}
                         </Text>
                         {ultimo.ip && ultimo.ip !== '127.0.0.1' && (
@@ -4131,7 +4136,7 @@ export default function PainelCoordScreen() {
                         <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
                           APARELHO / MODELO:
                         </Text>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }} numberOfLines={1}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }}>
                           📲 {ultimo.model || 'Aparelho Web'}
                         </Text>
                       </View>
@@ -4140,7 +4145,7 @@ export default function PainelCoordScreen() {
                         <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748b', marginBottom: 2 }}>
                           SISTEMA & NAVEGADOR:
                         </Text>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }} numberOfLines={1}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }}>
                           ⚙️ {ultimo.os || 'OS'} • {ultimo.browser || 'Web'} {ultimo.screen ? `(${ultimo.screen})` : ''}
                         </Text>
                       </View>
@@ -4170,12 +4175,12 @@ export default function PainelCoordScreen() {
                     return (
                       <View key={ag.id || idx} style={styles.mobileCard}>
                         <View style={styles.mobileCardHeader}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <Text style={{ fontSize: 18 }}>📡</Text>
                             </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={[styles.mobileCardTitle, ag.isPrepostoDetectado && { color: '#047857' }]} numberOfLines={1}>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={[styles.mobileCardTitle, ag.isPrepostoDetectado && { color: '#047857' }]}>
                                 {ag.username || 'Visitante Index'}
                               </Text>
                               {ag.isPrepostoDetectado ? (
@@ -4201,11 +4206,11 @@ export default function PainelCoordScreen() {
                           </View>
                           <View style={styles.mobileCardRow}>
                             <Text style={styles.mobileCardLabel}>Aparelho:</Text>
-                            <Text style={styles.mobileCardValue} numberOfLines={1}>📱 {ag.model || 'Aparelho Web'}</Text>
+                            <Text style={styles.mobileCardValue}>📱 {ag.model || 'Aparelho Web'}</Text>
                           </View>
                           <View style={styles.mobileCardRow}>
                             <Text style={styles.mobileCardLabel}>Sistema:</Text>
-                            <Text style={styles.mobileCardValue} numberOfLines={1}>🖥️ {ag.os || 'OS'} • {ag.browser || 'Web'} {ag.screen ? `(${ag.screen})` : ''}</Text>
+                            <Text style={styles.mobileCardValue}>🖥️ {ag.os || 'OS'} • {ag.browser || 'Web'} {ag.screen ? `(${ag.screen})` : ''}</Text>
                           </View>
                           <View style={styles.mobileCardRow}>
                             <Text style={styles.mobileCardLabel}>Data / Hora:</Text>
@@ -4406,12 +4411,12 @@ export default function PainelCoordScreen() {
                     return (
                       <View key={af.id || idx} style={[styles.mobileCard, { borderColor: '#fecaca', backgroundColor: '#fffafa' }]}>
                         <View style={styles.mobileCardHeader}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fca5a5', alignItems: 'center', justifyContent: 'center' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fca5a5', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <Text style={{ fontSize: 18 }}>⚠️</Text>
                             </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={[styles.mobileCardTitle, { color: '#dc2626' }]} numberOfLines={1}>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={[styles.mobileCardTitle, { color: '#dc2626' }]}>
                                 {af.username || 'Desconhecido'}
                               </Text>
                               <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '800', marginTop: 2 }}>❌ SENHA INVÁLIDA</Text>
@@ -4431,11 +4436,11 @@ export default function PainelCoordScreen() {
                           </View>
                           <View style={styles.mobileCardRow}>
                             <Text style={styles.mobileCardLabel}>Aparelho:</Text>
-                            <Text style={styles.mobileCardValue} numberOfLines={1}>📱 {af.model || 'Aparelho Detectado'}</Text>
+                            <Text style={styles.mobileCardValue}>📱 {af.model || 'Aparelho Detectado'}</Text>
                           </View>
                           <View style={styles.mobileCardRow}>
                             <Text style={styles.mobileCardLabel}>Detalhes:</Text>
-                            <Text style={styles.mobileCardValue} numberOfLines={1}>
+                            <Text style={styles.mobileCardValue}>
                               {af.os ? `💻 ${af.os} • ${af.browser}` : (af.user_agent || 'App / Browser')}
                             </Text>
                           </View>
@@ -4814,7 +4819,7 @@ export default function PainelCoordScreen() {
               {/* Formulário Novo Registro de Versão */}
               <View style={[styles.versionFormBox, !isDarkMode && styles.versionFormBoxLight]}>
                 <View style={styles.versionFormGrid}>
-                  <View style={styles.versionFieldSmall}>
+                  <View style={[styles.versionFieldSmall, isMobile && { minWidth: '100%', width: '100%' }]}>
                     <Text style={[styles.versionInputLabel, !isDarkMode && { color: '#475569' }]}>
                       VERSÃO (EX: V1.2.5) *
                     </Text>
@@ -4828,7 +4833,7 @@ export default function PainelCoordScreen() {
                     />
                   </View>
 
-                  <View style={styles.versionFieldLarge}>
+                  <View style={[styles.versionFieldLarge, isMobile && { minWidth: '100%', width: '100%' }]}>
                     <Text style={[styles.versionInputLabel, !isDarkMode && { color: '#475569' }]}>
                       DESCRIÇÃO / NOTAS DE ATUALIZAÇÃO
                     </Text>
@@ -4841,7 +4846,7 @@ export default function PainelCoordScreen() {
                     />
                   </View>
 
-                  <View style={styles.versionFieldBtn}>
+                  <View style={[styles.versionFieldBtn, isMobile && { minWidth: '100%', width: '100%' }]}>
                     <TouchableOpacity
                       style={styles.btnSalvarVersao}
                       onPress={handleSalvarVersao}
@@ -4859,72 +4864,74 @@ export default function PainelCoordScreen() {
               </View>
 
               {/* Tabela / Lista de Versões Cadastradas */}
-              <View style={styles.versionTableContainer}>
-                <View style={[styles.versionTableHeaderRow, !isDarkMode && styles.versionTableHeaderRowLight]}>
-                  <Text style={[styles.versionColData, styles.versionHeaderColText]}>DATA</Text>
-                  <Text style={[styles.versionColVersao, styles.versionHeaderColText]}>VERSÃO</Text>
-                  <Text style={[styles.versionColDesc, styles.versionHeaderColText]}>DESCRIÇÃO</Text>
-                  <Text style={[styles.versionColAcoes, styles.versionHeaderColText]}>AÇÃO</Text>
-                </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ minWidth: 620 }}>
+                <View style={[styles.versionTableContainer, { minWidth: 620 }]}>
+                  <View style={[styles.versionTableHeaderRow, !isDarkMode && styles.versionTableHeaderRowLight]}>
+                    <Text style={[styles.versionColData, styles.versionHeaderColText]}>DATA</Text>
+                    <Text style={[styles.versionColVersao, styles.versionHeaderColText]}>VERSÃO</Text>
+                    <Text style={[styles.versionColDesc, styles.versionHeaderColText]}>DESCRIÇÃO</Text>
+                    <Text style={[styles.versionColAcoes, styles.versionHeaderColText]}>AÇÃO</Text>
+                  </View>
 
-                {loadingVersoes ? (
-                  <View style={{ padding: 32, alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color="#06b6d4" />
-                    <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando versões...</Text>
-                  </View>
-                ) : versoesList.length === 0 ? (
-                  <View style={{ padding: 32, alignItems: 'center' }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma versão registrada no banco de dados.</Text>
-                  </View>
-                ) : (
-                  versoesList.map((v, index) => {
-                    const dataStr = v.data_criacao
-                      ? new Date(v.data_criacao).toLocaleString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                      : 'N/A';
-                    return (
-                      <View
-                        key={v.id || index}
-                        style={[
-                          styles.versionTableRow,
-                          !isDarkMode && styles.versionTableRowLight,
-                          index % 2 === 1 && (!isDarkMode ? styles.versionRowOddLight : styles.versionRowOddDark),
-                        ]}
-                      >
-                        <View style={styles.versionColData}>
-                          <Text style={[styles.versionDataText, !isDarkMode && { color: '#64748b' }]}>
-                            {dataStr}
-                          </Text>
-                        </View>
-                        <View style={styles.versionColVersao}>
-                          <View style={styles.versionBadge}>
-                            <Text style={styles.versionBadgeText}>{v.versao}</Text>
+                  {loadingVersoes ? (
+                    <View style={{ padding: 32, alignItems: 'center' }}>
+                      <ActivityIndicator size="large" color="#06b6d4" />
+                      <Text style={{ marginTop: 8, color: '#94a3b8', fontSize: 12 }}>Carregando versões...</Text>
+                    </View>
+                  ) : versoesList.length === 0 ? (
+                    <View style={{ padding: 32, alignItems: 'center' }}>
+                      <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma versão registrada no banco de dados.</Text>
+                    </View>
+                  ) : (
+                    versoesList.map((v, index) => {
+                      const dataStr = v.data_criacao
+                        ? new Date(v.data_criacao).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                        : 'N/A';
+                      return (
+                        <View
+                          key={v.id || index}
+                          style={[
+                            styles.versionTableRow,
+                            !isDarkMode && styles.versionTableRowLight,
+                            index % 2 === 1 && (!isDarkMode ? styles.versionRowOddLight : styles.versionRowOddDark),
+                          ]}
+                        >
+                          <View style={styles.versionColData}>
+                            <Text style={[styles.versionDataText, !isDarkMode && { color: '#64748b' }]}>
+                              {dataStr}
+                            </Text>
+                          </View>
+                          <View style={styles.versionColVersao}>
+                            <View style={styles.versionBadge}>
+                              <Text style={styles.versionBadgeText}>{v.versao}</Text>
+                            </View>
+                          </View>
+                          <View style={styles.versionColDesc}>
+                            <Text style={[styles.versionDescText, !isDarkMode && { color: '#334155' }]}>
+                              {v.descricao || '-'}
+                            </Text>
+                          </View>
+                          <View style={styles.versionColAcoes}>
+                            <TouchableOpacity
+                              style={styles.btnExcluirVersao}
+                              onPress={() => handleExcluirVersao(v)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={styles.btnExcluirVersaoText}>🗑️ Excluir</Text>
+                            </TouchableOpacity>
                           </View>
                         </View>
-                        <View style={styles.versionColDesc}>
-                          <Text style={[styles.versionDescText, !isDarkMode && { color: '#334155' }]}>
-                            {v.descricao || '-'}
-                          </Text>
-                        </View>
-                        <View style={styles.versionColAcoes}>
-                          <TouchableOpacity
-                            style={styles.btnExcluirVersao}
-                            onPress={() => handleExcluirVersao(v)}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={styles.btnExcluirVersaoText}>🗑️ Excluir</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  })
-                )}
-              </View>
+                      );
+                    })
+                  )}
+                </View>
+              </ScrollView>
             </View>
           </View>
         )}
@@ -5856,6 +5863,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
     marginBottom: 20,
+    boxSizing: 'border-box' as any,
+    overflow: 'hidden',
+    width: '100%',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -5865,6 +5875,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     marginBottom: 16,
+    flexWrap: 'wrap',
+    width: '100%',
   },
   cardTitle: {
     fontSize: 15,
@@ -5872,12 +5884,18 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     letterSpacing: 0.5,
     fontFamily: modernFont,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   cardSubtitle: {
     fontSize: 12,
     color: '#64748b',
     marginTop: 2,
     fontFamily: modernFont,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   sectionCard: {
     backgroundColor: '#ffffff',
@@ -5892,11 +5910,16 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginBottom: 20,
     gap: 16,
+    boxSizing: 'border-box' as any,
+    overflow: 'hidden',
+    width: '100%',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flexWrap: 'wrap',
+    width: '100%',
   },
   sectionTitle: {
     fontSize: 16,
@@ -5904,11 +5927,17 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     letterSpacing: 0.5,
     fontFamily: modernFont,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   sectionSubtitle: {
     fontSize: 12,
     color: '#64748b',
     fontFamily: modernFont,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
 
   // Ranking
@@ -5980,18 +6009,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 10,
+    width: '100%',
+    boxSizing: 'border-box' as any,
+    overflow: 'hidden',
   },
   userCardInfo: {
     gap: 4,
+    flex: 1,
+    minWidth: 0,
   },
   userNameText: {
     color: '#ffffff',
     fontWeight: '800',
     fontSize: 14,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   userMetaText: {
     color: '#64748b',
     fontSize: 11,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   roleBadge: {
     paddingHorizontal: 8,
@@ -7149,21 +7189,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
+    overflow: 'hidden',
+    width: '100%',
+    boxSizing: 'border-box' as any,
   },
   mobileCardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     gap: 8,
+    flexWrap: 'wrap',
+    width: '100%',
   },
   mobileCardTitle: {
     fontSize: 13,
     fontWeight: '800',
     color: '#0f172a',
     fontFamily: modernFont,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   mobileBadgeDevice: {
     backgroundColor: '#f1f5f9',
@@ -7172,28 +7220,37 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
   },
   mobileBadgeDeviceText: {
     color: '#334155',
     fontSize: 10,
     fontFamily: 'monospace',
     fontWeight: '800',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-all', overflowWrap: 'break-word' } : {}),
   },
   mobileCardBody: {
     paddingVertical: 10,
     gap: 8,
+    width: '100%',
   },
   mobileCardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
+    alignItems: 'flex-start',
+    gap: 8,
+    width: '100%',
+    minWidth: 0,
   },
   mobileCardLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: '#64748b',
     fontFamily: modernFont,
+    flexShrink: 0,
   },
   mobileCardValue: {
     fontSize: 12,
@@ -7201,7 +7258,11 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     textAlign: 'right',
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     fontFamily: modernFont,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   mobileCardValueMono: {
     fontSize: 12,
@@ -7209,12 +7270,22 @@ const styles = StyleSheet.create({
     color: '#0284c7',
     fontFamily: 'monospace',
     textAlign: 'right',
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-all', overflowWrap: 'break-word' } : {}),
   },
   mobileCardValueMuted: {
     fontSize: 11,
     color: '#64748b',
     textAlign: 'right',
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     fontFamily: modernFont,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   mobileCardFooter: {
     paddingTop: 10,
@@ -8085,12 +8156,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     backgroundColor: '#ffffff',
+    width: '100%',
+    boxSizing: 'border-box' as any,
+    overflow: 'hidden',
   },
   reportsItemTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 4,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   reportsItemUnidade: {
     fontSize: 13,
@@ -8099,12 +8175,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontFamily: modernFont,
     flex: 1,
-    marginRight: 8,
+    minWidth: 150,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   reportsEmpresaBadge: {
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 2,
+    alignSelf: 'flex-start',
   },
   reportsEmpresaBadgeText: {
     fontSize: 8,
@@ -8120,6 +8200,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 4,
     fontFamily: modernFont,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   reportsItemTimeRow: {
     marginBottom: 10,
@@ -8502,6 +8584,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#334155',
     fontFamily: modernFont,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}),
   },
   rankingTotalBadge: {
     backgroundColor: '#eff6ff',
