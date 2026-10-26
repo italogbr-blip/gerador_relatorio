@@ -283,7 +283,8 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
   }
 
   // Tabela de Passageiros (PAX)
-  // Dompdf: Embarcando x=15.26mm, Divisória x=97.67mm, Desembarcados x=107.06mm
+  // Alinhamento simétrico: Embarcando (15mm a 75mm), Divisória centralizada em 90mm, Desembarcados (105mm a 170mm)
+  // Espaçamento idêntico de 15mm para ambos os lados
   curY += 6.0;
   if (curY > maxY - 25) {
     doc.addPage();
@@ -291,12 +292,12 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     curY = 32.0;
   }
 
-  const tableStartY = curY;
-  const col1X = 15.26; // 43.27 pt
-  const col1Width = 78.0;
-  const dividerX = 97.67; // 276.85 pt
-  const col2X = 107.06; // 303.48 pt
-  const col2Width = 84.0;
+  let tableStartY = curY;
+  const col1X = 15.0;
+  const col1Width = 72.0;
+  const dividerX = 90.0; // Centralizado com exatos 15mm de respiro para a esquerda e 15mm para a direita
+  const col2X = 105.0;
+  const col2Width = 85.0;
   const paxRowHeight = 5.66; // 16.05 pt
 
   doc.setFont('times', 'bold');
@@ -319,14 +320,15 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     const p2 = (rawPax2[i] || '').trim();
 
     if (curY > maxY - 10) {
-      // Desenha linha divisória da página anterior antes de quebrar
+      // Desenha linha divisória da página anterior antes de quebrar (do topo do cabeçalho até o fim da página)
       doc.setDrawColor(204, 204, 204);
-      doc.setLineWidth(0.3);
-      doc.line(dividerX, tableStartY - 1.5, dividerX, curY);
+      doc.setLineWidth(0.35);
+      doc.line(dividerX, tableStartY - 4.6, dividerX, curY);
 
       doc.addPage();
       drawBackgroundAndLogo();
       curY = 32.0;
+      tableStartY = curY;
       doc.setFont('times', 'bold');
       doc.setFontSize(12.0);
       doc.text('Nomes Passageiros Embarcando:', col1X, curY);
@@ -350,10 +352,10 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     paxTableEndY = curY;
   }
 
-  // Linha divisória vertical entre colunas
+  // Linha divisória vertical perfeitamente centralizada e alinhada ao topo do cabeçalho
   doc.setDrawColor(204, 204, 204);
-  doc.setLineWidth(0.3);
-  doc.line(dividerX, tableStartY - 1.5, dividerX, paxTableEndY);
+  doc.setLineWidth(0.35);
+  doc.line(dividerX, tableStartY - 4.6, dividerX, paxTableEndY + 1.2);
 
   // Anexos Fotográficos (Cada anexo ocupa uma nova página dedicada)
   const fotos = data.fotos || [];
