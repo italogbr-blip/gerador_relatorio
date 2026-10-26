@@ -1,0 +1,145 @@
+================================================================================
+GUIA DE INSTALAÇÃO: SISTEMA DE ARMAZENAMENTO SEGURO DE ANEXOS (PHP)
+MMS Suporte Logístico • Gerador de Relatórios
+================================================================================
+
+Este guia ensina como colocar a pasta "api" na sua hospedagem PHP (Hostinger,
+cPanel, Locaweb, KingHost, VPS, etc.) para salvar as fotos anexadas dos
+relatórios com 100% de segurança e privacidade.
+
+--------------------------------------------------------------------------------
+1. ESTRUTURA DOS ARQUIVOS
+--------------------------------------------------------------------------------
+Dentro da pasta "api", você tem os seguintes arquivos prontos:
+
+├── config_anexos.php           -> Configurações, chave secreta e limites
+├── upload_anexo.php            -> Endpoint que recebe e valida as fotos do app
+├── ver_anexo.php               -> Gateway seguro que entrega as imagens autorizadas
+└── storage_anexos/             -> Pasta onde as imagens ficam fisicamente guardadas
+    └── .htaccess               -> Regra que bloqueia o acesso direto de curiosos
+
+--------------------------------------------------------------------------------
+2. PASSO A PASSO PARA ENVIAR PARA A HOSPEDAGEM
+--------------------------------------------------------------------------------
+
+PASSO 1: Acesse sua hospedagem
+- Abra o gerenciador de arquivos do seu painel (ex: cPanel, hPanel da Hostinger)
+  ou conecte-se via FTP (FileZilla / WinSCP).
+
+PASSO 2: Localize a pasta pública do seu site
+- Geralmente chamada de "public_html", "www" ou a pasta raiz do seu domínio
+  (ex: public_html/ ou subdomínio como api.seusite.com.br).
+
+PASSO 3: Envie a pasta "api" completa
+- Faça o upload da pasta "api" inteira para dentro de "public_html".
+- Seu caminho no servidor ficará assim:
+  public_html/api/config_anexos.php
+  public_html/api/upload_anexo.php
+  public_html/api/ver_anexo.php
+  public_html/api/storage_anexos/.htaccess
+
+PASSO 4: Ajustar permissão de escrita da pasta "storage_anexos"
+- No gerenciador de arquivos ou FileZilla, clique com o botão direito na pasta:
+  public_html/api/storage_anexos/
+- Selecione "Permissões de Arquivo" (ou "Permissions" / "chmod")
+- Defina como: 755 (ou 775 se o servidor exigir permissão de grupo).
+  Isso permite que o PHP grave as novas fotos enviadas pelos usuários.
+
+--------------------------------------------------------------------------------
+3. COMO TESTAR SE O BLOQUEIO DE SEGURANÇA ESTÁ FUNCIONANDO
+--------------------------------------------------------------------------------
+
+Faça o teste no seu próprio navegador:
+
+1. Tente acessar diretamente a pasta de fotos:
+   https://seusite.com.br/api/storage_anexos/
+
+   O QUE DEVE ACONTECER:
+   O servidor DEVE exibir: "403 Forbidden" (Acesso Proibido).
+   Ninguém conseguirá listar os arquivos nem ver o que tem dentro.
+
+2. Tente acessar sem token uma imagem qualquer:
+   https://seusite.com.br/api/ver_anexo.php
+
+   O QUE DEVE ACONTECER:
+   O servidor responderá: "Parâmetros de arquivo ou token de assinatura ausentes."
+   A imagem SÓ abre se tiver o token de assinatura criptográfica correto.
+
+--------------------------------------------------------------------------------
+4. COMO TESTAR O UPLOAD (EXEMPLO VIA CURL OU TERMINAL)
+--------------------------------------------------------------------------------
+
+Você pode testar o upload de uma foto de teste pelo PowerShell ou terminal:
+
+curl -X POST "https://seusite.com.br/api/upload_anexo.php" \
+  -H "X-API-KEY: MMS_SECURE_STORAGE_KEY_2026_xK9#vL2$pQ8" \
+  -F "foto=@foto_teste.jpg"
+
+RESPOSTA ESPERADA (JSON):
+{
+  "sucesso": true,
+  "mensagem": "Anexo salvo com sucesso e protegido.",
+  "arquivo_id": "a1b2c3d4e5f6..._1730000000.jpg",
+  "mime_type": "image/jpeg",
+  "tamanho_bytes": 245120,
+  "url_visualizacao": "https://seusite.com.br/api/ver_anexo.php?file=...&token=..."
+}
+
+--------------------------------------------------------------------------------
+5. COMO CONECTAR AO SEU APP (TYPESCRIPT / REACT NATIVE)
+--------------------------------------------------------------------------------
+
+No seu aplicativo, adicione esta função para enviar as fotos:
+
+```typescript
+export async function enviarAnexoParaHospedagem(uriLocalOuBlob: string | Blob): Promise<string> {
+  const formData = new FormData();
+
+  if (typeof uriLocalOuBlob === 'string') {
+    // Foto capturada na câmera do celular (URI nativa)
+    formData.append('foto', {
+      uri: uriLocalOuBlob,
+      name: 'anexo.jpg',
+      type: 'image/jpeg',
+    } as any);
+  } else {
+    // Foto selecionada no navegador Web (Blob)
+    formData.append('foto', uriLocalOuBlob, 'anexo.jpg');
+  }
+
+  const resposta = await fetch('https://seusite.com.br/api/upload_anexo.php', {
+    method: 'POST',
+    headers: {
+      'X-API-KEY': 'MMS_SECURE_STORAGE_KEY_2026_xK9#vL2$pQ8',
+    },
+    body: formData,
+  });
+
+  const json = await resposta.json();
+  if (!json.sucesso) {
+    throw new Error(json.erro || 'Falha ao salvar anexo na hospedagem');
+  }
+
+  // Retorna a URL assinada segura gerada pela hospedagem
+  return json.url_visualizacao;
+}
+```
+
+--------------------------------------------------------------------------------
+6. DICAS DE SEGURANÇA AVANÇADA
+--------------------------------------------------------------------------------
+
+- CHAVE SECRETA (API_SECRET_KEY):
+  Se desejar alterar a chave secreta padrão, abra o arquivo "config_anexos.php",
+  altere o valor de "API_SECRET_KEY" e coloque a mesma chave no seu app.
+
+- LIMITE DE TAMANHO:
+  Por padrão, o arquivo aceita até 12MB por foto (configurado em config_anexos.php).
+  Se suas fotos forem muito pesadas, verifique no painel PHP se as diretivas
+  "upload_max_filesize" e "post_max_size" estão com pelo menos 16M ou 32M.
+
+- BANCO DE DADOS LEVE:
+  Ao salvar o relatório no Supabase, salve no campo de fotos a 'url_visualizacao'
+  em vez de guardar uma string gigante em Base64. Isso deixará seu banco até
+  99% mais rápido e muito mais leve!
+================================================================================

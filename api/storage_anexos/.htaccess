@@ -1,0 +1,19 @@
+# ========================================================
+# BLOQUEIO TOTAL DE ACESSO DIRETO VIA NAVEGADOR
+# ========================================================
+# Impede que qualquer pessoa liste os arquivos da pasta
+# ou abra qualquer imagem diretamente pela barra de endereço.
+# Apenas scripts PHP locais com validação conseguem ler os arquivos.
+
+Options -Indexes
+
+# Apache 2.4+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+# Apache 2.2 / Legado
+<IfModule !mod_authz_core.c>
+    Order Allow,Deny
+    Deny from all
+</IfModule>
