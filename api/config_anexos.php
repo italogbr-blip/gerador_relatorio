@@ -11,7 +11,6 @@
 define('API_SECRET_KEY', 'MMS_SECURE_STORAGE_KEY_2026_xK9#vL2$pQ8');
 
 // Diretório local onde os arquivos físicos serão salvos
-// Por padrão, cria uma pasta 'storage_anexos' no mesmo nível ou acima da API.
 define('STORAGE_DIR', __DIR__ . '/storage_anexos/');
 
 // Tamanho máximo permitido por foto (em bytes). Padrão: 12MB
