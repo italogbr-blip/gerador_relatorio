@@ -1015,6 +1015,45 @@ export default function ReportGenerator() {
     }, 650);
   };
 
+  // Garante que no mobile ao focar em qualquer campo de formulário, faça um mini scroll suave
+  // para centralizar o campo no viewport e evitar que fique oculto atrás do teclado virtual
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    const handleGlobalFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      const isFormField =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable ||
+        target.getAttribute('role') === 'textbox';
+
+      if (isFormField) {
+        // Aguarda a animação de abertura do teclado virtual do celular (iOS / Android)
+        setTimeout(() => {
+          try {
+            target.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'nearest',
+            });
+          } catch (_) {
+            try {
+              target.scrollIntoView(true);
+            } catch (_) {}
+          }
+        }, 280);
+      }
+    };
+
+    window.addEventListener('focusin', handleGlobalFocusIn);
+    return () => {
+      window.removeEventListener('focusin', handleGlobalFocusIn);
+    };
+  }, []);
+
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
@@ -3326,7 +3365,7 @@ export default function ReportGenerator() {
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1, width: '100%' }}
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: isDesktop ? 60 : 220 }}
         className="mms-main-scroll"
         onScroll={(e) => {
           const y = e.nativeEvent.contentOffset.y;
@@ -4464,15 +4503,6 @@ export default function ReportGenerator() {
                   >
                     <Text style={styles.btnBaixarPdfIcon}>📥</Text>
                     <Text style={styles.btnBaixarPdfText}>{isExportingPdf ? 'Baixando...' : 'Baixar PDF'}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.btnVisualizarPdf}
-                    onPress={() => visualizarRelatorioHtml(obterDadosRelatorioAtual())}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.btnVisualizarPdfIcon}>👁️</Text>
-                    <Text style={styles.btnVisualizarPdfText}>Visualizar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -7017,24 +7047,25 @@ const styles = StyleSheet.create({
   },
   btnCompartilharPdfIcon: {
     fontSize: 18,
+    lineHeight: 22,
     color: '#ffffff',
   },
   btnCompartilharPdfText: {
     color: '#ffffff',
     fontWeight: '800',
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: corporateFont,
   },
   btnBaixarPdf: {
     flex: 1,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#0f172a',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#1e293b',
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -7042,12 +7073,13 @@ const styles = StyleSheet.create({
   },
   btnBaixarPdfIcon: {
     fontSize: 18,
+    lineHeight: 22,
     color: '#ffffff',
   },
   btnBaixarPdfText: {
     color: '#ffffff',
     fontWeight: '800',
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: corporateFont,
   },
   btnVisualizarPdf: {

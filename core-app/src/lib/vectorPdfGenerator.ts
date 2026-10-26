@@ -49,9 +49,15 @@ async function getImageDimensions(src: string): Promise<{ width: number; height:
 }
 
 /**
- * Gerador de PDF 100% Vetorial Nativo (DomPDF-equivalent em TypeScript/Client-side).
- * Renderiza textos em fontes vetoriais selecionáveis, linhas e tabelas matemáticas
- * com nitidez infinita em qualquer nível de zoom, emulando fielmente o motor DomPDF.
+ * Gerador de PDF 100% Vetorial Nativo idêntico ao DomPDF original em PHP.
+ * Medidas e posições extraídas diretamente do binário do DomPDF oficial:
+ * - A4: 210mm x 297mm (595.28pt x 841.89pt)
+ * - Margem esquerda: 15.0mm (42.52pt)
+ * - Logo: x=15.0mm, y=5.0mm, w=21.17mm (60pt), h=21.17mm (60pt)
+ * - Título: y=32.0mm, x=105.0mm (centralizado), fonte 12.0pt bold, sublinhado
+ * - Corpo: fonte 10.5pt, entrelinha de 6.25mm
+ * - Tabela PAX: Embarcando x=15.26mm, divisória x=97.67mm, Desembarcados x=107.06mm
+ * - Rodapé fixo: y=283.72mm e 288.12mm, fonte 10.5pt bold
  */
 export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
   const doc = new jsPDF({
@@ -63,14 +69,11 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
 
   const pageWidth = 210;
   const pageHeight = 297;
-  const marginX = 15;
-  const contentWidth = 180;
-  const maxY = 265;
+  const marginX = 15.0; // 42.52 pt
+  const contentWidth = 180.0;
+  const maxY = 265.0;
 
-  let pageCount = 0;
-
-  function drawBackgroundAndHeader() {
-    pageCount++;
+  function drawBackgroundAndLogo() {
     if (PDF_BACKGROUND_BASE64) {
       try {
         doc.addImage(PDF_BACKGROUND_BASE64, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
@@ -80,7 +83,8 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     }
     if (PDF_LOGO_BASE64) {
       try {
-        doc.addImage(PDF_LOGO_BASE64, 'JPEG', marginX, 6, 21.5, 21.5, undefined, 'FAST');
+        // Logo oficial Dompdf: 60pt x 60pt (21.17mm x 21.17mm) at x=15.0mm, y=5.0mm
+        doc.addImage(PDF_LOGO_BASE64, 'JPEG', 15.0, 5.0, 21.17, 21.17, undefined, 'FAST');
       } catch (e) {
         console.warn('Erro ao carregar logo no cabeçalho:', e);
       }
@@ -89,35 +93,37 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
 
   function drawFooter(pageNumber: number) {
     doc.setFont('times', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(10.5); // 10.5 pt oficial Dompdf
     doc.setTextColor(0, 0, 0);
 
     const f1 = 'Rua Coronel Sizenando De Souza 522 – Visconde Macaé RJ – CEP 27.943-072';
     const f2 = 'E-Mail: mm.suportelogistica@hotmail.com Tel.: (22) 2021-7020';
 
-    doc.text(f1, 105, 284, { align: 'center' });
-    doc.text(f2, 105, 288.5, { align: 'center' });
+    // Coordenadas exatas do Dompdf: 283.72mm e 288.12mm
+    doc.text(f1, 105.0, 283.72, { align: 'center' });
+    doc.text(f2, 105.0, 288.12, { align: 'center' });
 
-    doc.text(String(pageNumber), 195, 288.5, { align: 'right' });
+    // Número da página na direita
+    doc.text(String(pageNumber), 195.0, 288.12, { align: 'right' });
   }
 
   // Página 1
-  drawBackgroundAndHeader();
+  drawBackgroundAndLogo();
 
-  // Título Centralizado com Sublinhado Vetorial
+  // Título Centralizado com Sublinhado Vetorial (Dompdf: 12.0pt bold, y=32.0mm)
   doc.setFont('times', 'bold');
-  doc.setFontSize(14.5);
+  doc.setFontSize(12.0);
   doc.setTextColor(0, 0, 0);
   const titulo = 'RELATÓRIO DE TROCA DE TURMA';
-  doc.text(titulo, 105, 28, { align: 'center' });
+  doc.text(titulo, 105.0, 32.0, { align: 'center' });
   const tW = doc.getTextWidth(titulo);
-  doc.setLineWidth(0.35);
+  doc.setLineWidth(0.26); // 0.75 pt oficial Dompdf
   doc.setDrawColor(0, 0, 0);
-  doc.line(105 - tW / 2, 29.5, 105 + tW / 2, 29.5);
+  doc.line(105.0 - tW / 2, 32.93, 105.0 + tW / 2, 32.93);
 
-  let curY = 36;
-  const fontSizeCorpo = 11;
-  const lineHeight = 5.6;
+  let curY = 41.55; // y exato de Unidade: no Dompdf
+  const fontSizeCorpo = 10.5; // 10.5 pt oficial Dompdf
+  const lineHeight = 6.25; // 17.72 pt oficial Dompdf
 
   function renderRow(label: string, value?: string) {
     doc.setFont('times', 'bold');
@@ -135,17 +141,16 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
   renderRow('Modal:', data.modal || 'Helicóptero');
 
   // Horários de Saída do Hotel (Previsto e Real)
-  curY += 1;
   doc.setFont('times', 'bold');
   doc.setFontSize(fontSizeCorpo);
   doc.text('Horário de Saída do Hotel (Previsto e Real):', marginX, curY);
-  curY += 5.0;
+  curY += lineHeight;
 
   const saidasList = data.horarios?.saida_hotel || [];
   if (data.semSaida || saidasList.length === 0) {
     doc.setFont('times', 'normal');
-    doc.text('N/A', marginX + 7, curY);
-    curY += 5.0;
+    doc.text('N/A', 20.29, curY); // Indentação exata de 20.29mm (57.52pt)
+    curY += lineHeight;
   } else {
     for (const item of saidasList) {
       const l1 = item.label1 || 'Previsto';
@@ -169,26 +174,27 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
           : 'N/A';
 
       doc.setFont('times', 'bold');
-      doc.text(`${l1}:`, marginX + 7, curY);
+      doc.text(`${l1}:`, 20.29, curY);
       const w1 = doc.getTextWidth(`${l1}: `);
       doc.setFont('times', 'normal');
-      doc.text(part1, marginX + 7 + w1, curY);
+      doc.text(`${part1}     `, 20.29 + w1, curY);
 
+      const realColX = 20.29 + w1 + doc.getTextWidth(`${part1}     `);
       doc.setFont('times', 'bold');
-      doc.text(`${l2}:`, 78, curY);
+      doc.text(`${l2}:`, realColX, curY);
       const w2 = doc.getTextWidth(`${l2}: `);
       doc.setFont('times', 'normal');
-      doc.text(part2, 78 + w2, curY);
-      curY += 4.8;
+      doc.text(part2, realColX + w2, curY);
+      curY += 5.6;
     }
+    curY += 1.0;
   }
 
   // Horários de Embarque (Previsto e Real)
-  curY += 1;
   doc.setFont('times', 'bold');
   doc.setFontSize(fontSizeCorpo);
   doc.text('Horários de Embarque (Previsto e Real):', marginX, curY);
-  curY += 5.0;
+  curY += lineHeight;
 
   const embPrevRaw = data.semEmbarquePrev ? 'N/A' : data.horarios?.embarque_previsto || 'N/A';
   const embRealRaw = data.semEmbarque ? 'N/A' : data.horarios?.embarque_real || 'N/A';
@@ -203,24 +209,24 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
       : 'N/A';
 
   doc.setFont('times', 'bold');
-  doc.text('Previsto:', marginX + 7, curY);
+  doc.text('Previsto:', 20.29, curY);
   const epW = doc.getTextWidth('Previsto: ');
   doc.setFont('times', 'normal');
-  doc.text(embPrevFmt, marginX + 7 + epW, curY);
+  doc.text(`${embPrevFmt}     `, 20.29 + epW, curY);
 
+  const embRealX = 20.29 + epW + doc.getTextWidth(`${embPrevFmt}     `);
   doc.setFont('times', 'bold');
-  doc.text('Real:', 78, curY);
+  doc.text('Real:', embRealX, curY);
   const erW = doc.getTextWidth('Real: ');
   doc.setFont('times', 'normal');
-  doc.text(embRealFmt, 78 + erW, curY);
-  curY += 5.6;
+  doc.text(embRealFmt, embRealX + erW, curY);
+  curY += lineHeight;
 
   // Horário Inicial e de Finalização
-  curY += 1;
   doc.setFont('times', 'bold');
   doc.setFontSize(fontSizeCorpo);
   doc.text('Horário Inicial e de Finalização:', marginX, curY);
-  curY += 5.0;
+  curY += lineHeight;
 
   const atIniRaw = data.horarios?.atendimento_inicio || 'N/A';
   const atFimRaw = data.horarios?.atendimento_fim || 'N/A';
@@ -230,31 +236,26 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     atFimRaw !== 'N/A' && atFimRaw !== ':' ? atFimRaw.replace(':', ' h ') + ' min' : 'N/A';
 
   doc.setFont('times', 'bold');
-  doc.text('Início:', marginX + 7, curY);
-  let pos = marginX + 7 + doc.getTextWidth('Início: ');
+  doc.text('Início:', 20.29, curY);
+  let pos = 20.29 + doc.getTextWidth('Início: ');
   doc.setFont('times', 'normal');
-  doc.text(atIniFmt, pos, curY);
-  pos += doc.getTextWidth(atIniFmt + '   ');
-  doc.setFont('times', 'normal');
-  doc.text('às', pos, curY);
-  pos += doc.getTextWidth('às   ');
+  doc.text(`${atIniFmt}  às  `, pos, curY);
+  pos += doc.getTextWidth(`${atIniFmt}  às  `);
   doc.setFont('times', 'bold');
   doc.text('Fim:', pos, curY);
   pos += doc.getTextWidth('Fim: ');
   doc.setFont('times', 'normal');
   doc.text(atFimFmt, pos, curY);
-  curY += 5.6;
+  curY += lineHeight;
 
   // Nome do Preposto
-  curY += 1;
   renderRow('Nome do Preposto:', data.preposto || 'N/A');
 
   // Informações sobre a troca de turma
-  curY += 1;
   doc.setFont('times', 'bold');
   doc.setFontSize(fontSizeCorpo);
   doc.text('Informações sobre a troca de turma:', marginX, curY);
-  curY += 5.0;
+  curY += lineHeight;
 
   const rawInfo = data.info_troca || data.info || 'N/A';
   const cleanInfo = cleanHtmlTags(rawInfo);
@@ -273,31 +274,33 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     for (const wLine of wrapped) {
       if (curY > maxY - 15) {
         doc.addPage();
-        drawBackgroundAndHeader();
-        curY = 36;
+        drawBackgroundAndLogo();
+        curY = 32.0;
       }
       doc.text(wLine, marginX, curY);
-      curY += 4.8;
+      curY += 5.2;
     }
   }
 
   // Tabela de Passageiros (PAX)
-  curY += 4;
+  // Dompdf: Embarcando x=15.26mm, Divisória x=97.67mm, Desembarcados x=107.06mm
+  curY += 6.0;
   if (curY > maxY - 25) {
     doc.addPage();
-    drawBackgroundAndHeader();
-    curY = 36;
+    drawBackgroundAndLogo();
+    curY = 32.0;
   }
 
   const tableStartY = curY;
-  const col1X = marginX;
-  const col1Width = 84;
-  const dividerX = marginX + col1Width + 2; // ~101mm
-  const col2X = dividerX + 4; // ~105mm
-  const col2Width = 86;
+  const col1X = 15.26; // 43.27 pt
+  const col1Width = 78.0;
+  const dividerX = 97.67; // 276.85 pt
+  const col2X = 107.06; // 303.48 pt
+  const col2Width = 84.0;
+  const paxRowHeight = 5.66; // 16.05 pt
 
   doc.setFont('times', 'bold');
-  doc.setFontSize(12.5);
+  doc.setFontSize(12.0); // 12.0 pt oficial Dompdf
   doc.text('Nomes Passageiros Embarcando:', col1X, curY);
   doc.text('Nomes Passageiros Desembarcados:', col2X, curY);
   curY += 6.5;
@@ -307,7 +310,7 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
   const maxPax = Math.max(rawPax1.length, rawPax2.length, 1);
 
   doc.setFont('times', 'normal');
-  doc.setFontSize(fontSizeCorpo);
+  doc.setFontSize(fontSizeCorpo); // 10.5 pt
 
   let paxTableEndY = curY;
 
@@ -319,13 +322,13 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
       // Desenha linha divisória da página anterior antes de quebrar
       doc.setDrawColor(204, 204, 204);
       doc.setLineWidth(0.3);
-      doc.line(dividerX, tableStartY + 2, dividerX, curY);
+      doc.line(dividerX, tableStartY - 1.5, dividerX, curY);
 
       doc.addPage();
-      drawBackgroundAndHeader();
-      curY = 36;
+      drawBackgroundAndLogo();
+      curY = 32.0;
       doc.setFont('times', 'bold');
-      doc.setFontSize(12.5);
+      doc.setFontSize(12.0);
       doc.text('Nomes Passageiros Embarcando:', col1X, curY);
       doc.text('Nomes Passageiros Desembarcados:', col2X, curY);
       curY += 6.5;
@@ -343,14 +346,14 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
       const wrappedP2 = doc.splitTextToSize(cleanP2, col2Width);
       doc.text(wrappedP2[0] || cleanP2, col2X, curY);
     }
-    curY += 4.8;
+    curY += paxRowHeight;
     paxTableEndY = curY;
   }
 
   // Linha divisória vertical entre colunas
   doc.setDrawColor(204, 204, 204);
   doc.setLineWidth(0.3);
-  doc.line(dividerX, tableStartY + 2, dividerX, paxTableEndY);
+  doc.line(dividerX, tableStartY - 1.5, dividerX, paxTableEndY);
 
   // Anexos Fotográficos (Cada anexo ocupa uma nova página dedicada)
   const fotos = data.fotos || [];
@@ -359,16 +362,16 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     if (!imgSrc) continue;
 
     doc.addPage();
-    drawBackgroundAndHeader();
+    drawBackgroundAndLogo();
 
     const fotoTitulo = foto.titulo || 'ANEXO FOTOGRÁFICO';
     doc.setFont('times', 'bold');
     doc.setFontSize(14);
-    doc.text(fotoTitulo, 105, 25, { align: 'center' });
+    doc.text(fotoTitulo, 105.0, 25.0, { align: 'center' });
     const ftW = doc.getTextWidth(fotoTitulo);
     doc.setLineWidth(0.35);
     doc.setDrawColor(0, 0, 0);
-    doc.line(105 - ftW / 2, 26.5, 105 + ftW / 2, 26.5);
+    doc.line(105.0 - ftW / 2, 26.5, 105.0 + ftW / 2, 26.5);
 
     try {
       const dims = await getImageDimensions(imgSrc);
@@ -382,8 +385,8 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
         w = (dims.width / dims.height) * maxH;
       }
 
-      const imgX = 15 + (maxW - w) / 2;
-      const imgY = 35 + (maxH - h) / 2;
+      const imgX = 15.0 + (maxW - w) / 2;
+      const imgY = 35.0 + (maxH - h) / 2;
 
       const isPng = imgSrc.startsWith('data:image/png') || imgSrc.toLowerCase().endsWith('.png');
       const format = isPng ? 'PNG' : 'JPEG';
