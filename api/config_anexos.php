@@ -8,7 +8,7 @@
 
 // Chave secreta de autenticação entre o aplicativo e a sua hospedagem PHP.
 // Recomenda-se manter uma chave forte e nunca compartilhá-la publicamente.
-define('API_SECRET_KEY', 'MMS_SECURE_STORAGE_KEY_2026_xK9#vL2$pQ8');
+define('API_SECRET_KEY', 'e94a8f61c32b50d998a4c146e28fb05cf711d9546059d2489e2171ec55fb8f29');
 
 // Diretório local onde os arquivos físicos serão salvos
 define('STORAGE_DIR', __DIR__ . '/storage_anexos/');
@@ -38,3 +38,4 @@ function getApiBaseUrl(): string {
     $scriptDir = str_replace('\\', '/', $scriptDir);
     return rtrim($protocol . $host . $scriptDir, '/');
 }
+

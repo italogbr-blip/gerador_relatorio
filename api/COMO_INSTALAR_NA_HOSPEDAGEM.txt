@@ -72,7 +72,7 @@ Faça o teste no seu próprio navegador:
 Você pode testar o upload de uma foto de teste pelo PowerShell ou terminal:
 
 curl -X POST "https://seusite.com.br/api/upload_anexo.php" \
-  -H "X-API-KEY: MMS_SECURE_STORAGE_KEY_2026_xK9#vL2$pQ8" \
+  -H "X-API-KEY: e94a8f61c32b50d998a4c146e28fb05cf711d9546059d2489e2171ec55fb8f29" \
   -F "foto=@foto_teste.jpg"
 
 RESPOSTA ESPERADA (JSON):
@@ -110,7 +110,7 @@ export async function enviarAnexoParaHospedagem(uriLocalOuBlob: string | Blob): 
   const resposta = await fetch('https://seusite.com.br/api/upload_anexo.php', {
     method: 'POST',
     headers: {
-      'X-API-KEY': 'MMS_SECURE_STORAGE_KEY_2026_xK9#vL2$pQ8',
+      'X-API-KEY': 'e94a8f61c32b50d998a4c146e28fb05cf711d9546059d2489e2171ec55fb8f29',
     },
     body: formData,
   });
