@@ -2846,6 +2846,62 @@ export default function ReportGenerator() {
     alinhamentoInfo: currentData.alinhamentoInfo,
   });
 
+  const formatPaxField = (
+    fieldId: 'field-pax1' | 'field-pax2',
+    currentValue: string,
+    command: 'bold' | 'italic' | 'underline' | 'topic',
+    updateFn: (val: string) => void
+  ) => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const el = document.getElementById(fieldId) as HTMLTextAreaElement | HTMLInputElement | null;
+      if (el) {
+        el.focus();
+        const start = el.selectionStart ?? currentValue.length;
+        const end = el.selectionEnd ?? currentValue.length;
+        let newText = currentValue;
+        let newPos = start;
+
+        if (command === 'topic') {
+          const prefix = start > 0 && currentValue[start - 1] !== '\n' ? '\n▪ ' : '▪ ';
+          newText = currentValue.substring(0, start) + prefix + currentValue.substring(end);
+          newPos = start + prefix.length;
+        } else {
+          const openTag = command === 'bold' ? '*' : command === 'italic' ? '_' : '[';
+          const closeTag = command === 'bold' ? '*' : command === 'italic' ? '_' : ']';
+          if (start !== end) {
+            const selected = currentValue.substring(start, end);
+            newText = currentValue.substring(0, start) + openTag + selected + closeTag + currentValue.substring(end);
+            newPos = end + openTag.length + closeTag.length;
+          } else {
+            const placeholder = command === 'bold' ? 'Nome' : 'Texto';
+            newText = currentValue.substring(0, start) + openTag + placeholder + closeTag + currentValue.substring(end);
+            newPos = start + openTag.length + placeholder.length + closeTag.length;
+          }
+        }
+
+        updateFn(newText);
+        setTimeout(() => {
+          try {
+            el.focus();
+            el.setSelectionRange(newPos, newPos);
+          } catch (_) {}
+        }, 15);
+        return;
+      }
+    }
+
+    // Fallback nativo
+    let newText = currentValue;
+    if (command === 'topic') {
+      newText = currentValue + (currentValue.endsWith('\n') || !currentValue ? '▪ ' : '\n▪ ');
+    } else {
+      const openTag = command === 'bold' ? '*' : command === 'italic' ? '_' : '[';
+      const closeTag = command === 'bold' ? '*' : command === 'italic' ? '_' : ']';
+      newText = currentValue + ` ${openTag}Nome${closeTag}`;
+    }
+    updateFn(newText);
+  };
+
   const handleBaixarPdf = async () => {
     setIsExportingPdf(true);
     try {
@@ -4354,6 +4410,46 @@ export default function ReportGenerator() {
                   <View style={styles.paxHeaderBadgeEmbarque}>
                     <Text style={styles.paxTitleEmbarque}>EMBARCANDO</Text>
                   </View>
+
+                  <View style={styles.paxToolbar}>
+                    <TouchableOpacity
+                      style={styles.toolbarBtn}
+                      onPress={() => formatPaxField('field-pax1', currentData.pax1, 'bold', (val) => updateCurrentTab({ pax1: val }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.toolbarBtnText, { fontWeight: 'bold' }]}>B</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.toolbarBtn}
+                      onPress={() => formatPaxField('field-pax1', currentData.pax1, 'italic', (val) => updateCurrentTab({ pax1: val }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.toolbarBtnText, { fontStyle: 'italic' }]}>I</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.toolbarBtn}
+                      onPress={() => formatPaxField('field-pax1', currentData.pax1, 'underline', (val) => updateCurrentTab({ pax1: val }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.toolbarBtnText, { textDecorationLine: 'underline' }]}>U</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.toolbarDivider} />
+
+                    <View style={[styles.toolbarBtn, styles.toolbarBtnActive]}>
+                      <Text style={[styles.toolbarBtnText, styles.toolbarBtnTextActive]}>Esquerda</Text>
+                    </View>
+
+                    <View style={styles.toolbarDivider} />
+
+                    <TouchableOpacity
+                      style={styles.toolbarBtn}
+                      onPress={() => formatPaxField('field-pax1', currentData.pax1, 'topic', (val) => updateCurrentTab({ pax1: val }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.toolbarBtnText}>▪ Inserir Tópico</Text>
+                    </TouchableOpacity>
+                  </View>
                   <TextInput
                     nativeID="field-pax1"
                     id="field-pax1"
@@ -4376,6 +4472,46 @@ export default function ReportGenerator() {
                 <View style={styles.paxBoxDesembarque}>
                   <View style={styles.paxHeaderBadgeDesembarque}>
                     <Text style={styles.paxTitleDesembarque}>DESEMBARCANDO</Text>
+                  </View>
+
+                  <View style={styles.paxToolbar}>
+                    <TouchableOpacity
+                      style={styles.toolbarBtn}
+                      onPress={() => formatPaxField('field-pax2', currentData.pax2, 'bold', (val) => updateCurrentTab({ pax2: val }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.toolbarBtnText, { fontWeight: 'bold' }]}>B</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.toolbarBtn}
+                      onPress={() => formatPaxField('field-pax2', currentData.pax2, 'italic', (val) => updateCurrentTab({ pax2: val }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.toolbarBtnText, { fontStyle: 'italic' }]}>I</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.toolbarBtn}
+                      onPress={() => formatPaxField('field-pax2', currentData.pax2, 'underline', (val) => updateCurrentTab({ pax2: val }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.toolbarBtnText, { textDecorationLine: 'underline' }]}>U</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.toolbarDivider} />
+
+                    <View style={[styles.toolbarBtn, styles.toolbarBtnActive]}>
+                      <Text style={[styles.toolbarBtnText, styles.toolbarBtnTextActive]}>Esquerda</Text>
+                    </View>
+
+                    <View style={styles.toolbarDivider} />
+
+                    <TouchableOpacity
+                      style={styles.toolbarBtn}
+                      onPress={() => formatPaxField('field-pax2', currentData.pax2, 'topic', (val) => updateCurrentTab({ pax2: val }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.toolbarBtnText}>▪ Inserir Tópico</Text>
+                    </TouchableOpacity>
                   </View>
                   <TextInput
                     nativeID="field-pax2"
@@ -6695,6 +6831,18 @@ const styles = StyleSheet.create({
   },
   paxGrid: {
     gap: 16,
+  },
+  paxToolbar: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    padding: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   paxBoxEmbarque: {
     backgroundColor: 'rgba(236, 253, 245, 0.3)',

@@ -339,15 +339,22 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     }
 
     if (p1) {
-      const cleanP1 = p1.replace(/\*/g, '');
+      const isBold = p1.includes('*');
+      const isItalic = p1.includes('_');
+      doc.setFont('times', isBold ? 'bold' : isItalic ? 'italic' : 'normal');
+      const cleanP1 = p1.replace(/[\*_\[\]]/g, '').replace(/▪/g, '•');
       const wrappedP1 = doc.splitTextToSize(cleanP1, col1Width);
       doc.text(wrappedP1[0] || cleanP1, col1X, curY);
     }
     if (p2) {
-      const cleanP2 = p2.replace(/\*/g, '');
+      const isBold = p2.includes('*');
+      const isItalic = p2.includes('_');
+      doc.setFont('times', isBold ? 'bold' : isItalic ? 'italic' : 'normal');
+      const cleanP2 = p2.replace(/[\*_\[\]]/g, '').replace(/▪/g, '•');
       const wrappedP2 = doc.splitTextToSize(cleanP2, col2Width);
       doc.text(wrappedP2[0] || cleanP2, col2X, curY);
     }
+    doc.setFont('times', 'normal');
     curY += paxRowHeight;
     paxTableEndY = curY;
   }
