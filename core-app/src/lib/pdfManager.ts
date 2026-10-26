@@ -3,6 +3,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { gerarHtmlPdfFidelidade, ReportPdfData } from './pdfHtmlGenerator';
 import { formatReportPdfUrl } from './config';
+import { gerarVectorPdf } from './vectorPdfGenerator';
 
 
 export function gerarNomeArquivoPdf(dados: {
@@ -37,30 +38,6 @@ export function gerarNomeArquivoPdf(dados: {
   return nomeArquivo;
 }
 
-let jsPdfClass: any = null;
-let html2canvasFunc: any = null;
-
-async function getPdfEngines() {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
-  if (!jsPdfClass) {
-    try {
-      const mod = await import('jspdf');
-      jsPdfClass = mod.jsPDF || mod.default || mod;
-    } catch (e) {
-      console.warn('jspdf load warning:', e);
-    }
-  }
-  if (!html2canvasFunc) {
-    try {
-      const mod = await import('html2canvas');
-      html2canvasFunc = mod.default || mod;
-    } catch (e) {
-      console.warn('html2canvas load warning:', e);
-    }
-  }
-  return { jsPDF: jsPdfClass, html2canvas: html2canvasFunc };
-}
-
 /**
  * Converte dados do relatório em documento HTML completo e nome de arquivo
  */
@@ -71,7 +48,8 @@ export function compilarHtmlRelatorio(dados: ReportPdfData): { docHtml: string; 
 }
 
 /**
- * Gera o Blob do PDF 100% VETORIAL (priorizando o motor DomPDF oficial do sistema)
+ * Gera o Blob do PDF 100% VETORIAL NATIVO (equivalente ao DomPDF, com fontes vetoriais,
+ * textos selecionáveis, linhas nítidas e fotos em alta resolução sem perda de qualidade)
  */
 export async function gerarPdfBlob(
   dados: ReportPdfData,
@@ -96,7 +74,18 @@ export async function gerarPdfBlob(
     } catch (_) { }
   }
 
-  // 2. Compilação Nativa Mobile (iOS / Android em runtime React Native) - Gera PDF vetorial nativo via motor do OS
+  // 2. Geração 100% VETORIAL NATIVA via jsPDF (DomPDF em TypeScript)
+  try {
+    const doc = await gerarVectorPdf(dados);
+    const vectorBlob: Blob = doc.output('blob');
+    if (vectorBlob && vectorBlob.size > 1000) {
+      return { blob: vectorBlob, nomeArquivo };
+    }
+  } catch (err) {
+    console.warn('Geração vetorial direta via jsPDF encontrou advertência, acionando fallback:', err);
+  }
+
+  // 3. Fallback Nativo Mobile (iOS / Android em runtime React Native)
   if (Platform.OS !== 'web') {
     const { uri } = await Print.printToFileAsync({ html: docHtml });
     const response = await fetch(uri);
@@ -104,96 +93,7 @@ export async function gerarPdfBlob(
     return { blob, nomeArquivo };
   }
 
-  // 3. Geração no Navegador Web via iframe isolado + html2canvas + jsPDF (Renderização 100% fiel sem página em branco)
-  const engines = await getPdfEngines();
-  if (engines?.jsPDF && typeof document !== 'undefined') {
-    const { jsPDF: JsPdfConstructor } = engines;
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.top = '0';
-    iframe.style.left = '0';
-    iframe.style.width = '794px';
-    iframe.style.height = '1123px';
-    iframe.style.zIndex = '-9999';
-    iframe.style.opacity = '0.01';
-    iframe.style.border = 'none';
-    iframe.style.pointerEvents = 'none';
-    document.body.appendChild(iframe);
-
-    try {
-      const idoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!idoc) throw new Error('Não foi possível inicializar iframe do PDF');
-
-      idoc.open();
-      idoc.write(docHtml);
-      idoc.close();
-
-      // Aguarda renderização completa de estilos, fontes e imagens base64
-      await new Promise((r) => setTimeout(r, 450));
-
-      const pages = idoc.querySelectorAll('.mms-pdf-page');
-
-      if (pages && pages.length > 0 && engines.html2canvas) {
-        const pdf = new JsPdfConstructor({
-          orientation: 'portrait',
-          unit: 'pt',
-          format: 'a4',
-          compress: true,
-        });
-
-        for (let i = 0; i < pages.length; i++) {
-          const pageEl = pages[i] as HTMLElement;
-          const canvas = await engines.html2canvas(pageEl, {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            width: 794,
-            height: 1123,
-            windowWidth: 794,
-            windowHeight: 1123,
-          });
-
-          const imgData = canvas.toDataURL('image/jpeg', 0.98);
-          if (i > 0) {
-            pdf.addPage('a4', 'portrait');
-          }
-          pdf.addImage(imgData, 'JPEG', 0, 0, 595.28, 841.89, undefined, 'FAST');
-        }
-
-        const vectorBlob: Blob = pdf.output('blob');
-        return { blob: vectorBlob, nomeArquivo };
-      } else if (typeof (JsPdfConstructor as any).prototype.html === 'function') {
-        const pdf = new JsPdfConstructor({
-          orientation: 'portrait',
-          unit: 'pt',
-          format: 'a4',
-          compress: true,
-        });
-        await new Promise<void>((resolve, reject) => {
-          (pdf as any).html(idoc.body, {
-            callback: () => resolve(),
-            autoPaging: 'text',
-            x: 0,
-            y: 0,
-            width: 595.28,
-            windowWidth: 794,
-          }).catch(reject);
-        });
-        const vectorBlob: Blob = pdf.output('blob');
-        return { blob: vectorBlob, nomeArquivo };
-      }
-    } catch (e) {
-      console.warn('Erro ao compilar PDF via iframe/canvas:', e);
-    } finally {
-      if (iframe.parentNode) {
-        iframe.parentNode.removeChild(iframe);
-      }
-    }
-  }
-
-  // Fallback final
+  // 4. Fallback Web final
   const { uri } = await Print.printToFileAsync({ html: docHtml });
   const response = await fetch(uri);
   const blob = await response.blob();
