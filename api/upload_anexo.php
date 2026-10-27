@@ -104,7 +104,7 @@ if (!empty($_FILES['foto']) || !empty($_FILES['file'])) {
             exit;
         }
         
-        $tempFilePath = tempnam(sys_get_temp_dir(), 'mms_up_');
+        $tempFilePath = tempnam(sys_get_temp_dir(), 'upload_');
         file_put_contents($tempFilePath, $decoded);
         $fileSize = strlen($decoded);
     }

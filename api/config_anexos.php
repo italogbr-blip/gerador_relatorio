@@ -1,6 +1,6 @@
 <?php
 /**
- * CONFIGURAÇÕES DA API DE ANEXOS SEGUROS MMS
+ * CONFIGURAÇÕES DA API DE ANEXOS SEGUROS
  * 
  * Este arquivo centraliza a chave de segurança e os caminhos
  * para armazenamento protegido de fotos na hospedagem.

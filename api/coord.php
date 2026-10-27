@@ -1,6 +1,6 @@
 <?php
 /**
- * MMS API - Coordenação e Auditoria de Segurança (MySQL)
+ * API - Coordenação e Auditoria de Segurança (MySQL)
  */
 require_once __DIR__ . '/db.php';
 

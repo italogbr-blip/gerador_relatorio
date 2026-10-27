@@ -1,6 +1,6 @@
 <?php
 /**
- * MMS API - Relatórios (MySQL)
+ * API - Relatórios (MySQL)
  */
 require_once __DIR__ . '/db.php';
 

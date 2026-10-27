@@ -1,12 +1,27 @@
 <?php
 /**
- * MMS API - Configurações, Versões do App e Notificações (MySQL)
+ * API - Configurações, Versões do App e Notificações (MySQL)
  */
 require_once __DIR__ . '/db.php';
 
 $pdo = getDatabaseConnection();
 $input = getJsonInput();
 $action = $_GET['action'] ?? ($input['action'] ?? 'obter_versao');
+
+/**
+ * Retorna o nome da tabela de versões ativa no banco
+ */
+function getTabelaVersao(PDO $pdo): string {
+    static $tabela = null;
+    if ($tabela !== null) return $tabela;
+    try {
+        $pdo->query("SELECT 1 FROM versao_app LIMIT 1");
+        $tabela = 'versao_app';
+    } catch (Exception $e) {
+        $tabela = 'mms_versao_app';
+    }
+    return $tabela;
+}
 
 switch ($action) {
     case 'obter_versao':
@@ -45,8 +60,9 @@ switch ($action) {
  * Obtém a versão mais recente registrada no banco
  */
 function obterVersaoAtual(PDO $pdo): void {
+    $tabela = getTabelaVersao($pdo);
     try {
-        $stmt = $pdo->query("SELECT * FROM mms_versao_app ORDER BY id DESC LIMIT 1");
+        $stmt = $pdo->query("SELECT * FROM {$tabela} ORDER BY id DESC LIMIT 1");
         $versao = $stmt->fetch();
 
         if ($versao) {
@@ -73,8 +89,9 @@ function obterVersaoAtual(PDO $pdo): void {
  * Lista todas as versões cadastradas
  */
 function listarVersoes(PDO $pdo): void {
+    $tabela = getTabelaVersao($pdo);
     try {
-        $stmt = $pdo->query("SELECT * FROM mms_versao_app ORDER BY id DESC LIMIT 50");
+        $stmt = $pdo->query("SELECT * FROM {$tabela} ORDER BY id DESC LIMIT 50");
         $versoes = $stmt->fetchAll();
         jsonResponse(['sucesso' => true, 'versoes' => $versoes]);
     } catch (Exception $e) {
@@ -95,12 +112,22 @@ function salvarVersao(PDO $pdo, array $input): void {
     }
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO mms_versao_app (versao, obrigatoria, notas) VALUES (:v, :o, :n)");
+        $tabela = getTabelaVersao($pdo);
+        $stmt = $pdo->prepare("INSERT INTO {$tabela} (versao, obrigatoria, notas) VALUES (:v, :o, :n)");
         $stmt->execute([':v' => $versao, ':o' => $obrigatoria, ':n' => $notas]);
+        $novoId = (int)$pdo->lastInsertId();
+
+        // Tenta também sincronizar na tabela mms_versao_app caso ambas existam
+        if ($tabela !== 'mms_versao_app') {
+            try {
+                $stmtLeg = $pdo->prepare("INSERT INTO mms_versao_app (versao, obrigatoria, notas) VALUES (:v, :o, :n)");
+                $stmtLeg->execute([':v' => $versao, ':o' => $obrigatoria, ':n' => $notas]);
+            } catch (Exception $e) {}
+        }
 
         jsonResponse([
             'sucesso' => true,
-            'id' => (int)$pdo->lastInsertId(),
+            'id' => $novoId,
             'mensagem' => 'Versão registrada com sucesso.'
         ]);
     } catch (Exception $e) {
@@ -118,12 +145,15 @@ function excluirVersao(PDO $pdo, array $input): void {
     }
 
     try {
+        $tabela = getTabelaVersao($pdo);
         if (is_numeric($idOrVersao)) {
-            $stmt = $pdo->prepare("DELETE FROM mms_versao_app WHERE id = :id");
+            $stmt = $pdo->prepare("DELETE FROM {$tabela} WHERE id = :id");
             $stmt->execute([':id' => (int)$idOrVersao]);
+            try { $pdo->prepare("DELETE FROM mms_versao_app WHERE id = :id")->execute([':id' => (int)$idOrVersao]); } catch(Exception $e){}
         } else {
-            $stmt = $pdo->prepare("DELETE FROM mms_versao_app WHERE versao = :v");
+            $stmt = $pdo->prepare("DELETE FROM {$tabela} WHERE versao = :v");
             $stmt->execute([':v' => $idOrVersao]);
+            try { $pdo->prepare("DELETE FROM mms_versao_app WHERE versao = :v")->execute([':v' => $idOrVersao]); } catch(Exception $e){}
         }
         jsonResponse(['sucesso' => true, 'mensagem' => 'Versão removida.']);
     } catch (Exception $e) {

@@ -1,6 +1,6 @@
 <?php
 /**
- * MMS API - Autenticação e Gestão de Usuários (MySQL)
+ * API - Autenticação e Gestão de Usuários (MySQL)
  */
 require_once __DIR__ . '/db.php';
 

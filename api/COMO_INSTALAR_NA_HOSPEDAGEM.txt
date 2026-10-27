@@ -1,17 +1,17 @@
 ================================================================================
 GUIA DE INSTALAÇÃO: API PHP E BANCO DE DADOS MYSQL NA HOSPEDAGEM (HOSTINGER)
-MMS Suporte Logístico • Gerador de Relatórios
+Gerador de Relatórios
 ================================================================================
 
-A aplicação agora se conecta diretamente ao seu banco de dados MySQL na sua
+A aplicação conecta-se diretamente ao seu banco de dados MySQL na sua
 hospedagem Hostinger através da API PHP contida nesta pasta "api/".
 
 --------------------------------------------------------------------------------
 1. ARQUIVOS CONTIDOS NA PASTA "api/"
 --------------------------------------------------------------------------------
 
-├── config_db.php           -> Credenciais diretas do MySQL (caso não use .mms_env)
-├── db.php                  -> Conexão PDO segura (lê .mms_env automaticamente) e auto-criação de tabelas
+├── config_db.php           -> Credenciais diretas do MySQL (DB_HOST, DB_NAME, DB_USER, DB_PASS)
+├── db.php                  -> Conexão PDO segura (lê .env automaticamente) e auto-criação de tabelas
 ├── auth.php                -> Login com bcrypt, cadastro, sessão e auditoria de usuários
 ├── relatorios.php          -> CRUD completo de relatórios, filtros, paginação e estatísticas
 ├── coord.php               -> Validação de senha do painel coordenação, bloqueio contra força bruta e logs
@@ -25,20 +25,20 @@ hospedagem Hostinger através da API PHP contida nesta pasta "api/".
 2. COMO CONFIGURAR A CONEXÃO COM O BANCO MYSQL
 --------------------------------------------------------------------------------
 
-A API possui detecção inteligente em duas formas (escolha a que preferir):
+A API possui detecção inteligente em duas formas:
 
-OPÇÃO A (Recomendada - Mantém o padrão original):
-O arquivo db.php localiza automaticamente o seu arquivo ".mms_env" que já fica
-fora da pasta public_html (na raiz da sua conta Hostinger).
-Se as variáveis DB_HOST, DB_NAME, DB_USER e DB_PASS já estiverem no .mms_env,
+OPÇÃO A (Via arquivo de ambiente):
+O arquivo db.php localiza automaticamente o seu arquivo de ambiente (".env" ou ".mms_env")
+que fica um nível acima da pasta public_html (na raiz da sua conta Hostinger).
+Se as variáveis DB_HOST, DB_NAME, DB_USER e DB_PASS estiverem preenchidas,
 você NÃO precisa alterar absolutamente nada!
 
-OPÇÃO B (Configuração direta):
-Caso prefira, abra o arquivo "api/config_db.php" e informe as credenciais:
-  define('MMS_DB_HOST', 'localhost');
-  define('MMS_DB_NAME', 'seu_banco_aqui');
-  define('MMS_DB_USER', 'seu_usuario_aqui');
-  define('MMS_DB_PASS', 'sua_senha_aqui');
+OPÇÃO B (Configuração direta padronizada):
+Caso prefira, abra o arquivo "api/config_db.php" e informe as credenciais padrões:
+  define('DB_HOST', 'localhost');
+  define('DB_NAME', 'seu_banco_aqui');
+  define('DB_USER', 'seu_usuario_aqui');
+  define('DB_PASS', 'sua_senha_aqui');
 
 --------------------------------------------------------------------------------
 3. COMO SUBIR PARA A HOSPEDAGEM HOSTINGER

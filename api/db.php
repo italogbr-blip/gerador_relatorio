@@ -1,6 +1,6 @@
 <?php
 /**
- * Conexão Central e Utilitários de Banco de Dados MySQL - MMS API
+ * Conexão Central e Utilitários de Banco de Dados MySQL
  */
 
 // -------------------------------------------------------------
@@ -24,12 +24,19 @@ require_once __DIR__ . '/config_db.php';
 
 $envVars = [];
 $envCandidates = [
+    dirname(__DIR__, 6) . '/.env',
     dirname(__DIR__, 6) . '/.mms_env',
+    dirname(__DIR__, 5) . '/.env',
     dirname(__DIR__, 5) . '/.mms_env',
+    dirname(__DIR__, 4) . '/.env',
     dirname(__DIR__, 4) . '/.mms_env',
+    dirname(__DIR__, 3) . '/.env',
     dirname(__DIR__, 3) . '/.mms_env',
+    dirname(__DIR__, 2) . '/.env',
     dirname(__DIR__, 2) . '/.mms_env',
+    dirname(__DIR__) . '/.env',
     dirname(__DIR__) . '/.mms_env',
+    __DIR__ . '/.env',
     __DIR__ . '/.mms_env',
 ];
 
@@ -53,10 +60,10 @@ foreach ($envCandidates as $envFile) {
     }
 }
 
-$dbHost = $envVars['DB_HOST'] ?? (defined('MMS_DB_HOST') ? MMS_DB_HOST : 'localhost');
-$dbName = $envVars['DB_NAME'] ?? (defined('MMS_DB_NAME') ? MMS_DB_NAME : '');
-$dbUser = $envVars['DB_USER'] ?? (defined('MMS_DB_USER') ? MMS_DB_USER : '');
-$dbPass = $envVars['DB_PASS'] ?? (defined('MMS_DB_PASS') ? MMS_DB_PASS : '');
+$dbHost = $envVars['DB_HOST'] ?? (defined('DB_HOST') ? DB_HOST : (defined('MMS_DB_HOST') ? MMS_DB_HOST : 'localhost'));
+$dbName = $envVars['DB_NAME'] ?? (defined('DB_NAME') ? DB_NAME : (defined('MMS_DB_NAME') ? MMS_DB_NAME : ''));
+$dbUser = $envVars['DB_USER'] ?? (defined('DB_USER') ? DB_USER : (defined('MMS_DB_USER') ? MMS_DB_USER : ''));
+$dbPass = $envVars['DB_PASS'] ?? (defined('DB_PASS') ? DB_PASS : (defined('MMS_DB_PASS') ? MMS_DB_PASS : ''));
 
 // Se ainda estiver vazio, tenta carregar do mms_config.php antigo se existir
 if (empty($dbName) && file_exists(dirname(__DIR__) . '/mms_config.php')) {
@@ -81,7 +88,7 @@ function getDatabaseConnection(): PDO {
     if (empty($dbName) || empty($dbUser)) {
         jsonResponse([
             'sucesso' => false,
-            'erro' => 'Configuração do banco de dados MySQL incompleta. Configure o arquivo .mms_env ou api/config_db.php.'
+            'erro' => 'Configuração do banco de dados MySQL incompleta. Configure o arquivo .env ou api/config_db.php.'
         ], 500);
     }
 
@@ -187,7 +194,15 @@ function inicializarTabelasSeNecessario(PDO $pdo): void {
             data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-        // 7. Versão do App
+        // 7. Versão do App (padronizada e legada)
+        $pdo->exec("CREATE TABLE IF NOT EXISTS versao_app (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            versao VARCHAR(30) NOT NULL,
+            obrigatoria TINYINT(1) DEFAULT 0,
+            notas TEXT NULL,
+            data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
         $pdo->exec("CREATE TABLE IF NOT EXISTS mms_versao_app (
             id INT AUTO_INCREMENT PRIMARY KEY,
             versao VARCHAR(30) NOT NULL,
