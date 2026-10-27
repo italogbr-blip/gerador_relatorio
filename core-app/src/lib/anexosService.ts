@@ -3,7 +3,7 @@ import { ANEXOS_API_KEY, getServerBaseUrl } from './config';
 export interface FotoItem {
   id: number;
   uri: string;
-  titulo?: string;
+  titulo: string;
   base64?: string;
 }
 
@@ -55,7 +55,9 @@ export async function uploadFotoAnexo(fotoSrc: string): Promise<string> {
  * Processa um lote de fotos anexadas, enviando as imagens para a hospedagem
  * e substituindo os Base64 pesados pelas URLs leves assinadas.
  */
-export async function processarUploadFotos(fotos: FotoItem[]): Promise<FotoItem[]> {
+export async function processarUploadFotos<T extends { id: number; uri: string; titulo: string; base64?: string }>(
+  fotos: T[]
+): Promise<T[]> {
   if (!fotos || !Array.isArray(fotos) || fotos.length === 0) {
     return [];
   }
