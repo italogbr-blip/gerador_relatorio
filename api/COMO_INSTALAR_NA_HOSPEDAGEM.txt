@@ -1,145 +1,70 @@
 ================================================================================
-GUIA DE INSTALAÇÃO: SISTEMA DE ARMAZENAMENTO SEGURO DE ANEXOS (PHP)
+GUIA DE INSTALAÇÃO: API PHP E BANCO DE DADOS MYSQL NA HOSPEDAGEM (HOSTINGER)
 MMS Suporte Logístico • Gerador de Relatórios
 ================================================================================
 
-Este guia ensina como colocar a pasta "api" na sua hospedagem PHP (Hostinger,
-cPanel, Locaweb, KingHost, VPS, etc.) para salvar as fotos anexadas dos
-relatórios com 100% de segurança e privacidade.
+A aplicação agora se conecta diretamente ao seu banco de dados MySQL na sua
+hospedagem Hostinger através da API PHP contida nesta pasta "api/".
 
 --------------------------------------------------------------------------------
-1. ESTRUTURA DOS ARQUIVOS
---------------------------------------------------------------------------------
-Dentro da pasta "api", você tem os seguintes arquivos prontos:
-
-├── config_anexos.php           -> Configurações, chave secreta e limites
-├── upload_anexo.php            -> Endpoint que recebe e valida as fotos do app
-├── ver_anexo.php               -> Gateway seguro que entrega as imagens autorizadas
-└── storage_anexos/             -> Pasta onde as imagens ficam fisicamente guardadas
-    └── .htaccess               -> Regra que bloqueia o acesso direto de curiosos
-
---------------------------------------------------------------------------------
-2. PASSO A PASSO PARA ENVIAR PARA A HOSPEDAGEM
+1. ARQUIVOS CONTIDOS NA PASTA "api/"
 --------------------------------------------------------------------------------
 
-PASSO 1: Acesse sua hospedagem
-- Abra o gerenciador de arquivos do seu painel (ex: cPanel, hPanel da Hostinger)
-  ou conecte-se via FTP (FileZilla / WinSCP).
-
-PASSO 2: Localize a pasta pública do seu site
-- Geralmente chamada de "public_html", "www" ou a pasta raiz do seu domínio
-  (ex: public_html/ ou subdomínio como api.seusite.com.br).
-
-PASSO 3: Envie a pasta "api" completa
-- Faça o upload da pasta "api" inteira para dentro de "public_html".
-- Seu caminho no servidor ficará assim:
-  public_html/api/config_anexos.php
-  public_html/api/upload_anexo.php
-  public_html/api/ver_anexo.php
-  public_html/api/storage_anexos/.htaccess
-
-PASSO 4: Ajustar permissão de escrita da pasta "storage_anexos"
-- No gerenciador de arquivos ou FileZilla, clique com o botão direito na pasta:
-  public_html/api/storage_anexos/
-- Selecione "Permissões de Arquivo" (ou "Permissions" / "chmod")
-- Defina como: 755 (ou 775 se o servidor exigir permissão de grupo).
-  Isso permite que o PHP grave as novas fotos enviadas pelos usuários.
+├── config_db.php           -> Credenciais diretas do MySQL (caso não use .mms_env)
+├── db.php                  -> Conexão PDO segura (lê .mms_env automaticamente) e auto-criação de tabelas
+├── auth.php                -> Login com bcrypt, cadastro, sessão e auditoria de usuários
+├── relatorios.php          -> CRUD completo de relatórios, filtros, paginação e estatísticas
+├── coord.php               -> Validação de senha do painel coordenação, bloqueio contra força bruta e logs
+├── configuracoes.php       -> Controle de versão do app e avisos/popups ativos
+├── config_anexos.php       -> Configuração e chaves de segurança dos anexos fotográficos
+├── upload_anexo.php        -> Upload criptografado e seguro de fotos
+├── ver_anexo.php           -> Gateway de entrega autorizada das fotos
+└── storage_anexos/         -> Armazenamento protegido das imagens (.htaccess 403 Forbidden)
 
 --------------------------------------------------------------------------------
-3. COMO TESTAR SE O BLOQUEIO DE SEGURANÇA ESTÁ FUNCIONANDO
+2. COMO CONFIGURAR A CONEXÃO COM O BANCO MYSQL
 --------------------------------------------------------------------------------
 
-Faça o teste no seu próprio navegador:
+A API possui detecção inteligente em duas formas (escolha a que preferir):
 
-1. Tente acessar diretamente a pasta de fotos:
-   https://seusite.com.br/api/storage_anexos/
+OPÇÃO A (Recomendada - Mantém o padrão original):
+O arquivo db.php localiza automaticamente o seu arquivo ".mms_env" que já fica
+fora da pasta public_html (na raiz da sua conta Hostinger).
+Se as variáveis DB_HOST, DB_NAME, DB_USER e DB_PASS já estiverem no .mms_env,
+você NÃO precisa alterar absolutamente nada!
 
-   O QUE DEVE ACONTECER:
-   O servidor DEVE exibir: "403 Forbidden" (Acesso Proibido).
-   Ninguém conseguirá listar os arquivos nem ver o que tem dentro.
-
-2. Tente acessar sem token uma imagem qualquer:
-   https://seusite.com.br/api/ver_anexo.php
-
-   O QUE DEVE ACONTECER:
-   O servidor responderá: "Parâmetros de arquivo ou token de assinatura ausentes."
-   A imagem SÓ abre se tiver o token de assinatura criptográfica correto.
-
---------------------------------------------------------------------------------
-4. COMO TESTAR O UPLOAD (EXEMPLO VIA CURL OU TERMINAL)
---------------------------------------------------------------------------------
-
-Você pode testar o upload de uma foto de teste pelo PowerShell ou terminal:
-
-curl -X POST "https://seusite.com.br/api/upload_anexo.php" \
-  -H "X-API-KEY: e94a8f61c32b50d998a4c146e28fb05cf711d9546059d2489e2171ec55fb8f29" \
-  -F "foto=@foto_teste.jpg"
-
-RESPOSTA ESPERADA (JSON):
-{
-  "sucesso": true,
-  "mensagem": "Anexo salvo com sucesso e protegido.",
-  "arquivo_id": "a1b2c3d4e5f6..._1730000000.jpg",
-  "mime_type": "image/jpeg",
-  "tamanho_bytes": 245120,
-  "url_visualizacao": "https://seusite.com.br/api/ver_anexo.php?file=...&token=..."
-}
+OPÇÃO B (Configuração direta):
+Caso prefira, abra o arquivo "api/config_db.php" e informe as credenciais:
+  define('MMS_DB_HOST', 'localhost');
+  define('MMS_DB_NAME', 'seu_banco_aqui');
+  define('MMS_DB_USER', 'seu_usuario_aqui');
+  define('MMS_DB_PASS', 'sua_senha_aqui');
 
 --------------------------------------------------------------------------------
-5. COMO CONECTAR AO SEU APP (TYPESCRIPT / REACT NATIVE)
+3. COMO SUBIR PARA A HOSPEDAGEM HOSTINGER
 --------------------------------------------------------------------------------
 
-No seu aplicativo, adicione esta função para enviar as fotos:
-
-```typescript
-export async function enviarAnexoParaHospedagem(uriLocalOuBlob: string | Blob): Promise<string> {
-  const formData = new FormData();
-
-  if (typeof uriLocalOuBlob === 'string') {
-    // Foto capturada na câmera do celular (URI nativa)
-    formData.append('foto', {
-      uri: uriLocalOuBlob,
-      name: 'anexo.jpg',
-      type: 'image/jpeg',
-    } as any);
-  } else {
-    // Foto selecionada no navegador Web (Blob)
-    formData.append('foto', uriLocalOuBlob, 'anexo.jpg');
-  }
-
-  const resposta = await fetch('https://seusite.com.br/api/upload_anexo.php', {
-    method: 'POST',
-    headers: {
-      'X-API-KEY': 'e94a8f61c32b50d998a4c146e28fb05cf711d9546059d2489e2171ec55fb8f29',
-    },
-    body: formData,
-  });
-
-  const json = await resposta.json();
-  if (!json.sucesso) {
-    throw new Error(json.erro || 'Falha ao salvar anexo na hospedagem');
-  }
-
-  // Retorna a URL assinada segura gerada pela hospedagem
-  return json.url_visualizacao;
-}
-```
+1. Acesse o hPanel da Hostinger -> "Gerenciador de Arquivos" (File Manager).
+2. Vá até a pasta pública onde o domínio relatorios.atmai.com.br está apontado
+   (geralmente "public_html/").
+3. Envie a pasta "api/" inteira para dentro de "public_html/".
+4. Verifique as permissões da pasta "public_html/api/storage_anexos/":
+   - Deve estar com permissão 755 (ou 775) para escrita das fotos.
 
 --------------------------------------------------------------------------------
-6. DICAS DE SEGURANÇA AVANÇADA
+4. TESTES DE FUNCIONAMENTO
 --------------------------------------------------------------------------------
 
-- CHAVE SECRETA (API_SECRET_KEY):
-  Se desejar alterar a chave secreta padrão, abra o arquivo "config_anexos.php",
-  altere o valor de "API_SECRET_KEY" e coloque a mesma chave no seu app.
+1. Teste de Conexão com o MySQL:
+   Acesse no navegador:
+   https://relatorios.atmai.com.br/api/configuracoes.php?action=obter_versao
 
-- LIMITE DE TAMANHO:
-  Por padrão, o arquivo aceita até 12MB por foto (configurado em config_anexos.php).
-  Se suas fotos forem muito pesadas, verifique no painel PHP se as diretivas
-  "upload_max_filesize" e "post_max_size" estão com pelo menos 16M ou 32M.
+   Retorno esperado (JSON):
+   {"sucesso":true,"versao":"v...","obrigatoria":false,"notas":""}
 
-- BANCO DE DADOS LEVE:
-  Ao salvar o relatório no Supabase, salve no campo de fotos a 'url_visualizacao'
-  em vez de guardar uma string gigante em Base64. Isso deixará seu banco até
-  99% mais rápido e muito mais leve!
-================================================================================
+2. Teste de Segurança da Pasta de Fotos:
+   Acesse:
+   https://relatorios.atmai.com.br/api/storage_anexos/
+
+   Retorno esperado:
+   403 Forbidden (Acesso Proibido - proteção ativa contra curiosos).
