@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { listarRelatoriosApi, excluirRelatorioApi } from '../lib/api';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
 import { getSavedSessionSync, getValidatedUserSession, authenticateUser, escapeOrValue, isUserCoordinator, AppUserSession } from '../lib/auth';
 import { gerarHtmlPdfFidelidade, ReportPdfData } from '../lib/pdfHtmlGenerator';
@@ -134,10 +135,30 @@ export default function MeusRelatoriosScreen() {
     }
   };
 
-  // Carregar Relatórios do Supabase
+  // Carregar Relatórios do Supabase / MySQL
   const fetchRelatorios = async (sessionParam = userSession) => {
     setLoading(true);
     try {
+      // 0. Tenta carregar primeiro da API MySQL na hospedagem
+      try {
+        const apiRes = await listarRelatoriosApi({
+          usuario_id: sessionParam?.user?.id,
+          empresa: filtroEmpresa !== 'TODAS' ? filtroEmpresa : undefined,
+          busca: filtroBusca.trim() || undefined,
+          data_inicio: filtroDataInicio || undefined,
+          data_fim: filtroDataFim || undefined,
+          pagina,
+          limite: porPagina,
+        });
+
+        if (apiRes.sucesso && (apiRes.relatorios.length > 0 || apiRes.total > 0)) {
+          setRelatorios(apiRes.relatorios);
+          setTotalRegistros(apiRes.total);
+          setLoading(false);
+          return;
+        }
+      } catch (_) {}
+
       let query = supabase
         .from('relatorios')
         .select('*', { count: 'exact' });
@@ -235,6 +256,9 @@ export default function MeusRelatoriosScreen() {
       onConfirm: async () => {
         setCustomDialog((prev) => ({ ...prev, visible: false }));
         setLoading(true);
+        try {
+          await excluirRelatorioApi(id);
+        } catch (_) {}
         let deleteQuery = supabase.from('relatorios').delete().eq('id', id);
         if (userSession?.user?.id && !isUserCoordinator(userSession)) {
           deleteQuery = deleteQuery.eq('usuario_id', userSession.user.id);

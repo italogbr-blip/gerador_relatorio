@@ -1,6 +1,14 @@
 import { Platform } from 'react-native';
 import bcrypt from 'bcryptjs';
 import { supabase } from './supabase';
+import {
+  loginUsuarioApi,
+  cadastrarUsuarioApi,
+  validarSessaoApi,
+  verificarSenhaCoordApi,
+  atualizarStatusUsuarioApi,
+  carregarHistoricoAprovacoesApi,
+} from './api';
 
 export interface AppUserSession {
   user: {
@@ -162,8 +170,32 @@ export function saveSessionLocal(session: AppUserSession | null) {
  */
 export async function getValidatedUserSession(): Promise<AppUserSession | null> {
   try {
-    // 1. Verifica se há sessão local de usuário da tabela public.usuarios
     const local = getSavedSessionSync();
+    const rememberToken = getRememberTokenLocal();
+
+    // 0. Valida contra a API MySQL na hospedagem
+    try {
+      if (rememberToken || local?.user?.id) {
+        const apiRes = await validarSessaoApi(rememberToken || undefined, local?.user?.id);
+        if (apiRes.sucesso && apiRes.user) {
+          const refreshedSession: AppUserSession = {
+            user: {
+              id: apiRes.user.id,
+              email: apiRes.user.email || `${apiRes.user.username}@app.local`,
+              user_metadata: {
+                name: apiRes.user.nome || apiRes.user.username,
+                username: apiRes.user.username,
+                nivel_autoridade: Number(apiRes.user.nivel_autoridade || 1),
+              },
+            },
+          };
+          saveSessionLocal(refreshedSession);
+          return refreshedSession;
+        }
+      }
+    } catch (_) {}
+
+    // 1. Verifica se há sessão local de usuário da tabela public.usuarios
     if (local?.user?.id) {
       let query = supabase.from('usuarios').select('id, nome, username, email, nivel_autoridade');
 
@@ -209,7 +241,6 @@ export async function getValidatedUserSession(): Promise<AppUserSession | null> 
     }
 
     // 2. Verifica login automático via remember_token (idêntico ao mms_config.php linhas 138-154)
-    const rememberToken = getRememberTokenLocal();
     if (rememberToken) {
       const { data: tokenUser, error: tokenErr } = await supabase
         .from('usuarios')
@@ -511,6 +542,28 @@ export async function unlockCoordinatorPanel(
   }
 
   try {
+    // 0. Valida contra a API de coordenação MySQL na hospedagem
+    try {
+      const coordRes = await verificarSenhaCoordApi(senhaDigitada, login);
+      if (coordRes.sucesso) {
+        const session: AppUserSession = {
+          user: {
+            id: 1,
+            email: `${login || 'coordenador'}@app.local`,
+            user_metadata: {
+              name: 'Coordenador',
+              username: login || 'coordenador',
+              nivel_autoridade: 2,
+            },
+          },
+        };
+        saveSessionLocal(session);
+        return { success: true, session };
+      } else if (coordRes.erro && !coordRes.erro.includes('HTTP')) {
+        return { success: false, error: coordRes.erro };
+      }
+    } catch (_) {}
+
     // 1. Tentar RPC se existir no servidor
     try {
       const { data: rpcData, error: rpcErr } = await supabase.rpc('desbloquear_painel_coord', {
@@ -656,6 +709,37 @@ export async function authenticateUser(
   }
 
   try {
+    // 0. Autenticação na API MySQL da hospedagem
+    try {
+      const apiLogin = await loginUsuarioApi(inputStr, pass);
+      if (apiLogin.sucesso && apiLogin.user) {
+        const u = apiLogin.user;
+        if (u.token) {
+          saveRememberTokenLocal(u.token);
+        }
+        saveLoginAttemptState(inputStr, null);
+        const sessionObj: AppUserSession = {
+          user: {
+            id: u.id,
+            email: u.email || `${u.username}@app.local`,
+            user_metadata: {
+              name: u.nome || u.username,
+              username: u.username,
+              nivel_autoridade: Number(u.nivel_autoridade || 1),
+            },
+          },
+        };
+        saveSessionLocal(sessionObj);
+        return { success: true, session: sessionObj };
+      } else if (apiLogin.erro && !apiLogin.erro.includes('HTTP') && !apiLogin.erro.includes('Failed to fetch')) {
+        saveLoginAttemptState(inputStr, {
+          tentativas: attemptState.tentativas + 1,
+          bloqueadoAte: attemptState.tentativas + 1 >= MAX_TENTATIVAS ? now + TEMPO_BLOQUEIO_MS : 0,
+        });
+        return { success: false, error: apiLogin.erro };
+      }
+    } catch (_) {}
+
     let authenticatedDbUser: any = null;
 
     // A) Busca direta na tabela public.usuarios (funciona para todos os usuários migrados do MySQL e novos)
@@ -822,6 +906,24 @@ export async function registerUser(params: {
     return { success: false, message: 'A senha deve ter pelo menos 6 caracteres.' };
   }
 
+  // 0. Cadastro direto na API MySQL da hospedagem
+  try {
+    const apiReg = await cadastrarUsuarioApi({
+      username: user,
+      nome,
+      email,
+      senha: pass,
+    });
+    if (apiReg.sucesso && apiReg.user) {
+      if (apiReg.user.token) {
+        saveRememberTokenLocal(apiReg.user.token);
+      }
+      return { success: true, message: 'Cadastro realizado com sucesso!', username: user };
+    } else if (apiReg.erro && !apiReg.erro.includes('HTTP') && !apiReg.erro.includes('Failed to fetch')) {
+      return { success: false, message: apiReg.erro };
+    }
+  } catch (_) {}
+
   try {
     // Verifica duplicidade de username ou email (igual ao cadastro.php: SELECT id FROM usuarios WHERE username = ? OR email = ?)
     const { data: existing, error: checkErr } = await supabase
@@ -950,6 +1052,16 @@ export async function aprovarUsuario(
   motivo?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // 0. Tenta atualizar na API MySQL
+    try {
+      await atualizarStatusUsuarioApi({
+        usuario_id: usuarioId,
+        status_aprovacao: 'aprovado',
+        acao: 'aprovado',
+        detalhes: motivo || `Aprovado por ${executadoPor}`,
+      });
+    } catch (_) {}
+
     const { data: userRow } = await supabase
       .from('usuarios')
       .select('id, username, nome, email')
@@ -1000,6 +1112,16 @@ export async function recusarUsuario(
   motivo?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // 0. Tenta atualizar na API MySQL
+    try {
+      await atualizarStatusUsuarioApi({
+        usuario_id: usuarioId,
+        status_aprovacao: 'recusado',
+        acao: 'recusado',
+        detalhes: motivo || `Recusado por ${executadoPor}`,
+      });
+    } catch (_) {}
+
     const { data: userRow } = await supabase
       .from('usuarios')
       .select('id, username, nome, email')
@@ -1045,6 +1167,11 @@ export async function recusarUsuario(
  * Carrega o histórico de aprovações e recusas
  */
 export async function carregarHistoricoAprovacoes(): Promise<any[]> {
+  try {
+    const apiHist = await carregarHistoricoAprovacoesApi();
+    if (apiHist && apiHist.length > 0) return apiHist;
+  } catch (_) {}
+
   try {
     const { data, error } = await supabase
       .from('historico_aprovacoes_usuarios')

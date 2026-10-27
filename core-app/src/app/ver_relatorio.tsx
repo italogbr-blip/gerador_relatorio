@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { obterRelatorioApi } from '../lib/api';
 import { formatReportPdfUrl } from '../lib/config';
 import {
   baixarPdfRelatorio,
@@ -115,6 +116,32 @@ export default function VerRelatorioScreen() {
         return;
       }
       try {
+        // 0. Tenta carregar pela API MySQL da hospedagem
+        try {
+          const apiRes = await obterRelatorioApi(Number(reportId));
+          if (apiRes.sucesso && apiRes.relatorio) {
+            const data = apiRes.relatorio;
+            setReport(data);
+            const dataExtracted = extractPdfData(data);
+            setPdfData(dataExtracted);
+
+            const html = gerarHtmlPdfFidelidade(dataExtracted);
+            setDocHtml(html);
+
+            if (Platform.OS === 'web') {
+              const rawUrl = data.pdf_url || data.caminho_pdf;
+              const formattedUrl = formatReportPdfUrl(rawUrl);
+              gerarPdfBlob(dataExtracted, formattedUrl)
+                .then((b) => {
+                  cachedBlobRef.current = b;
+                })
+                .catch(() => {});
+            }
+            setLoading(false);
+            return;
+          }
+        } catch (_) {}
+
         const { data, error } = await supabase
           .from('relatorios')
           .select('*')

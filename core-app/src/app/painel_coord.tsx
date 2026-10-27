@@ -15,6 +15,24 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import {
+  obterEstatisticasApi,
+  listarRelatoriosApi,
+  excluirRelatorioApi,
+  listarUsuariosApi,
+  atualizarStatusUsuarioApi,
+  verificarSenhaCoordApi,
+  alterarSenhaCoordApi,
+  listarAcessosFalhosApi,
+  limparAcessosFalhosApi,
+  listarLoginsApi,
+  listarNotificacoesApi,
+  salvarNotificacaoApi,
+  excluirNotificacaoApi,
+  listarVersoesAppApi,
+  salvarVersaoAppApi,
+  excluirVersaoAppApi,
+} from '../lib/api';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
 import {
   baixarPdfRelatorio,
@@ -577,6 +595,15 @@ export default function PainelCoordScreen() {
       let bloqueadosDb: any[] = [];
 
       try {
+        const [apiFalhas, apiLogins] = await Promise.all([
+          listarAcessosFalhosApi(),
+          listarLoginsApi(),
+        ]);
+        if (apiFalhas && apiFalhas.length > 0) falhosDb = apiFalhas;
+        if (apiLogins && apiLogins.length > 0) loginsDb = apiLogins;
+      } catch (_) {}
+
+      try {
         const [resFalhos, resLogins, resBloqueados] = await Promise.all([
           supabase
             .from('coord_acessos_falhos')
@@ -795,6 +822,9 @@ export default function PainelCoordScreen() {
           if (typeof localStorage !== 'undefined') {
             localStorage.removeItem('mms_coord_acessos_falhos');
           }
+          try {
+            await limparAcessosFalhosApi();
+          } catch (_) {}
           await supabase.from('coord_acessos_falhos').delete().neq('id', 0);
           setAcessosFalhos([]);
           showCustomAlert('Sucesso', 'Histórico de acessos falhos limpo com sucesso.');
@@ -958,6 +988,15 @@ export default function PainelCoordScreen() {
 
   const carregarMetricas = async () => {
     try {
+      try {
+        const stats = await obterEstatisticasApi();
+        if (stats.sucesso && stats.estatisticas) {
+          if (stats.estatisticas.total_geral !== undefined) setTotalRelatoriosGeral(stats.estatisticas.total_geral);
+          if (stats.estatisticas.total_hoje !== undefined) setRelatoriosHojeCount(stats.estatisticas.total_hoje);
+          if (stats.estatisticas.total_mes !== undefined) setRelatoriosMesCount(stats.estatisticas.total_mes);
+        }
+      } catch (_) {}
+
       const hojeStr = new Date().toISOString().split('T')[0];
       const agora = new Date();
       const primeiroDiaMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
@@ -1036,6 +1075,24 @@ export default function PainelCoordScreen() {
   const carregarRelatorios = async () => {
     setLoading(true);
     try {
+      try {
+        const apiRes = await listarRelatoriosApi({
+          usuario_id: filtroUsuarioId || 'all',
+          empresa: filtroEmpresa !== 'TODAS' ? filtroEmpresa : undefined,
+          busca: filtroBusca.trim() || undefined,
+          data_inicio: filtroDataInicio ? formatarDataFiltro(filtroDataInicio) : undefined,
+          data_fim: filtroDataFim ? formatarDataFiltro(filtroDataFim) : undefined,
+          pagina: paginaRelatorios,
+          limite: porPagina,
+        });
+        if (apiRes.sucesso && (apiRes.relatorios.length > 0 || apiRes.total > 0)) {
+          setRelatorios(apiRes.relatorios);
+          setTotalRelatoriosGeral(apiRes.total);
+          setLoading(false);
+          return;
+        }
+      } catch (_) {}
+
       let query = supabase
         .from('relatorios')
         .select('*', { count: 'exact' });
@@ -1198,6 +1255,14 @@ export default function PainelCoordScreen() {
 
   const carregarUsuarios = async () => {
     try {
+      try {
+        const apiUsers = await listarUsuariosApi();
+        if (apiUsers.sucesso && apiUsers.usuarios.length > 0) {
+          setUsuarios(apiUsers.usuarios);
+          return;
+        }
+      } catch (_) {}
+
       const { data, error } = await supabase
         .from('usuarios')
         .select('id, nome, username, email, nivel_autoridade, data_cadastro, last_activity, status_aprovacao, aprovado_por, data_aprovacao')
@@ -1268,6 +1333,14 @@ export default function PainelCoordScreen() {
 
   const carregarPopups = async () => {
     try {
+      try {
+        const notifs = await listarNotificacoesApi(true);
+        if (notifs && notifs.length > 0) {
+          setPopups(notifs);
+          return;
+        }
+      } catch (_) {}
+
       const { data, error } = await supabase
         .from('notificacoes')
         .select('*')
@@ -1324,6 +1397,9 @@ export default function PainelCoordScreen() {
       `Atenção: Você está prestes a excluir o relatório #${id} de forma permanente do sistema de demonstração. Deseja prosseguir?`,
       async () => {
         setLoading(true);
+        try {
+          await excluirRelatorioApi(id);
+        } catch (_) {}
         const { error } = await supabase.from('relatorios').delete().eq('id', id);
         if (error) {
           showCustomAlert('Erro', 'Falha ao excluir: ' + error.message);
@@ -1598,6 +1674,9 @@ export default function PainelCoordScreen() {
                 window.dispatchEvent(new CustomEvent('mms_mensagens_atualizadas'));
               }
             } catch (e) {}
+            try {
+              await excluirNotificacaoApi(popupId);
+            } catch (_) {}
           }
           const { error } = await supabase.from('notificacoes').delete().eq('id', popupId);
           if (error) {
@@ -1624,6 +1703,17 @@ export default function PainelCoordScreen() {
     setSalvandoPopup(true);
     try {
       const regraFinal = `${novoPopupFrequencia}${novoPopupDestinatario !== 'todos' ? ':' + novoPopupDestinatario : ''}`;
+
+      try {
+        await salvarNotificacaoApi({
+          titulo: novoPopupTitulo.trim(),
+          mensagem: novoPopupMensagem.trim(),
+          tipo: novoPopupTipo,
+          ativa: 1,
+          regra_exibicao: regraFinal,
+          mostrar_feedback: 1,
+        });
+      } catch (_) {}
 
       const { data, error } = await supabase.from('notificacoes').insert([
         {

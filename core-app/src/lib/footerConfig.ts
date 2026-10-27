@@ -1,5 +1,11 @@
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
+import {
+  obterVersaoAppApi,
+  listarVersoesAppApi,
+  salvarVersaoAppApi,
+  excluirVersaoAppApi,
+} from './api';
 
 export interface FooterConfig {
   prefixo: string;
@@ -115,6 +121,21 @@ export async function fetchLatestAppVersion(): Promise<string> {
       cached = localStorage.getItem('mms_cached_app_version');
     } catch (e) {}
   }
+
+  // 1. Prioriza API MySQL na hospedagem
+  try {
+    const apiRes = await obterVersaoAppApi();
+    if (apiRes.sucesso && apiRes.versao) {
+      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('mms_cached_app_version', apiRes.versao);
+        } catch (e) {}
+      }
+      return apiRes.versao;
+    }
+  } catch (e) {}
+
+  // 2. Fallback Supabase
   try {
     const { data, error } = await supabase
       .from('mms_versao_app')
@@ -143,6 +164,22 @@ export async function fetchAllAppVersions(): Promise<AppVersionRecord[]> {
       if (raw) localList = JSON.parse(raw);
     } catch (e) {}
   }
+
+  // 1. Prioriza API MySQL
+  try {
+    const apiVersoes = await listarVersoesAppApi();
+    if (apiVersoes && apiVersoes.length > 0) {
+      const mapped: AppVersionRecord[] = apiVersoes.map((v: any) => ({
+        id: Number(v.id),
+        versao: v.versao,
+        descricao: v.notas || v.descricao || '',
+        data_criacao: v.data_atualizacao || v.data_criacao || new Date().toISOString(),
+      }));
+      return mapped;
+    }
+  } catch (e) {}
+
+  // 2. Fallback Supabase
   try {
     const { data, error } = await supabase
       .from('mms_versao_app')
@@ -201,23 +238,22 @@ export async function insertAppVersion(versao: string, descricao: string): Promi
     } catch (e) {}
   }
 
-  // 2. Tenta gravar no Supabase de forma assíncrona / resiliente
+  // 2. Grava na API MySQL
   try {
-    const { error } = await supabase
+    await salvarVersaoAppApi(v, d);
+  } catch (e) {}
+
+  // 3. Grava no Supabase (resiliente)
+  try {
+    await supabase
       .from('mms_versao_app')
       .insert([{
         versao: v,
         descricao: d,
         data_criacao: now,
       }]);
-    if (error) {
-      console.warn('Gravação no Supabase mms_versao_app retornou aviso (salvo localmente com sucesso):', error.message || error);
-    }
-  } catch (e) {
-    console.warn('Conexão ao Supabase falhou ao gravar versão (salvo localmente com sucesso):', e);
-  }
+  } catch (e) {}
 
-  // Retorna true pois a versão foi gravada com sucesso para a aplicação e sessão do usuário
   return true;
 }
 
@@ -248,7 +284,12 @@ export async function deleteAppVersion(idOrVersao: number | string): Promise<boo
     } catch (e) {}
   }
 
-  // 2. Remove do Supabase (tabela mms_versao_app)
+  // 2. Remove da API MySQL
+  try {
+    await excluirVersaoAppApi(idOrVersao);
+  } catch (e) {}
+
+  // 3. Remove do Supabase
   try {
     let query = supabase.from('mms_versao_app').delete();
     if (typeof idOrVersao === 'number') {
@@ -256,16 +297,10 @@ export async function deleteAppVersion(idOrVersao: number | string): Promise<boo
     } else {
       query = query.eq('versao', idOrVersao);
     }
-    const { error } = await query;
-    if (error) {
-      console.warn('Erro ao remover versão de mms_versao_app:', error.message);
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.warn('Falha na requisição de exclusão de versão:', e);
-    return false;
-  }
+    await query;
+  } catch (e) {}
+
+  return true;
 }
 
 export async function cleanDatabaseFooterConfigVersion(): Promise<boolean> {

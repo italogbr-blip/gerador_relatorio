@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
+import { salvarRelatorioApi, obterRelatorioApi, listarNotificacoesApi } from '../lib/api';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { formatReportPdfUrl } from '../lib/config';
 import { processarUploadFotos } from '../lib/anexosService';
@@ -2016,12 +2017,18 @@ export default function ReportGenerator() {
   const carregarRelatorioParaEdicao = async (reportId: number) => {
     setIsLoadingReportEdit(true);
     try {
-      const { data: report, error } = await supabase
+      let report: any = null;
+      try {
+        const apiR = await obterRelatorioApi(reportId);
+        if (apiR.sucesso && apiR.relatorio) report = apiR.relatorio;
+      } catch (_) {}
+      const { data: dbRep, error } = report ? { data: report, error: null } : await supabase
         .from('relatorios')
         .select('*')
         .eq('id', reportId)
         .single();
 
+      if (!report) { report = dbRep; }
       if (error || !report) {
         showCustomAlert('RELATÓRIO NÃO ENCONTRADO', 'Não foi possível carregar o relatório solicitado para edição.');
         return;
@@ -3072,6 +3079,23 @@ export default function ReportGenerator() {
       } catch (_) {}
 
       // Salvamento direto, seguro e sob demanda (sem gravação de arquivos estáticos no servidor PHP)
+
+      // 0. Salva diretamente na API MySQL da hospedagem
+      try {
+        const apiSaveRes = await salvarRelatorioApi({
+          id: editingReportId || undefined,
+          usuario_id: userSession?.user?.id,
+          empresa: currentData.grupo,
+          unidade: currentData.unidade,
+          local_atendimento: currentData.local,
+          dados_json: jsonPayload,
+          teve_anexo: currentData.fotosAnexadas.length > 0,
+          pdf_url: pdfUrlResult,
+        });
+        if (apiSaveRes.sucesso) {
+          return;
+        }
+      } catch (_) {}
 
       // Se estiver em modo de edição, atualiza o registro existente
       if (editingReportId) {
