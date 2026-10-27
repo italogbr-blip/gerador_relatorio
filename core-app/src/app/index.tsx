@@ -858,8 +858,7 @@ export default function ReportGenerator() {
         const item = localStorage.getItem('mms_tab_' + i);
         if (item) {
           try {
-            const parsed = JSON.parse(item);
-            initial[i] = { ...createDefaultTab(), ...parsed };
+            initial[i] = JSON.parse(item);
             foundAny = true;
           } catch (e) { }
         }
@@ -971,7 +970,7 @@ export default function ReportGenerator() {
     ? Math.min(1, Math.max(0.32, (windowWidth - 20) / a4BaseWidth))
     : 1;
 
-  // --- SISTEMA DE PULL-TO-REFRESH ELEGANTE E SEGURO ---
+  // --- SISTEMA DE PULL-TO-REFRESH ANIMADO (EMPURRA A PÁGINA PARA BAIXO COM ÍCONE EM ROTAÇÃO) ---
   const scrollRef = useRef<any>(null);
   const scrollYRef = useRef(0);
   const pullAnim = useRef(new Animated.Value(0)).current;
@@ -980,13 +979,12 @@ export default function ReportGenerator() {
   const [isThresholdReached, setIsThresholdReached] = useState(false);
 
   const executeRefresh = () => {
-    if (isRefreshing) return;
     setIsRefreshing(true);
     setIsThresholdReached(true);
 
     Animated.timing(pullAnim, {
-      toValue: 54,
-      duration: 200,
+      toValue: 62,
+      duration: 220,
       useNativeDriver: false,
     }).start();
 
@@ -994,7 +992,7 @@ export default function ReportGenerator() {
     const spinLoop = Animated.loop(
       Animated.timing(pullSpinAnim, {
         toValue: 1,
-        duration: 750,
+        duration: 700,
         useNativeDriver: false,
       })
     );
@@ -1012,97 +1010,20 @@ export default function ReportGenerator() {
           useNativeDriver: false,
         }).start();
       }
-    }, 650);
+    }, 850);
   };
 
-  // Garante que no mobile ao focar em qualquer campo de formulário, faça um mini scroll suave
-  // para centralizar o campo no viewport e evitar que fique oculto atrás do teclado virtual
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    const handleGlobalFocusIn = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target) return;
-      const isFormField =
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        target.isContentEditable ||
-        target.getAttribute('role') === 'textbox';
-
-      if (isFormField) {
-        // Aguarda a animação de abertura do teclado virtual do celular (iOS / Android)
-        setTimeout(() => {
-          try {
-            target.scrollIntoView({
-              behavior: 'smooth',
-              block: 'center',
-              inline: 'nearest',
-            });
-          } catch (_) {
-            try {
-              target.scrollIntoView(true);
-            } catch (_) {}
-          }
-        }, 280);
-      }
-    };
-
-    window.addEventListener('focusin', handleGlobalFocusIn);
-    return () => {
-      window.removeEventListener('focusin', handleGlobalFocusIn);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-
-    const PULL_THRESHOLD = 95;
-    const MAX_PULL = 125;
+    const PULL_THRESHOLD = 75;
+    const MAX_PULL = 115;
     let startY = 0;
     let isDragging = false;
     let currentDist = 0;
 
-    const isInteractiveOrModalElement = (target: HTMLElement | null): boolean => {
-      if (!target) return false;
-      // Se existir qualquer modal/overlay aberto no DOM, não permite pull
-      if (document.querySelector('[data-modal-overlay="true"], [role="dialog"], .mms-dropdown, .mms-menu-popup')) {
-        return true;
-      }
-      const tag = target.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A') {
-        return true;
-      }
-      if (
-        target.closest?.(
-          'button, a, input, textarea, select, [role="button"], [role="dialog"], [data-modal-overlay="true"], .mms-dropdown, .mms-navbar, .mms-modal'
-        )
-      ) {
-        return true;
-      }
-      return false;
-    };
-
-    const isAtPageTop = (): boolean => {
-      const scrollEl = document.querySelector('.mms-main-scroll');
-      const containerScrollTop = scrollEl ? scrollEl.scrollTop : 0;
-      const windowScrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
-      return containerScrollTop <= 1 && windowScrollTop <= 1 && scrollYRef.current <= 1;
-    };
-
     const onTouchStart = (e: TouchEvent) => {
-      if (isRefreshing || e.touches.length !== 1) {
-        isDragging = false;
-        return;
-      }
-
-      const target = e.target as HTMLElement | null;
-      if (isInteractiveOrModalElement(target)) {
-        isDragging = false;
-        return;
-      }
-
-      if (isAtPageTop()) {
+      if (scrollYRef.current <= 2 && e.touches.length === 1) {
         startY = e.touches[0].clientY;
         isDragging = true;
         currentDist = 0;
@@ -1113,49 +1034,22 @@ export default function ReportGenerator() {
 
     const onTouchMove = (e: TouchEvent) => {
       if (!isDragging || isRefreshing) return;
-
-      const target = e.target as HTMLElement | null;
-      if (isInteractiveOrModalElement(target)) {
-        isDragging = false;
-        currentDist = 0;
-        setIsThresholdReached(false);
-        pullAnim.setValue(0);
-        return;
-      }
-
       const currentY = e.touches[0].clientY;
       const deltaY = currentY - startY;
 
-      if (deltaY <= 0 || !isAtPageTop()) {
-        if (currentDist > 0) {
-          currentDist = 0;
-          setIsThresholdReached(false);
-          Animated.spring(pullAnim, {
-            toValue: 0,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: false,
-          }).start();
+      if (deltaY > 0 && scrollYRef.current <= 2) {
+        if (e.cancelable) {
+          e.preventDefault();
         }
-        isDragging = false;
-        return;
-      }
+        const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.82) * 1.6);
+        currentDist = dist;
+        pullAnim.setValue(dist);
 
-      if (deltaY > 8 && e.cancelable) {
-        e.preventDefault();
-      }
-
-      const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.72) * 1.2);
-      currentDist = dist;
-      pullAnim.setValue(dist);
-
-      if (dist >= PULL_THRESHOLD) {
-        setIsThresholdReached(true);
-        isDragging = false;
-        executeRefresh();
-        return;
-      } else if (dist < PULL_THRESHOLD && isThresholdReached) {
-        setIsThresholdReached(false);
+        if (dist >= PULL_THRESHOLD && !isThresholdReached) {
+          setIsThresholdReached(true);
+        } else if (dist < PULL_THRESHOLD && isThresholdReached) {
+          setIsThresholdReached(false);
+        }
       }
     };
 
@@ -1168,7 +1062,7 @@ export default function ReportGenerator() {
         setIsThresholdReached(false);
         Animated.spring(pullAnim, {
           toValue: 0,
-          friction: 9,
+          friction: 8,
           tension: 40,
           useNativeDriver: false,
         }).start();
@@ -1180,11 +1074,18 @@ export default function ReportGenerator() {
     let isMouseDragging = false;
 
     const onMouseDown = (e: MouseEvent) => {
-      if (isRefreshing || e.button !== 0) return;
-      const target = e.target as HTMLElement | null;
-      if (isInteractiveOrModalElement(target)) return;
-
-      if (isAtPageTop() && e.clientY <= 90) {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'BUTTON' ||
+          target.tagName === 'TEXTAREA' ||
+          target.closest?.('button') ||
+          target.closest?.('[role="button"]'))
+      ) {
+        return;
+      }
+      if (scrollYRef.current <= 2 && e.button === 0 && e.clientY <= 220) {
         mouseStartY = e.clientY;
         isMouseDragging = true;
         currentDist = 0;
@@ -1193,32 +1094,17 @@ export default function ReportGenerator() {
 
     const onMouseMove = (e: MouseEvent) => {
       if (!isMouseDragging || isRefreshing) return;
-      const target = e.target as HTMLElement | null;
-      if (isInteractiveOrModalElement(target)) {
-        isMouseDragging = false;
-        currentDist = 0;
-        setIsThresholdReached(false);
-        pullAnim.setValue(0);
-        return;
-      }
-
       const deltaY = e.clientY - mouseStartY;
-      if (deltaY <= 0 || !isAtPageTop()) {
-        isMouseDragging = false;
-        return;
-      }
+      if (deltaY > 0 && scrollYRef.current <= 2) {
+        const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.82) * 1.6);
+        currentDist = dist;
+        pullAnim.setValue(dist);
 
-      const dist = Math.min(MAX_PULL, Math.pow(deltaY, 0.72) * 1.2);
-      currentDist = dist;
-      pullAnim.setValue(dist);
-
-      if (dist >= PULL_THRESHOLD) {
-        setIsThresholdReached(true);
-        isMouseDragging = false;
-        executeRefresh();
-        return;
-      } else if (dist < PULL_THRESHOLD && isThresholdReached) {
-        setIsThresholdReached(false);
+        if (dist >= PULL_THRESHOLD && !isThresholdReached) {
+          setIsThresholdReached(true);
+        } else if (dist < PULL_THRESHOLD && isThresholdReached) {
+          setIsThresholdReached(false);
+        }
       }
     };
 
@@ -1231,7 +1117,7 @@ export default function ReportGenerator() {
         setIsThresholdReached(false);
         Animated.spring(pullAnim, {
           toValue: 0,
-          friction: 9,
+          friction: 8,
           tension: 40,
           useNativeDriver: false,
         }).start();
@@ -1255,39 +1141,6 @@ export default function ReportGenerator() {
     window.addEventListener('mousemove', onMouseMove, { passive: true });
     window.addEventListener('mouseup', onMouseUp, { passive: true });
 
-    let wheelAccum = 0;
-    let wheelTimer: any = null;
-    const onWheel = (e: WheelEvent) => {
-      if (isRefreshing) return;
-      if (isInteractiveOrModalElement(e.target as HTMLElement | null)) return;
-      if (isAtPageTop() && e.deltaY < 0) {
-        wheelAccum += Math.abs(e.deltaY) * 0.18;
-        const dist = Math.min(MAX_PULL, wheelAccum);
-        pullAnim.setValue(dist);
-
-        if (dist >= PULL_THRESHOLD) {
-          setIsThresholdReached(true);
-          wheelAccum = 0;
-          clearTimeout(wheelTimer);
-          executeRefresh();
-          return;
-        }
-
-        clearTimeout(wheelTimer);
-        wheelTimer = setTimeout(() => {
-          wheelAccum = 0;
-          setIsThresholdReached(false);
-          Animated.spring(pullAnim, {
-            toValue: 0,
-            friction: 9,
-            tension: 40,
-            useNativeDriver: false,
-          }).start();
-        }, 220);
-      }
-    };
-    window.addEventListener('wheel', onWheel, { passive: true });
-
     return () => {
       scrollEl?.removeEventListener('scroll', handleElScroll);
       window.removeEventListener('touchstart', onTouchStart);
@@ -1296,7 +1149,6 @@ export default function ReportGenerator() {
       window.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('wheel', onWheel);
     };
   }, [isRefreshing, isThresholdReached]);
 
@@ -1306,7 +1158,7 @@ export default function ReportGenerator() {
   });
 
   const pullRotationInterpolate = pullAnim.interpolate({
-    inputRange: [0, 95],
+    inputRange: [0, 75],
     outputRange: ['0deg', '360deg'],
     extrapolate: 'clamp',
   });
@@ -1406,133 +1258,8 @@ export default function ReportGenerator() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState<boolean>(false);
 
-  // Armazena IDs de popups fechados durante a sessão atual para NUNCA reabrir após fechar
-  const dismissedPopupsThisSession = useRef<Set<any>>(new Set());
-
-  // Valida se a notificação é destinada ao usuário atual (Coordenação Nível 2 vs Usuários/Visitantes)
-  const isNotificationForUser = (notif: any, sessionParam?: AppUserSession | null): boolean => {
-    const session = sessionParam !== undefined ? sessionParam : getSavedSessionSync();
-    const isCoord = Boolean(isUserCoordinator(session));
-    const isLoggedIn = Boolean(session?.user);
-
-    const regraStr = String(notif.regra_exibicao || '').toLowerCase();
-    const tituloStr = String(notif.titulo || '').toLowerCase();
-    const msgStr = String(notif.mensagem || '').toLowerCase();
-
-    // Notificações destinadas exclusivamente para a Coordenação (Nível 2)
-    const isCoordOnly =
-      regraStr.includes(':coord') ||
-      notif.destinatario === 'coordenadores' ||
-      notif.nivel_minimo >= 2 ||
-      tituloStr.includes('cadastro pendente') ||
-      tituloStr.includes('coordenação') ||
-      tituloStr.includes('coordenador') ||
-      msgStr.includes('painel de coordenação') ||
-      msgStr.includes('aguarda sua aprovação');
-
-    if (isCoordOnly) {
-      return isCoord;
-    }
-
-    // Notificações para usuários autenticados (Nível 1 e 2)
-    if (regraStr.includes(':user') || notif.destinatario === 'usuarios_logados') {
-      return isLoggedIn;
-    }
-
-    return true;
-  };
-
-  // Avalia se o pop-up modal deve ser exibido baseado em sessão, regras de frequência e histórico local
-  const shouldDisplayPopup = (notif: any, sessionParam?: AppUserSession | null): boolean => {
-    if (!notif) return false;
-    if (!isNotificationForUser(notif, sessionParam)) return false;
-
-    // Se o usuário já fechou este popup durante esta sessão do navegador, NUNCA reabre!
-    if (dismissedPopupsThisSession.current.has(notif.id)) return false;
-
-    if (typeof localStorage === 'undefined') return true;
-
-    const storageKey = 'mms_popup_hist_' + notif.id;
-    const rawHist = localStorage.getItem(storageKey);
-    let hist: { count: number; lastSeen: number; lastDate: string } = { count: 0, lastSeen: 0, lastDate: '' };
-    if (rawHist) {
-      try {
-        hist = JSON.parse(rawHist);
-      } catch (_) {}
-    }
-
-    const today = new Date().toISOString().slice(0, 10);
-    const now = Date.now();
-    const regra = String(notif.regra_exibicao || '1x').toLowerCase();
-
-    // 1. Exibir apenas 1 vez (nunca mais após fechar)
-    if (regra.startsWith('1x') && !regra.startsWith('1x_dia') && !regra.startsWith('1x_sem')) {
-      if (hist.count >= 1 || localStorage.getItem('mms_popup_visto_' + notif.id)) {
-        return false;
-      }
-    }
-
-    // 2. 1 vez ao dia
-    if (regra.startsWith('1x_dia') || regra.startsWith('diario')) {
-      if (hist.lastDate === today && hist.count >= 1) {
-        return false;
-      }
-    }
-
-    // 3. 2 vezes ao dia
-    if (regra.startsWith('2x_dia')) {
-      if (hist.lastDate === today && hist.count >= 2) {
-        return false;
-      }
-    }
-
-    // 4. 3 vezes ao dia
-    if (regra.startsWith('3x_dia')) {
-      if (hist.lastDate === today && hist.count >= 3) {
-        return false;
-      }
-    }
-
-    // 5. 1 vez por semana (7 dias)
-    if (regra.startsWith('1x_sem') || regra.startsWith('semanal')) {
-      if (hist.lastSeen && (now - hist.lastSeen) < 7 * 24 * 60 * 60 * 1000) {
-        return false;
-      }
-    }
-
-    // 6. Por tempo determinado (dias_X)
-    if (regra.startsWith('dias_')) {
-      const match = regra.match(/dias_(\d+)/);
-      const dias = match ? parseInt(match[1], 10) : 3;
-      const created = new Date(notif.data_criacao || notif.created_at || now).getTime();
-      if (now - created > dias * 24 * 60 * 60 * 1000) {
-        return false; // Expirado por tempo
-      }
-      if (hist.lastDate === today && hist.count >= 1) {
-        return false; // No máximo 1x por dia enquanto ativo
-      }
-    }
-
-    // 7. Sempre (1x por sessão; bloqueado por dismissedPopupsThisSession após fechar)
-    if (regra.startsWith('sempre')) {
-      return true;
-    }
-
-    return true;
-  };
-
   const carregarNotificacoesInApp = async () => {
     try {
-      const currentSession = getSavedSessionSync();
-      const isCoord = Boolean(isUserCoordinator(currentSession));
-
-      // Se o usuário NÃO for coordenador nível 2, fecha e limpa notificações da coordenação
-      if (!isCoord) {
-        setMensagensList([]);
-        setUnreadCount(0);
-        setIsNotifDropdownOpen(false);
-      }
-
       // 1. Busca comunicados da coordenação (tabela notificacoes)
       let popupAtivo: any = null;
       let allNotifs: any[] = [];
@@ -1543,10 +1270,8 @@ export default function ReportGenerator() {
           .order('id', { ascending: false })
           .limit(20);
         if (pops && pops.length > 0) {
-          // Filtra comunicados de acordo com o nível do usuário
-          const filteredPops = pops.filter((p: any) => isNotificationForUser(p, currentSession));
-          allNotifs = filteredPops;
-          popupAtivo = filteredPops.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
+          allNotifs = pops;
+          popupAtivo = pops.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
         }
       } catch (e) { }
 
@@ -1555,7 +1280,7 @@ export default function ReportGenerator() {
         try {
           const rawP = localStorage.getItem('mms_popups_store') || localStorage.getItem('mms_popups_local');
           if (rawP) {
-            const listP = JSON.parse(rawP).filter((p: any) => isNotificationForUser(p, currentSession));
+            const listP = JSON.parse(rawP);
             if (!popupAtivo) {
               popupAtivo = listP.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
             }
@@ -1568,15 +1293,18 @@ export default function ReportGenerator() {
         } catch (e) { }
       }
 
-      // Se houver comunicado ativo e elegível pela regra de frequência/duração
-      if (popupAtivo && shouldDisplayPopup(popupAtivo, currentSession)) {
+      // Se houver comunicado ativo, aciona o pop-up modal na tela se ainda não visto
+      if (popupAtivo) {
         setActivePopup(popupAtivo);
-        setIsPopupModalOpen(true);
-      }
-
-      // 2. Mensagens e histórico do sininho: EXCLUSIVO PARA COORDENAÇÃO (NÍVEL 2)
-      if (!isCoord) {
-        return;
+        const popKey = 'mms_popup_visto_' + popupAtivo.id;
+        if (typeof localStorage !== 'undefined') {
+          const jaVisto = localStorage.getItem(popKey);
+          if (!jaVisto || popupAtivo.regra_exibicao === 'sempre') {
+            setIsPopupModalOpen(true);
+          }
+        } else {
+          setIsPopupModalOpen(true);
+        }
       }
 
       // 2. Busca mensagens diretas in-app (mms_mensagens)
@@ -1659,27 +1387,8 @@ export default function ReportGenerator() {
 
   const handleFecharPopup = () => {
     setIsPopupModalOpen(false);
-    if (activePopup) {
-      dismissedPopupsThisSession.current.add(activePopup.id);
-      if (typeof localStorage !== 'undefined') {
-        const storageKey = 'mms_popup_hist_' + activePopup.id;
-        const rawHist = localStorage.getItem(storageKey);
-        let hist = { count: 0, lastSeen: 0, lastDate: '' };
-        if (rawHist) {
-          try {
-            hist = JSON.parse(rawHist);
-          } catch (_) {}
-        }
-        const today = new Date().toISOString().slice(0, 10);
-        const countToday = hist.lastDate === today ? (hist.count || 0) : 0;
-        const updated = {
-          count: countToday + 1,
-          lastSeen: Date.now(),
-          lastDate: today,
-        };
-        localStorage.setItem(storageKey, JSON.stringify(updated));
-        localStorage.setItem('mms_popup_visto_' + activePopup.id, 'true');
-      }
+    if (activePopup && typeof localStorage !== 'undefined') {
+      localStorage.setItem('mms_popup_visto_' + activePopup.id, 'true');
     }
   };
 
@@ -1990,7 +1699,7 @@ export default function ReportGenerator() {
     };
   }, []);
 
-  const currentData: TabData = { ...createDefaultTab(), ...(tabStore[activeTab] || {}) };
+  const currentData = tabStore[activeTab] || createDefaultTab();
 
   const updateCurrentTab = (updater: Partial<TabData> | ((prev: TabData) => TabData)) => {
     setTabStore((prev) => {
@@ -2302,11 +2011,6 @@ export default function ReportGenerator() {
       const inputStr = authEmail.trim();
       if (!inputStr || !authPassword) {
         setAuthMsg({ type: 'erro', text: 'Preencha todos os campos.' });
-        return;
-      }
-
-      if (/\s/.test(inputStr) || /[^a-zA-Z0-9._-]/.test(inputStr)) {
-        setAuthMsg({ type: 'erro', text: 'No login não são permitidos espaços ou caracteres especiais.' });
         return;
       }
 
@@ -2846,62 +2550,6 @@ export default function ReportGenerator() {
     alinhamentoInfo: currentData.alinhamentoInfo,
   });
 
-  const formatPaxField = (
-    fieldId: 'field-pax1' | 'field-pax2',
-    currentValue: string,
-    command: 'bold' | 'italic' | 'underline' | 'topic',
-    updateFn: (val: string) => void
-  ) => {
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const el = document.getElementById(fieldId) as HTMLTextAreaElement | HTMLInputElement | null;
-      if (el) {
-        el.focus();
-        const start = el.selectionStart ?? currentValue.length;
-        const end = el.selectionEnd ?? currentValue.length;
-        let newText = currentValue;
-        let newPos = start;
-
-        if (command === 'topic') {
-          const prefix = start > 0 && currentValue[start - 1] !== '\n' ? '\n▪ ' : '▪ ';
-          newText = currentValue.substring(0, start) + prefix + currentValue.substring(end);
-          newPos = start + prefix.length;
-        } else {
-          const openTag = command === 'bold' ? '*' : command === 'italic' ? '_' : '[';
-          const closeTag = command === 'bold' ? '*' : command === 'italic' ? '_' : ']';
-          if (start !== end) {
-            const selected = currentValue.substring(start, end);
-            newText = currentValue.substring(0, start) + openTag + selected + closeTag + currentValue.substring(end);
-            newPos = end + openTag.length + closeTag.length;
-          } else {
-            const placeholder = command === 'bold' ? 'Nome' : 'Texto';
-            newText = currentValue.substring(0, start) + openTag + placeholder + closeTag + currentValue.substring(end);
-            newPos = start + openTag.length + placeholder.length + closeTag.length;
-          }
-        }
-
-        updateFn(newText);
-        setTimeout(() => {
-          try {
-            el.focus();
-            el.setSelectionRange(newPos, newPos);
-          } catch (_) {}
-        }, 15);
-        return;
-      }
-    }
-
-    // Fallback nativo
-    let newText = currentValue;
-    if (command === 'topic') {
-      newText = currentValue + (currentValue.endsWith('\n') || !currentValue ? '▪ ' : '\n▪ ');
-    } else {
-      const openTag = command === 'bold' ? '*' : command === 'italic' ? '_' : '[';
-      const closeTag = command === 'bold' ? '*' : command === 'italic' ? '_' : ']';
-      newText = currentValue + ` ${openTag}Nome${closeTag}`;
-    }
-    updateFn(newText);
-  };
-
   const handleBaixarPdf = async () => {
     setIsExportingPdf(true);
     try {
@@ -3421,32 +3069,28 @@ export default function ReportGenerator() {
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1, width: '100%' }}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: isDesktop ? 60 : 220 }}
+        contentContainerStyle={{ flexGrow: 1 }}
         className="mms-main-scroll"
         onScroll={(e) => {
-          const y = e.nativeEvent.contentOffset.y;
-          scrollYRef.current = y;
-          if (y < -85 && !isRefreshing) {
-            executeRefresh();
-          }
+          scrollYRef.current = e.nativeEvent.contentOffset.y;
         }}
         scrollEventThrottle={16}
       >
-        {/* Sistema de Pull-To-Refresh Elegante e Moderno */}
+        {/* Sistema de Pull-To-Refresh Animado que empurra a página para baixo */}
         <Animated.View
           style={[
             styles.pullRefreshWrapper,
             {
               height: pullAnim,
               opacity: pullAnim.interpolate({
-                inputRange: [0, 8, 40],
-                outputRange: [0, 0.4, 1],
+                inputRange: [0, 8, 45],
+                outputRange: [0, 0.6, 1],
                 extrapolate: 'clamp',
               }),
             },
           ]}
         >
-          <View style={styles.pullRefreshPill}>
+          <View style={styles.pullRefreshInner}>
             <Animated.View
               style={[
                 styles.pullRefreshIconBox,
@@ -3458,10 +3102,10 @@ export default function ReportGenerator() {
                     },
                     {
                       scale: isRefreshing
-                        ? 1.05
+                        ? 1.12
                         : pullAnim.interpolate({
-                            inputRange: [0, 45, 95],
-                            outputRange: [0.85, 0.95, 1.1],
+                            inputRange: [0, 35, 75],
+                            outputRange: [0.75, 0.95, 1.2],
                             extrapolate: 'clamp',
                           }),
                     },
@@ -3472,34 +3116,48 @@ export default function ReportGenerator() {
               {Platform.OS === 'web' ? (
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="17"
-                  height="17"
+                  width="22"
+                  height="22"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke={isThresholdReached || isRefreshing ? '#34d399' : '#38bdf8'}
-                  strokeWidth="2.4"
+                  stroke={isThresholdReached || isRefreshing ? '#10b981' : '#38bdf8'}
+                  strokeWidth="2.8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
                 </svg>
               ) : (
-                <Text style={{ fontSize: 16 }}>🔄</Text>
+                <Text style={{ fontSize: 20 }}>🔄</Text>
               )}
             </Animated.View>
 
-            <Text
-              style={[
-                styles.pullRefreshLabel,
-                (isThresholdReached || isRefreshing) && styles.pullRefreshLabelActive,
-              ]}
-            >
-              {isRefreshing
-                ? 'Atualizando página...'
-                : isThresholdReached
-                ? 'Solte para atualizar'
-                : 'Puxe para atualizar'}
-            </Text>
+            <View style={styles.pullRefreshTextGroup}>
+              <Text style={[styles.pullRefreshLabel, (isThresholdReached || isRefreshing) && styles.pullRefreshLabelActive]}>
+                {isRefreshing
+                  ? 'Atualizando sistema...'
+                  : isThresholdReached
+                  ? '⚡ Solte para atualizar!'
+                  : 'Puxe para baixo para atualizar'}
+              </Text>
+              <View style={styles.pullRefreshTrack}>
+                <Animated.View
+                  style={[
+                    styles.pullRefreshBar,
+                    {
+                      width: isRefreshing
+                        ? '100%'
+                        : pullAnim.interpolate({
+                            inputRange: [0, 75],
+                            outputRange: ['0%', '100%'],
+                            extrapolate: 'clamp',
+                          }),
+                      backgroundColor: isThresholdReached || isRefreshing ? '#10b981' : '#0284c7',
+                    },
+                  ]}
+                />
+              </View>
+            </View>
           </View>
         </Animated.View>
 
@@ -3542,11 +3200,10 @@ export default function ReportGenerator() {
               </TouchableOpacity>
             )}
 
-            {/* Botão de Notificações com Badge e Ação Real (Apenas Coordenação Nível 2) */}
-            {isUserCoordinator(userSession) && (
-              <TouchableOpacity
-                style={styles.navNotifBtn}
-                className="mms-navbar__notif-btn"
+            {/* Botão de Notificações com Badge e Ação Real */}
+            <TouchableOpacity
+              style={styles.navNotifBtn}
+              className="mms-navbar__notif-btn"
               activeOpacity={0.7}
               onPress={() => {
                 setIsNotifDropdownOpen(!isNotifDropdownOpen);
@@ -3565,8 +3222,7 @@ export default function ReportGenerator() {
                   <Text style={styles.notifBadgeCircleText}>{unreadCount}</Text>
                 </View>
               )}
-              </TouchableOpacity>
-            )}
+            </TouchableOpacity>
 
             {/* Botão Menu Hamburger / Avatar */}
             <TouchableOpacity
@@ -3748,11 +3404,8 @@ export default function ReportGenerator() {
                       style={[styles.menuItem, { borderTopWidth: 1, borderColor: colors.slate100, marginTop: 4 }]}
                       onPress={() => {
                         toggleMenu();
-                        if (typeof window !== 'undefined') {
-                          window.location.href = '/cadastro';
-                        } else {
-                          router.push('/cadastro' as any);
-                        }
+                        setAuthMode('cadastro');
+                        setIsAuthModalVisible(true);
                       }}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -3767,8 +3420,7 @@ export default function ReportGenerator() {
           </TouchableOpacity>
         </Modal>
 
-        {/* Dropdown de Notificações / Mensagens da Coordenação (Apenas Coordenação Nível 2) */}
-        {isUserCoordinator(userSession) && (
+        {/* Dropdown de Notificações / Mensagens da Coordenação */}
         <Modal
           visible={isNotifDropdownOpen}
           transparent
@@ -3819,7 +3471,6 @@ export default function ReportGenerator() {
             </View>
           </TouchableOpacity>
         </Modal>
-        )}
 
         {/* Modal de Comunicado / Pop-up Global da Coordenação */}
         {activePopup && (
@@ -4410,46 +4061,6 @@ export default function ReportGenerator() {
                   <View style={styles.paxHeaderBadgeEmbarque}>
                     <Text style={styles.paxTitleEmbarque}>EMBARCANDO</Text>
                   </View>
-
-                  <View style={styles.paxToolbar}>
-                    <TouchableOpacity
-                      style={styles.toolbarBtn}
-                      onPress={() => formatPaxField('field-pax1', currentData.pax1, 'bold', (val) => updateCurrentTab({ pax1: val }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.toolbarBtnText, { fontWeight: 'bold' }]}>B</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.toolbarBtn}
-                      onPress={() => formatPaxField('field-pax1', currentData.pax1, 'italic', (val) => updateCurrentTab({ pax1: val }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.toolbarBtnText, { fontStyle: 'italic' }]}>I</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.toolbarBtn}
-                      onPress={() => formatPaxField('field-pax1', currentData.pax1, 'underline', (val) => updateCurrentTab({ pax1: val }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.toolbarBtnText, { textDecorationLine: 'underline' }]}>U</Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.toolbarDivider} />
-
-                    <View style={[styles.toolbarBtn, styles.toolbarBtnActive]}>
-                      <Text style={[styles.toolbarBtnText, styles.toolbarBtnTextActive]}>Esquerda</Text>
-                    </View>
-
-                    <View style={styles.toolbarDivider} />
-
-                    <TouchableOpacity
-                      style={styles.toolbarBtn}
-                      onPress={() => formatPaxField('field-pax1', currentData.pax1, 'topic', (val) => updateCurrentTab({ pax1: val }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.toolbarBtnText}>▪ Inserir Tópico</Text>
-                    </TouchableOpacity>
-                  </View>
                   <TextInput
                     nativeID="field-pax1"
                     id="field-pax1"
@@ -4472,46 +4083,6 @@ export default function ReportGenerator() {
                 <View style={styles.paxBoxDesembarque}>
                   <View style={styles.paxHeaderBadgeDesembarque}>
                     <Text style={styles.paxTitleDesembarque}>DESEMBARCANDO</Text>
-                  </View>
-
-                  <View style={styles.paxToolbar}>
-                    <TouchableOpacity
-                      style={styles.toolbarBtn}
-                      onPress={() => formatPaxField('field-pax2', currentData.pax2, 'bold', (val) => updateCurrentTab({ pax2: val }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.toolbarBtnText, { fontWeight: 'bold' }]}>B</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.toolbarBtn}
-                      onPress={() => formatPaxField('field-pax2', currentData.pax2, 'italic', (val) => updateCurrentTab({ pax2: val }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.toolbarBtnText, { fontStyle: 'italic' }]}>I</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.toolbarBtn}
-                      onPress={() => formatPaxField('field-pax2', currentData.pax2, 'underline', (val) => updateCurrentTab({ pax2: val }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.toolbarBtnText, { textDecorationLine: 'underline' }]}>U</Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.toolbarDivider} />
-
-                    <View style={[styles.toolbarBtn, styles.toolbarBtnActive]}>
-                      <Text style={[styles.toolbarBtnText, styles.toolbarBtnTextActive]}>Esquerda</Text>
-                    </View>
-
-                    <View style={styles.toolbarDivider} />
-
-                    <TouchableOpacity
-                      style={styles.toolbarBtn}
-                      onPress={() => formatPaxField('field-pax2', currentData.pax2, 'topic', (val) => updateCurrentTab({ pax2: val }))}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.toolbarBtnText}>▪ Inserir Tópico</Text>
-                    </TouchableOpacity>
                   </View>
                   <TextInput
                     nativeID="field-pax2"
@@ -4639,6 +4210,15 @@ export default function ReportGenerator() {
                   >
                     <Text style={styles.btnBaixarPdfIcon}>📥</Text>
                     <Text style={styles.btnBaixarPdfText}>{isExportingPdf ? 'Baixando...' : 'Baixar PDF'}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.btnVisualizarPdf}
+                    onPress={() => visualizarRelatorioHtml(obterDadosRelatorioAtual())}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.btnVisualizarPdfIcon}>👁️</Text>
+                    <Text style={styles.btnVisualizarPdfText}>Visualizar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -4986,12 +4566,20 @@ export default function ReportGenerator() {
               showsVerticalScrollIndicator={false}
               style={{ width: '100%' }}
             >
-              <View style={[styles.authCard, { padding: 0, overflow: 'hidden', maxWidth: 430, borderRadius: 16 }]}>
-                {/* Abas Superiores com Botão Fechar Integrado (Sem Sobreposição de Elementos) */}
+              <View style={[styles.authCard, { padding: 0, overflow: 'hidden', maxWidth: 420 }]}>
+                <TouchableOpacity
+                  style={styles.authCloseBtn}
+                  onPress={() => setIsAuthModalVisible(false)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Text style={styles.authCloseText}>✕</Text>
+                </TouchableOpacity>
+
+                {/* Abas Superiores: Entrar / Criar Conta (idêntico ao index.php linhas 734-739) */}
                 <View
                   style={{
                     flexDirection: 'row',
-                    alignItems: 'stretch',
                     borderBottomWidth: 1,
                     borderBottomColor: colors.slate200,
                     backgroundColor: colors.slate50,
@@ -5000,7 +4588,7 @@ export default function ReportGenerator() {
                   <TouchableOpacity
                     style={{
                       flex: 1,
-                      paddingVertical: 16,
+                      paddingVertical: 15,
                       alignItems: 'center',
                       borderBottomWidth: 2,
                       borderBottomColor: authMode === 'login' ? colors.blue600 : 'transparent',
@@ -5010,7 +4598,6 @@ export default function ReportGenerator() {
                       setAuthMsg(null);
                       setAuthMode('login');
                     }}
-                    activeOpacity={0.7}
                   >
                     <Text
                       style={{
@@ -5029,21 +4616,16 @@ export default function ReportGenerator() {
                   <TouchableOpacity
                     style={{
                       flex: 1,
-                      paddingVertical: 16,
+                      paddingVertical: 15,
                       alignItems: 'center',
                       borderBottomWidth: 2,
-                      borderBottomColor: authMode === 'cadastro' ? colors.emerald600 : 'transparent',
+                      borderBottomColor: authMode === 'cadastro' ? colors.blue600 : 'transparent',
                       backgroundColor: authMode === 'cadastro' ? colors.white : 'transparent',
                     }}
                     onPress={() => {
-                      setIsAuthModalVisible(false);
-                      if (typeof window !== 'undefined') {
-                        window.location.href = '/cadastro';
-                      } else {
-                        router.push('/cadastro' as any);
-                      }
+                      setAuthMsg(null);
+                      setAuthMode('cadastro');
                     }}
-                    activeOpacity={0.7}
                   >
                     <Text
                       style={{
@@ -5051,29 +4633,12 @@ export default function ReportGenerator() {
                         fontWeight: '900',
                         letterSpacing: 1,
                         textTransform: 'uppercase',
-                        color: colors.slate500,
+                        color: authMode === 'cadastro' ? colors.blue600 : colors.slate400,
                         fontFamily: modernFont,
                       }}
                     >
                       Criar Conta
                     </Text>
-                  </TouchableOpacity>
-
-                  {/* Botão Fechar [X] Integrado no Header - Nunca se Sobrepõe aos Textos */}
-                  <TouchableOpacity
-                    style={{
-                      width: 50,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderLeftWidth: 1,
-                      borderLeftColor: colors.slate200,
-                      backgroundColor: colors.slate100,
-                    }}
-                    onPress={() => setIsAuthModalVisible(false)}
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Text style={{ fontSize: 16, color: colors.slate600, fontWeight: '800' }}>✕</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -5106,11 +4671,7 @@ export default function ReportGenerator() {
                           placeholderTextColor={colors.slate400}
                           autoCapitalize="none"
                           value={authEmail}
-                          onChangeText={(text) => {
-                            // Não aceita espaços nem caracteres especiais
-                            const sanitized = text.replace(/\s+/g, '').replace(/[^a-zA-Z0-9._-]/g, '');
-                            setAuthEmail(sanitized);
-                          }}
+                          onChangeText={setAuthEmail}
                         />
                       </View>
 
@@ -5138,36 +4699,9 @@ export default function ReportGenerator() {
                           <Text style={styles.btnAuthSubmitText}>ACESSAR PLATAFORMA</Text>
                         )}
                       </TouchableOpacity>
-
-
                     </>
                   ) : (
                     <>
-                      <TouchableOpacity
-                        style={{
-                          marginBottom: 16,
-                          padding: 12,
-                          backgroundColor: '#ecfdf5',
-                          borderWidth: 1,
-                          borderColor: '#a7f3d0',
-                          borderRadius: 10,
-                          alignItems: 'center',
-                        }}
-                        onPress={() => {
-                          setIsAuthModalVisible(false);
-                          if (typeof window !== 'undefined') {
-                            window.location.href = '/cadastro';
-                          } else {
-                            router.push('/cadastro' as any);
-                          }
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#065f46', fontFamily: modernFont, textAlign: 'center' }}>
-                          ✨ Prefere preencher na tela cheia com mais conforto?{'\n'}
-                          <Text style={{ textDecorationLine: 'underline' }}>Ir para Página Exclusiva de Cadastro →</Text>
-                        </Text>
-                      </TouchableOpacity>
                       <View style={styles.authField}>
                         <Text style={styles.authLabel}>NOME COMPLETO</Text>
                         <TextInput
@@ -5487,50 +5021,68 @@ const styles = StyleSheet.create({
   },
   pullRefreshWrapper: {
     width: '100%',
-    backgroundColor: '#0b1120',
+    backgroundColor: '#090e1a',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomColor: '#1e293b',
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 101,
   },
-  pullRefreshPill: {
+  pullRefreshInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 12,
     paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 24,
-    backgroundColor: 'rgba(30, 41, 59, 0.75)',
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.2)',
+    height: '100%',
   },
   pullRefreshIconBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.4)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#1e293b',
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#38bdf8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
   },
   pullRefreshIconBoxActive: {
-    borderColor: '#34d399',
+    borderColor: '#10b981',
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    shadowColor: '#10b981',
+    shadowOpacity: 0.6,
+  },
+  pullRefreshTextGroup: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 4,
   },
   pullRefreshLabel: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#94a3b8',
-    letterSpacing: 0.2,
-    fontFamily: modernFont,
+    letterSpacing: 0.3,
   },
   pullRefreshLabelActive: {
     color: '#34d399',
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+  pullRefreshTrack: {
+    width: 140,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#334155',
+    overflow: 'hidden',
+  },
+  pullRefreshBar: {
+    height: '100%',
+    borderRadius: 2,
   },
   navbar: {
     minHeight: 60,
@@ -5822,7 +5374,7 @@ const styles = StyleSheet.create({
   },
   cloudBannerWrapper: {
     width: '100%',
-    maxWidth: 676,
+    maxWidth: 672,
     marginBottom: 16,
     alignSelf: 'center',
   },
@@ -5952,7 +5504,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 20,
     width: '100%',
-    maxWidth: 676,
+    maxWidth: 672,
     alignItems: 'stretch',
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
@@ -6832,18 +6384,6 @@ const styles = StyleSheet.create({
   paxGrid: {
     gap: 16,
   },
-  paxToolbar: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    padding: 6,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
   paxBoxEmbarque: {
     backgroundColor: 'rgba(236, 253, 245, 0.3)',
     borderWidth: 1,
@@ -7195,25 +6735,24 @@ const styles = StyleSheet.create({
   },
   btnCompartilharPdfIcon: {
     fontSize: 18,
-    lineHeight: 22,
     color: '#ffffff',
   },
   btnCompartilharPdfText: {
     color: '#ffffff',
     fontWeight: '800',
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: corporateFont,
   },
   btnBaixarPdf: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#1e293b',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#0f172a',
+    shadowColor: '#1e293b',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -7221,13 +6760,12 @@ const styles = StyleSheet.create({
   },
   btnBaixarPdfIcon: {
     fontSize: 18,
-    lineHeight: 22,
     color: '#ffffff',
   },
   btnBaixarPdfText: {
     color: '#ffffff',
     fontWeight: '800',
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: corporateFont,
   },
   btnVisualizarPdf: {
@@ -7527,7 +7065,7 @@ const styles = StyleSheet.create({
   },
   previewWrap: {
     width: '100%',
-    maxWidth: 798,
+    maxWidth: 794,
     alignItems: 'center',
     alignSelf: 'center',
   },
