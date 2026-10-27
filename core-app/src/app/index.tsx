@@ -2882,7 +2882,7 @@ export default function ReportGenerator() {
   const formatPaxField = (
     fieldId: 'field-pax1' | 'field-pax2',
     currentValue: string,
-    command: 'bold' | 'italic' | 'underline' | 'topic',
+    command: 'bold' | 'italic' | 'underline' | 'strike' | 'topic',
     updateFn: (val: string) => void
   ) => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -2899,8 +2899,8 @@ export default function ReportGenerator() {
           newText = currentValue.substring(0, start) + prefix + currentValue.substring(end);
           newPos = start + prefix.length;
         } else {
-          const openTag = command === 'bold' ? '*' : command === 'italic' ? '_' : '[';
-          const closeTag = command === 'bold' ? '*' : command === 'italic' ? '_' : ']';
+          const openTag = command === 'bold' ? '*' : command === 'italic' ? '_' : command === 'strike' ? '~' : '[';
+          const closeTag = command === 'bold' ? '*' : command === 'italic' ? '_' : command === 'strike' ? '~' : ']';
           if (start !== end) {
             const selected = currentValue.substring(start, end);
             newText = currentValue.substring(0, start) + openTag + selected + closeTag + currentValue.substring(end);
@@ -2928,8 +2928,8 @@ export default function ReportGenerator() {
     if (command === 'topic') {
       newText = currentValue + (currentValue.endsWith('\n') || !currentValue ? '▪ ' : '\n▪ ');
     } else {
-      const openTag = command === 'bold' ? '*' : command === 'italic' ? '_' : '[';
-      const closeTag = command === 'bold' ? '*' : command === 'italic' ? '_' : ']';
+      const openTag = command === 'bold' ? '*' : command === 'italic' ? '_' : command === 'strike' ? '~' : '[';
+      const closeTag = command === 'bold' ? '*' : command === 'italic' ? '_' : command === 'strike' ? '~' : ']';
       newText = currentValue + ` ${openTag}Nome${closeTag}`;
     }
     updateFn(newText);
@@ -3229,7 +3229,10 @@ export default function ReportGenerator() {
       .replace(/<strong>(.*?)<\/strong>/gi, '*$1*')
       .replace(/<i>(.*?)<\/i>/gi, '_$1_')
       .replace(/<em>(.*?)<\/em>/gi, '_$1_')
-      .replace(/<u>(.*?)<\/u>/gi, '[$1]');
+      .replace(/<u>(.*?)<\/u>/gi, '[$1]')
+      .replace(/<strike>(.*?)<\/strike>/gi, '~$1~')
+      .replace(/<s>(.*?)<\/s>/gi, '~$1~')
+      .replace(/<del>(.*?)<\/del>/gi, '~$1~');
 
     // 4. Remover qualquer outra tag HTML residual
     cleanText = cleanText.replace(/<[^>]+>/g, '');
@@ -3243,7 +3246,7 @@ export default function ReportGenerator() {
           }
 
           const parseLineContent = (content: string): React.ReactNode[] => {
-            const regex = /(\*[^*]+\*|_[^_]+_|\[[^\]]+\])/g;
+            const regex = /(\*[^*]+\*|_[^_]+_|\[[^\]]+\]|~[^~]+~)/g;
             const parts = content.split(regex);
 
             return parts.map((part, pIdx) => {
@@ -3266,6 +3269,13 @@ export default function ReportGenerator() {
               if (part.startsWith('[') && part.endsWith(']') && part.length > 2) {
                 return (
                   <Text key={pIdx} style={{ textDecorationLine: 'underline' }}>
+                    {part.slice(1, -1)}
+                  </Text>
+                );
+              }
+              if (part.startsWith('~') && part.endsWith('~') && part.length > 2) {
+                return (
+                  <Text key={pIdx} style={{ textDecorationLine: 'line-through' }}>
                     {part.slice(1, -1)}
                   </Text>
                 );
@@ -4473,17 +4483,19 @@ export default function ReportGenerator() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.toolbarBtn}
+                      onPress={() => formatPaxField('field-pax1', currentData.pax1, 'strike', (val) => updateCurrentTab({ pax1: val }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.toolbarBtnText, { textDecorationLine: 'line-through' }]}>Tachado</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.toolbarBtn}
                       onPress={() => formatPaxField('field-pax1', currentData.pax1, 'underline', (val) => updateCurrentTab({ pax1: val }))}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.toolbarBtnText, { textDecorationLine: 'underline' }]}>U</Text>
                     </TouchableOpacity>
-
-                    <View style={styles.toolbarDivider} />
-
-                    <View style={[styles.toolbarBtn, styles.toolbarBtnActive]}>
-                      <Text style={[styles.toolbarBtnText, styles.toolbarBtnTextActive]}>Esquerda</Text>
-                    </View>
 
                     <View style={styles.toolbarDivider} />
 
@@ -4553,17 +4565,19 @@ export default function ReportGenerator() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.toolbarBtn}
+                      onPress={() => formatPaxField('field-pax2', currentData.pax2, 'strike', (val) => updateCurrentTab({ pax2: val }))}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.toolbarBtnText, { textDecorationLine: 'line-through' }]}>Tachado</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.toolbarBtn}
                       onPress={() => formatPaxField('field-pax2', currentData.pax2, 'underline', (val) => updateCurrentTab({ pax2: val }))}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.toolbarBtnText, { textDecorationLine: 'underline' }]}>U</Text>
                     </TouchableOpacity>
-
-                    <View style={styles.toolbarDivider} />
-
-                    <View style={[styles.toolbarBtn, styles.toolbarBtnActive]}>
-                      <Text style={[styles.toolbarBtnText, styles.toolbarBtnTextActive]}>Esquerda</Text>
-                    </View>
 
                     <View style={styles.toolbarDivider} />
 

@@ -82,7 +82,11 @@ function formatarLinhasPax(lines: string[]): string {
     .map((l) => {
       const trimmed = l.trim();
       if (!trimmed) return "<div style='margin-bottom: 3px;'>&nbsp;</div>";
-      const withBold = trimmed.replace(/\*(.*?)\*/g, '<b>$1</b>');
+      const withBold = trimmed
+        .replace(/\*(.*?)\*/g, '<b>$1</b>')
+        .replace(/_(.*?)_/g, '<i>$1</i>')
+        .replace(/\[(.*?)\]/g, '<u>$1</u>')
+        .replace(/~(.*?)~/g, '<del>$1</del>');
       return `<div style='margin-bottom: 3px; word-wrap: break-word;'>${withBold}</div>`;
     })
     .join('');
