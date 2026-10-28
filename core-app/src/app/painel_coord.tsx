@@ -123,6 +123,53 @@ export default function PainelCoordScreen() {
   const [inputIpManual, setInputIpManual] = useState<string>('');
   const [salvandoBloqueioIp, setSalvandoBloqueioIp] = useState<boolean>(false);
 
+  // Paginação da Aba Segurança (Limite de 10 linhas por sessão/tabela)
+  const [paginaLogins, setPaginaLogins] = useState<number>(1);
+  const [paginaAcessosGerador, setPaginaAcessosGerador] = useState<number>(1);
+  const [paginaAcessosFalhos, setPaginaAcessosFalhos] = useState<number>(1);
+  const [paginaIpsBloqueados, setPaginaIpsBloqueados] = useState<number>(1);
+  const porPaginaSeguranca = 10;
+
+  // 1. DISPOSITIVOS LOGADOS & AUDITORIA DE SESSÕES
+  const totalPaginasLogins = useMemo(() => {
+    return Math.max(1, Math.ceil(ultimosLogins.length / porPaginaSeguranca));
+  }, [ultimosLogins.length]);
+
+  const ultimosLoginsPaginados = useMemo(() => {
+    const inicio = (paginaLogins - 1) * porPaginaSeguranca;
+    return ultimosLogins.slice(inicio, inicio + porPaginaSeguranca);
+  }, [ultimosLogins, paginaLogins]);
+
+  // 2. ACESSOS AO GERADOR DE RELATÓRIOS (PÁGINA INICIAL)
+  const totalPaginasAcessosGerador = useMemo(() => {
+    return Math.max(1, Math.ceil(acessosGerador.length / porPaginaSeguranca));
+  }, [acessosGerador.length]);
+
+  const acessosGeradorPaginados = useMemo(() => {
+    const inicio = (paginaAcessosGerador - 1) * porPaginaSeguranca;
+    return acessosGerador.slice(inicio, inicio + porPaginaSeguranca);
+  }, [acessosGerador, paginaAcessosGerador]);
+
+  // 3. ACESSOS FALHOS AO PAINEL (TENTATIVAS BLOQUEADAS)
+  const totalPaginasAcessosFalhos = useMemo(() => {
+    return Math.max(1, Math.ceil(acessosFalhos.length / porPaginaSeguranca));
+  }, [acessosFalhos.length]);
+
+  const acessosFalhosPaginados = useMemo(() => {
+    const inicio = (paginaAcessosFalhos - 1) * porPaginaSeguranca;
+    return acessosFalhos.slice(inicio, inicio + porPaginaSeguranca);
+  }, [acessosFalhos, paginaAcessosFalhos]);
+
+  // 4. FIREWALL DO GERADOR — IPS BLOQUEADOS
+  const totalPaginasIpsBloqueados = useMemo(() => {
+    return Math.max(1, Math.ceil(ipsBloqueados.length / porPaginaSeguranca));
+  }, [ipsBloqueados.length]);
+
+  const ipsBloqueadosPaginados = useMemo(() => {
+    const inicio = (paginaIpsBloqueados - 1) * porPaginaSeguranca;
+    return ipsBloqueados.slice(inicio, inicio + porPaginaSeguranca);
+  }, [ipsBloqueados, paginaIpsBloqueados]);
+
   const blockedIpsSet = useMemo(() => {
     return new Set(ipsBloqueados.map((item) => String(item.ip || '').trim()));
   }, [ipsBloqueados]);
@@ -827,9 +874,11 @@ export default function PainelCoordScreen() {
           } catch (_) {}
           await supabase.from('coord_acessos_falhos').delete().neq('id', 0);
           setAcessosFalhos([]);
+          setPaginaAcessosFalhos(1);
           showCustomAlert('Sucesso', 'Histórico de acessos falhos limpo com sucesso.');
         } catch (e: any) {
           setAcessosFalhos([]);
+          setPaginaAcessosFalhos(1);
           showCustomAlert('Sucesso', 'Histórico de acessos falhos limpo com sucesso.');
         }
       },
@@ -3952,7 +4001,7 @@ export default function PainelCoordScreen() {
                 </View>
               ) : isMobile ? (
                 <View style={styles.mobileCardsList}>
-                  {ultimosLogins.map((lg, idx) => {
+                  {ultimosLoginsPaginados.map((lg, idx) => {
                     const dataStr = lg.data_login
                       ? new Date(lg.data_login).toLocaleString('pt-BR')
                       : 'N/A';
@@ -4037,7 +4086,7 @@ export default function PainelCoordScreen() {
                       <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
                     </View>
 
-                    {ultimosLogins.map((lg, idx) => {
+                    {ultimosLoginsPaginados.map((lg, idx) => {
                       const dataStr = lg.data_login
                         ? new Date(lg.data_login).toLocaleString('pt-BR')
                         : 'N/A';
@@ -4117,6 +4166,33 @@ export default function PainelCoordScreen() {
                     })}
                   </View>
                 </ScrollView>
+              )}
+
+              {/* Paginação de Sessões / Dispositivos Logados (Limite de 10 por página) */}
+              {ultimosLogins.length > porPaginaSeguranca && (
+                <View style={styles.paginationRow}>
+                  <TouchableOpacity
+                    style={[styles.pageBtn, paginaLogins <= 1 && styles.pageBtnDisabled]}
+                    disabled={paginaLogins <= 1}
+                    onPress={() => setPaginaLogins((p) => Math.max(1, p - 1))}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.pageBtnText}>← ANTERIOR</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.pageIndicatorText}>
+                    PÁGINA {paginaLogins} DE {totalPaginasLogins} • {ultimosLogins.length} SESSÕES
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[styles.pageBtn, paginaLogins >= totalPaginasLogins && styles.pageBtnDisabled]}
+                    disabled={paginaLogins >= totalPaginasLogins}
+                    onPress={() => setPaginaLogins((p) => Math.min(totalPaginasLogins, p + 1))}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.pageBtnText}>PRÓXIMA →</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
 
@@ -4257,7 +4333,7 @@ export default function PainelCoordScreen() {
                 </View>
               ) : isMobile ? (
                 <View style={styles.mobileCardsList}>
-                  {acessosGerador.map((ag, idx) => {
+                  {acessosGeradorPaginados.map((ag, idx) => {
                     const dataStr = ag.data_tentativa || ag.data_login || ag.timestamp
                       ? new Date(ag.data_tentativa || ag.data_login || ag.timestamp).toLocaleString('pt-BR')
                       : 'N/A';
@@ -4345,7 +4421,7 @@ export default function PainelCoordScreen() {
                       <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
                     </View>
 
-                    {acessosGerador.map((ag, idx) => {
+                    {acessosGeradorPaginados.map((ag, idx) => {
                       const dataStr = ag.data_tentativa || ag.data_login || ag.timestamp
                         ? new Date(ag.data_tentativa || ag.data_login || ag.timestamp).toLocaleString('pt-BR')
                         : 'N/A';
@@ -4432,6 +4508,33 @@ export default function PainelCoordScreen() {
                   </View>
                 </ScrollView>
               )}
+
+              {/* Paginação de Acessos ao Gerador (Limite de 10 por página) */}
+              {acessosGerador.length > porPaginaSeguranca && (
+                <View style={styles.paginationRow}>
+                  <TouchableOpacity
+                    style={[styles.pageBtn, paginaAcessosGerador <= 1 && styles.pageBtnDisabled]}
+                    disabled={paginaAcessosGerador <= 1}
+                    onPress={() => setPaginaAcessosGerador((p) => Math.max(1, p - 1))}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.pageBtnText}>← ANTERIOR</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.pageIndicatorText}>
+                    PÁGINA {paginaAcessosGerador} DE {totalPaginasAcessosGerador} • {acessosGerador.length} ACESSOS
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[styles.pageBtn, paginaAcessosGerador >= totalPaginasAcessosGerador && styles.pageBtnDisabled]}
+                    disabled={paginaAcessosGerador >= totalPaginasAcessosGerador}
+                    onPress={() => setPaginaAcessosGerador((p) => Math.min(totalPaginasAcessosGerador, p + 1))}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.pageBtnText}>PRÓXIMA →</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             {/* 3. TENTATIVAS DE ACESSO FALHO (LOGINS MAL SUCEDIDOS) */}
@@ -4486,7 +4589,7 @@ export default function PainelCoordScreen() {
                 </View>
               ) : isMobile ? (
                 <View style={styles.mobileCardsList}>
-                  {acessosFalhos.map((af, idx) => {
+                  {acessosFalhosPaginados.map((af, idx) => {
                     const dataStr = af.data_tentativa
                       ? new Date(af.data_tentativa).toLocaleString('pt-BR', {
                         day: '2-digit',
@@ -4577,7 +4680,7 @@ export default function PainelCoordScreen() {
                       <Text style={[styles.versionHeaderColText, { width: 130, textAlign: 'center' }]}>BLOQUEIO IP</Text>
                     </View>
 
-                    {acessosFalhos.map((af, idx) => {
+                    {acessosFalhosPaginados.map((af, idx) => {
                       const dataStr = af.data_tentativa
                         ? new Date(af.data_tentativa).toLocaleString('pt-BR', {
                           day: '2-digit',
@@ -4664,6 +4767,33 @@ export default function PainelCoordScreen() {
                     })}
                   </View>
                 </ScrollView>
+              )}
+
+              {/* Paginação de Tentativas Bloqueadas (Limite de 10 por página) */}
+              {acessosFalhos.length > porPaginaSeguranca && (
+                <View style={styles.paginationRow}>
+                  <TouchableOpacity
+                    style={[styles.pageBtn, paginaAcessosFalhos <= 1 && styles.pageBtnDisabled]}
+                    disabled={paginaAcessosFalhos <= 1}
+                    onPress={() => setPaginaAcessosFalhos((p) => Math.max(1, p - 1))}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.pageBtnText}>← ANTERIOR</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.pageIndicatorText}>
+                    PÁGINA {paginaAcessosFalhos} DE {totalPaginasAcessosFalhos} • {acessosFalhos.length} BLOQUEIOS
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[styles.pageBtn, paginaAcessosFalhos >= totalPaginasAcessosFalhos && styles.pageBtnDisabled]}
+                    disabled={paginaAcessosFalhos >= totalPaginasAcessosFalhos}
+                    onPress={() => setPaginaAcessosFalhos((p) => Math.min(totalPaginasAcessosFalhos, p + 1))}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.pageBtnText}>PRÓXIMA →</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
 
@@ -4761,7 +4891,7 @@ export default function PainelCoordScreen() {
                 </View>
               ) : isMobile ? (
                 <View style={styles.mobileCardsList}>
-                  {ipsBloqueados.map((item, idx) => {
+                  {ipsBloqueadosPaginados.map((item, idx) => {
                     const dataStr = item.data_bloqueio
                       ? new Date(item.data_bloqueio).toLocaleString('pt-BR')
                       : 'N/A';
@@ -4818,7 +4948,7 @@ export default function PainelCoordScreen() {
                       <Text style={[styles.versionHeaderColText, { width: 140, textAlign: 'center' }]}>AÇÃO</Text>
                     </View>
 
-                    {ipsBloqueados.map((item, idx) => {
+                    {ipsBloqueadosPaginados.map((item, idx) => {
                       const dataStr = item.data_bloqueio
                         ? new Date(item.data_bloqueio).toLocaleString('pt-BR')
                         : 'N/A';
@@ -4872,6 +5002,33 @@ export default function PainelCoordScreen() {
                     })}
                   </View>
                 </ScrollView>
+              )}
+
+              {/* Paginação de IPs Bloqueados no Firewall (Limite de 10 por página) */}
+              {ipsBloqueados.length > porPaginaSeguranca && (
+                <View style={styles.paginationRow}>
+                  <TouchableOpacity
+                    style={[styles.pageBtn, paginaIpsBloqueados <= 1 && styles.pageBtnDisabled]}
+                    disabled={paginaIpsBloqueados <= 1}
+                    onPress={() => setPaginaIpsBloqueados((p) => Math.max(1, p - 1))}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.pageBtnText}>← ANTERIOR</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.pageIndicatorText}>
+                    PÁGINA {paginaIpsBloqueados} DE {totalPaginasIpsBloqueados} • {ipsBloqueados.length} IPS BLOQUEADOS
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[styles.pageBtn, paginaIpsBloqueados >= totalPaginasIpsBloqueados && styles.pageBtnDisabled]}
+                    disabled={paginaIpsBloqueados >= totalPaginasIpsBloqueados}
+                    onPress={() => setPaginaIpsBloqueados((p) => Math.min(totalPaginasIpsBloqueados, p + 1))}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.pageBtnText}>PRÓXIMA →</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
           </View>
