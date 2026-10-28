@@ -4820,8 +4820,28 @@ export default function ReportGenerator() {
           const lines2 = rawPax2.trim() !== '' ? rawPax2.split('\n') : [];
           const maxLines = Math.max(lines1.length, lines2.length);
 
-          const LIMIT_PAGE_1 = 16;
-          const LIMIT_CONT_PAGE = 28;
+          const cleanInfoText = (currentData.info || '')
+                      .replace(/<br\s*[/]?>/gi, '\n')
+                      .replace(/<\/p>/gi, '\n')
+                      .replace(/<[^>]+>/g, '')
+                      .replace(/\r/g, '');
+                    const infoLines = cleanInfoText.split('\n');
+                    let infoLineCount = 0;
+                    for (const l of infoLines) {
+                      const trimmed = l.trim();
+                      if (!trimmed) {
+                        infoLineCount += 0.8;
+                      } else {
+                        infoLineCount += Math.max(1, Math.ceil(trimmed.length / 70));
+                      }
+                    }
+          
+                    const saidasList = currentData.listaSaidas || [];
+                    const saidasExtra = Math.max(0, saidasList.length - 1);
+                    const totalExtraLines = Math.round(infoLineCount + saidasExtra);
+          
+                    const LIMIT_PAGE_1 = Math.max(3, Math.min(16, 20 - totalExtraLines));
+                    const LIMIT_CONT_PAGE = 26;
 
           const p1Lines1 = lines1.slice(0, LIMIT_PAGE_1).join('\n');
           const p1Lines2 = lines2.slice(0, LIMIT_PAGE_1).join('\n');
