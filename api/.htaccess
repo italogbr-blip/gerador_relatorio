@@ -1,0 +1,36 @@
+# ========================================================
+# PERMISSÕES E ACESSO DA API (APACHE / LITESPEED / HOSTINGER)
+# ========================================================
+
+# Permite acesso irrestrito aos scripts PHP desta pasta
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order Allow,Deny
+    Allow from all
+</IfModule>
+
+<FilesMatch "\.php$">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Allow from all
+    </IfModule>
+</FilesMatch>
+
+# Desativa reescritas de diretórios superiores para a API
+<IfModule mod_rewrite.c>
+    RewriteEngine Off
+</IfModule>
+
+# Headers CORS completos caso o servidor filtre no nível do Apache
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-Api-Key"
+</IfModule>
+
+Options -Indexes
