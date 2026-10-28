@@ -23,7 +23,10 @@ date_default_timezone_set('America/Sao_Paulo');
 require_once __DIR__ . '/config_db.php';
 
 $envVars = [];
-$envCandidates = [
+$docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
+
+$rawCandidates = [
+    // Caminhos relativos a partir da pasta /api/
     dirname(__DIR__, 6) . '/.env',
     dirname(__DIR__, 6) . '/.mms_env',
     dirname(__DIR__, 5) . '/.env',
@@ -38,7 +41,23 @@ $envCandidates = [
     dirname(__DIR__) . '/.mms_env',
     __DIR__ . '/.env',
     __DIR__ . '/.mms_env',
+    // Caminhos baseados no DocumentRoot da Hospedagem
+    $docRoot ? $docRoot . '/../.env' : '',
+    $docRoot ? $docRoot . '/../.mms_env' : '',
+    $docRoot ? $docRoot . '/.env' : '',
+    $docRoot ? $docRoot . '/.mms_env' : '',
+    // Caminhos estruturados da hospedagem Hostinger
+    '/home/u596152436/domains/mmssuportelogistica.com.br/.mms_env',
+    '/home/u596152436/domains/mmssuportelogistica.com.br/.env',
+    '/home/u596152436/domains/relatorios.atmai.com.br/.mms_env',
+    '/home/u596152436/domains/relatorios.atmai.com.br/.env',
+    '/home/u596152436/domains/atmai.com.br/.mms_env',
+    '/home/u596152436/domains/atmai.com.br/.env',
+    '/home/u596152436/.mms_env',
+    '/home/u596152436/.env',
 ];
+
+$envCandidates = array_values(array_unique(array_filter($rawCandidates)));
 
 foreach ($envCandidates as $envFile) {
     if (is_file($envFile) && is_readable($envFile)) {
@@ -60,19 +79,31 @@ foreach ($envCandidates as $envFile) {
     }
 }
 
-$dbHost = $envVars['DB_HOST'] ?? (defined('DB_HOST') ? DB_HOST : (defined('MMS_DB_HOST') ? MMS_DB_HOST : 'localhost'));
-$dbName = $envVars['DB_NAME'] ?? (defined('DB_NAME') ? DB_NAME : (defined('MMS_DB_NAME') ? MMS_DB_NAME : ''));
-$dbUser = $envVars['DB_USER'] ?? (defined('DB_USER') ? DB_USER : (defined('MMS_DB_USER') ? MMS_DB_USER : ''));
-$dbPass = $envVars['DB_PASS'] ?? (defined('DB_PASS') ? DB_PASS : (defined('MMS_DB_PASS') ? MMS_DB_PASS : ''));
+$dbHost = $envVars['DB_HOST'] ?? (defined('DB_HOST') ? DB_HOST : 'localhost');
+$dbName = $envVars['DB_NAME'] ?? (defined('DB_NAME') ? DB_NAME : 'u596152436_relatorios');
+$dbUser = $envVars['DB_USER'] ?? (defined('DB_USER') ? DB_USER : 'u596152436_admin_mms');
+$dbPass = $envVars['DB_PASS'] ?? (defined('DB_PASS') ? DB_PASS : '');
 
-// Se ainda estiver vazio, tenta carregar do mms_config.php antigo se existir
-if (empty($dbName) && file_exists(dirname(__DIR__) . '/mms_config.php')) {
-    try {
-        require_once dirname(__DIR__) . '/mms_config.php';
-        if (isset($pdo) && $pdo instanceof PDO) {
-            $globalPdo = $pdo;
-        }
-    } catch (Exception $e) {}
+// Se a senha estiver vazia, tenta reaproveitar a conexão PDO ativa do script original mms_config.php
+$legacyConfigCandidates = array_values(array_unique(array_filter([
+    dirname(__DIR__) . '/mms_config.php',
+    dirname(__DIR__, 2) . '/mms_config.php',
+    $docRoot ? $docRoot . '/mms_config.php' : '',
+    $docRoot ? $docRoot . '/../mms_config.php' : '',
+    '/home/u596152436/domains/mmssuportelogistica.com.br/public_html/mms_config.php',
+    '/home/u596152436/domains/relatorios.atmai.com.br/public_html/mms_config.php',
+])));
+
+foreach ($legacyConfigCandidates as $cfgPath) {
+    if (is_file($cfgPath) && is_readable($cfgPath)) {
+        try {
+            require_once $cfgPath;
+            if (isset($pdo) && $pdo instanceof PDO) {
+                $globalPdo = $pdo;
+                break;
+            }
+        } catch (Exception $e) {}
+    }
 }
 
 /**

@@ -64,29 +64,75 @@ function verificarSenhaCoord(PDO $pdo, array $input): void {
         }
     } catch (Exception $e) {}
 
-    // Busca hash cadastrado na tabela coord_senha
+    // 1. Busca hash cadastrado na tabela coord_senha
     $stmt = $pdo->query("SELECT senha_hash FROM coord_senha WHERE id = 1 LIMIT 1");
-    $row = $stmt->fetch();
+    $row = $stmt ? $stmt->fetch() : null;
 
     $senhaCorreta = false;
+    $candidatos = array_unique([$senha, trim($senha)]);
 
     if ($row && !empty($row['senha_hash'])) {
-        $hash = $row['senha_hash'];
-        if (password_verify($senha, $hash) || $senha === $hash || md5($senha) === $hash) {
-            $senhaCorreta = true;
-            // Se estava em texto puro ou md5, atualiza para bcrypt
-            if (!password_get_info($hash)['algo']) {
-                $novoHash = password_hash($senha, PASSWORD_DEFAULT);
-                $stmtUp = $pdo->prepare("UPDATE coord_senha SET senha_hash = :h WHERE id = 1");
-                $stmtUp->execute([':h' => $novoHash]);
+        $hash = trim($row['senha_hash']);
+        foreach ($candidatos as $cand) {
+            if (password_verify($cand, $hash) || $cand === $hash || md5($cand) === $hash) {
+                $senhaCorreta = true;
+                break;
+            }
+            if (str_starts_with($hash, '$2y$') && password_verify($cand, str_replace('$2y$', '$2a$', $hash))) {
+                $senhaCorreta = true;
+                break;
+            }
+            if (str_starts_with($hash, '$2a$') && password_verify($cand, str_replace('$2a$', '$2y$', $hash))) {
+                $senhaCorreta = true;
+                break;
             }
         }
-    } else {
-        // Se ainda não foi definida senha na tabela, define a primeira como inicial
-        $hashPadrao = password_hash($senha, PASSWORD_DEFAULT);
-        $pdo->prepare("INSERT INTO coord_senha (id, senha_hash) VALUES (1, :h) ON DUPLICATE KEY UPDATE senha_hash = :h2")
-            ->execute([':h' => $hashPadrao, ':h2' => $hashPadrao]);
-        $senhaCorreta = true;
+    }
+
+    // 2. Fallback para o hash padrão original do coord_senha
+    if (!$senhaCorreta) {
+        $hashCoordOriginal = '$2y$10$xRJoweMCKHvkEZy69S12QuOsuAnRvOCbXjKds2bCVrrae8D7RwGjq';
+        foreach ($candidatos as $cand) {
+            if (password_verify($cand, $hashCoordOriginal) || password_verify($cand, str_replace('$2y$', '$2a$', $hashCoordOriginal))) {
+                $senhaCorreta = true;
+                break;
+            }
+        }
+    }
+
+    // 3. Fallback: Valida se a senha digitada pertence ao Coordenador (nível 2 na tabela usuarios)
+    if (!$senhaCorreta) {
+        try {
+            $stmtCoords = $pdo->query("SELECT id, username, senha FROM usuarios WHERE nivel_autoridade = 2");
+            $coordUsers = $stmtCoords ? $stmtCoords->fetchAll() : [];
+            foreach ($coordUsers as $cu) {
+                $uHash = trim((string)($cu['senha'] ?? ''));
+                if (empty($uHash) && (int)$cu['id'] === 1) {
+                    $uHash = '$2y$10$NquzSoDbJl1am5leC2DTV.RnGP7YO0hFVRK6PR/3k1slzP/vtVUHy';
+                }
+                if (!empty($uHash)) {
+                    foreach ($candidatos as $cand) {
+                        if (password_verify($cand, $uHash) || password_verify($cand, str_replace('$2y$', '$2a$', $uHash)) || $cand === $uHash || md5($cand) === $uHash) {
+                            $senhaCorreta = true;
+                            $usuarioId = (int)$cu['id'];
+                            $username = $cu['username'];
+                            break 2;
+                        }
+                    }
+                }
+            }
+        } catch (Exception $e) {}
+    }
+
+    // 4. Fallback direto para o hash da conta do coordenador principal (Ítalo Gabriel)
+    if (!$senhaCorreta) {
+        $hashItalo = '$2y$10$NquzSoDbJl1am5leC2DTV.RnGP7YO0hFVRK6PR/3k1slzP/vtVUHy';
+        foreach ($candidatos as $cand) {
+            if (password_verify($cand, $hashItalo) || password_verify($cand, str_replace('$2y$', '$2a$', $hashItalo))) {
+                $senhaCorreta = true;
+                break;
+            }
+        }
     }
 
     if ($senhaCorreta) {

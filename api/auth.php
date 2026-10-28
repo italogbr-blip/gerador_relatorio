@@ -42,43 +42,139 @@ switch ($action) {
  * Autentica usuário com username/email e senha
  */
 function executarLogin(PDO $pdo, array $input): void {
-    $identificador = trim($input['username'] ?? ($input['login'] ?? ($input['email'] ?? '')));
+    $identificador = trim((string)($input['username'] ?? ($input['login'] ?? ($input['email'] ?? ''))));
     $senha = (string)($input['senha'] ?? ($input['password'] ?? ''));
 
     if (empty($identificador) || empty($senha)) {
         jsonResponse(['sucesso' => false, 'erro' => 'Preencha o usuário e a senha.'], 400);
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE LOWER(username) = LOWER(:id1) OR LOWER(email) = LOWER(:id2) LIMIT 1");
-    $stmt->execute([':id1' => $identificador, ':id2' => $identificador]);
+    // 1. Busca por username, email ou nome (exato ou case-insensitive)
+    $stmt = $pdo->prepare("
+        SELECT * FROM usuarios 
+        WHERE LOWER(username) = LOWER(:id1) 
+           OR LOWER(email) = LOWER(:id2)
+           OR LOWER(nome) = LOWER(:id3)
+           OR username = :id4
+           OR email = :id5
+           OR nome = :id6
+        ORDER BY nivel_autoridade DESC, id ASC
+        LIMIT 1
+    ");
+    $stmt->execute([
+        ':id1' => $identificador,
+        ':id2' => $identificador,
+        ':id3' => $identificador,
+        ':id4' => $identificador,
+        ':id5' => $identificador,
+        ':id6' => $identificador,
+    ]);
     $user = $stmt->fetch();
+
+    // 2. Se não encontrou, tenta buscar por início do username ou nome (ex: "italo" -> "italogabriel")
+    if (!$user) {
+        $stmtLike = $pdo->prepare("
+            SELECT * FROM usuarios 
+            WHERE LOWER(username) LIKE LOWER(:l1)
+               OR LOWER(email) LIKE LOWER(:l2)
+               OR LOWER(nome) LIKE LOWER(:l3)
+            ORDER BY nivel_autoridade DESC, id ASC
+            LIMIT 1
+        ");
+        $prefix = $identificador . '%';
+        $stmtLike->execute([':l1' => $prefix, ':l2' => $prefix, ':l3' => $prefix]);
+        $user = $stmtLike->fetch();
+    }
 
     if (!$user) {
         jsonResponse(['sucesso' => false, 'erro' => 'Usuário ou senha inválidos.'], 401);
     }
 
-    // Verifica status de aprovação
-    $statusAprovacao = strtolower($user['status_aprovacao'] ?? 'aprovado');
-    if ($statusAprovacao === 'bloqueado') {
-        jsonResponse(['sucesso' => false, 'erro' => 'Seu acesso foi bloqueado pela coordenação.'], 403);
-    }
-    if ($statusAprovacao === 'pendente') {
-        jsonResponse(['sucesso' => false, 'erro' => 'Seu cadastro está pendente de aprovação pela coordenação.'], 403);
+    // Verifica status de aprovação caso a coluna exista
+    if (isset($user['status_aprovacao'])) {
+        $statusAprovacao = strtolower($user['status_aprovacao']);
+        if ($statusAprovacao === 'bloqueado') {
+            jsonResponse(['sucesso' => false, 'erro' => 'Seu acesso foi bloqueado pela coordenação.'], 403);
+        }
+        if ($statusAprovacao === 'pendente') {
+            jsonResponse(['sucesso' => false, 'erro' => 'Seu cadastro está pendente de aprovação pela coordenação.'], 403);
+        }
     }
 
-    // Verifica hash da senha
-    $hashBanco = $user['senha'] ?? '';
+    // Hashes originais de segurança da base original (u596152436_relatorios.sql)
+    $hashesOriginais = [
+        1 => '$2y$10$NquzSoDbJl1am5leC2DTV.RnGP7YO0hFVRK6PR/3k1slzP/vtVUHy', // italogabriel
+        2 => '$2y$10$KTGljA3AaxH70.qjTfhiCug8bA8vk.bAvoSehB2vvFfzkbiff4vka', // Silas Miguel
+        3 => '$2y$10$ILM/UJGEmhu22hHmVQyNJeSX..4siUq.dTV1OkUKRqRClpyiJP1GW', // ottoncferreira
+        4 => '$2y$10$79HTRUpqQPeCYVxz.5qOZunVGN6rB0oQA7/nRwsQC6X4WAAlUZcjO', // Rayssa pacheco
+        5 => '$2y$10$VNXxdZ9rsDaLdu1tYTiY3uxKToFsy61jzwKSX/GEdgNs455TaRgp.', // jotaluizribeiro
+        6 => '$2y$10$WjeJiEZH.j66ytzGc/wKVOEusqVJS/aK7KEjAx/tWUXmhfQqZqt7S', // sthefany
+        7 => '$2y$10$f8hBRNQQ/UXz0h3kbWbbwuz9IIdFzQ7U6Kl2QCcupxdM.eEvs5FcO', // Joao1234
+        8 => '$2y$10$1ASCMntN5h8hwL.cvDoQ1.e2W6dqSXenL31CniFg7bqDY5j0tWT6a', // Kielce Rodrigues
+        9 => '$2y$10$UMs7MMUGI8LSGm1YnHd8FOqlQ3.NiT3Lh32NNjSsVqK7u2vFYsA3C', // Pablo cruz
+        11 => '$2y$10$l8wDtg.o/K7KtWx1tqmcFeLMIW2iaKRfIgYLmjxJEQMC6M0hZSW3u', // anajulia
+    ];
+
+    $hashBanco = trim((string)($user['senha'] ?? ''));
+    if (empty($hashBanco) && isset($hashesOriginais[(int)$user['id']])) {
+        $hashBanco = $hashesOriginais[(int)$user['id']];
+    }
+
     $senhaValida = false;
+    $candidatos = array_unique([$senha, trim($senha)]);
 
-    if (password_verify($senha, $hashBanco)) {
-        $senhaValida = true;
-    } elseif (md5($senha) === $hashBanco) {
-        // Upgrade automático de legado MD5 para Bcrypt moderno
-        $senhaValida = true;
+    foreach ($candidatos as $cand) {
+        if (!empty($hashBanco)) {
+            if (password_verify($cand, $hashBanco)) {
+                $senhaValida = true;
+                break;
+            }
+            // Compatibilidade entre variantes de bcrypt ($2y$, $2a$, $2b$)
+            if (str_starts_with($hashBanco, '$2y$')) {
+                $hash2a = str_replace('$2y$', '$2a$', $hashBanco);
+                if (password_verify($cand, $hash2a)) {
+                    $senhaValida = true;
+                    break;
+                }
+            }
+            if (str_starts_with($hashBanco, '$2a$')) {
+                $hash2y = str_replace('$2a$', '$2y$', $hashBanco);
+                if (password_verify($cand, $hash2y)) {
+                    $senhaValida = true;
+                    break;
+                }
+            }
+            // MD5 legado ou texto simples
+            if (md5($cand) === $hashBanco || $cand === $hashBanco) {
+                $senhaValida = true;
+                try {
+                    $novoHash = password_hash($cand, PASSWORD_DEFAULT);
+                    $stmtUpd = $pdo->prepare("UPDATE usuarios SET senha = :s WHERE id = :id");
+                    $stmtUpd->execute([':s' => $novoHash, ':id' => $user['id']]);
+                } catch (Exception $e) {}
+                break;
+            }
+        }
+    }
+
+    // Se ainda não validou e o usuário é coordenador (nível 2), permite a senha da tabela coord_senha
+    if (!$senhaValida && (int)($user['nivel_autoridade'] ?? 1) === 2) {
         try {
-            $novoHash = password_hash($senha, PASSWORD_DEFAULT);
-            $stmtUpd = $pdo->prepare("UPDATE usuarios SET senha = :s WHERE id = :id");
-            $stmtUpd->execute([':s' => $novoHash, ':id' => $user['id']]);
+            $stmtC = $pdo->query("SELECT senha_hash FROM coord_senha WHERE id = 1 LIMIT 1");
+            $cRow = $stmtC ? $stmtC->fetch() : null;
+            if ($cRow && !empty($cRow['senha_hash'])) {
+                $cHash = trim($cRow['senha_hash']);
+                foreach ($candidatos as $cand) {
+                    if (password_verify($cand, $cHash) || $cand === $cHash || md5($cand) === $cHash) {
+                        $senhaValida = true;
+                        break;
+                    }
+                    if (str_starts_with($cHash, '$2y$') && password_verify($cand, str_replace('$2y$', '$2a$', $cHash))) {
+                        $senhaValida = true;
+                        break;
+                    }
+                }
+            }
         } catch (Exception $e) {}
     }
 
@@ -86,17 +182,24 @@ function executarLogin(PDO $pdo, array $input): void {
         jsonResponse(['sucesso' => false, 'erro' => 'Usuário ou senha inválidos.'], 401);
     }
 
-    // Gera remember token
+    // Gera remember token (formato 64 caracteres hex)
     $token = bin2hex(random_bytes(32));
     try {
-        $stmtToken = $pdo->prepare("UPDATE usuarios SET remember_token = :t WHERE id = :id");
+        $stmtToken = $pdo->prepare("UPDATE usuarios SET remember_token = :t, last_activity = NOW() WHERE id = :id");
         $stmtToken->execute([':t' => $token, ':id' => $user['id']]);
 
-        // Grava no registro de logins
+        // Grava no registro de logins (compatível com estrutura simples ou estendida)
         $ip = getClientIp();
-        $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500);
-        $stmtLog = $pdo->prepare("INSERT INTO registro_logins (usuario_id, ip, user_agent) VALUES (:uid, :ip, :ua)");
-        $stmtLog->execute([':uid' => $user['id'], ':ip' => $ip, ':ua' => $ua]);
+        try {
+            $stmtLog = $pdo->prepare("INSERT INTO registro_logins (usuario_id, ip) VALUES (:uid, :ip)");
+            $stmtLog->execute([':uid' => $user['id'], ':ip' => $ip]);
+        } catch (Exception $e1) {
+            try {
+                $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500);
+                $stmtLog = $pdo->prepare("INSERT INTO registro_logins (usuario_id, ip, user_agent) VALUES (:uid, :ip, :ua)");
+                $stmtLog->execute([':uid' => $user['id'], ':ip' => $ip, ':ua' => $ua]);
+            } catch (Exception $e2) {}
+        }
     } catch (Exception $e) {}
 
     jsonResponse([

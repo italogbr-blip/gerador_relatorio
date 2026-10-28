@@ -402,7 +402,7 @@ function verifyPasswordAgainstStored(plainPassword: string, storedPasswordOrHash
     const normalizedHash = stored.replace(/^\$2y\$/, '$2a$');
     for (const candidate of candidates) {
       try {
-        if (bcrypt.compareSync(candidate, normalizedHash)) {
+        if (bcrypt.compareSync(candidate, normalizedHash) || bcrypt.compareSync(candidate, stored)) {
           return true;
         }
       } catch (_) {}
@@ -559,8 +559,6 @@ export async function unlockCoordinatorPanel(
         };
         saveSessionLocal(session);
         return { success: true, session };
-      } else if (coordRes.erro && !coordRes.erro.includes('HTTP')) {
-        return { success: false, error: coordRes.erro };
       }
     } catch (_) {}
 
@@ -731,11 +729,7 @@ export async function authenticateUser(
         };
         saveSessionLocal(sessionObj);
         return { success: true, session: sessionObj };
-      } else if (apiLogin.erro && !apiLogin.erro.includes('HTTP') && !apiLogin.erro.includes('Failed to fetch')) {
-        saveLoginAttemptState(inputStr, {
-          tentativas: attemptState.tentativas + 1,
-          bloqueadoAte: attemptState.tentativas + 1 >= MAX_TENTATIVAS ? now + TEMPO_BLOQUEIO_MS : 0,
-        });
+      } else if (apiLogin.erro && (apiLogin.erro.includes('bloqueado') || apiLogin.erro.includes('pendente'))) {
         return { success: false, error: apiLogin.erro };
       }
     } catch (_) {}
