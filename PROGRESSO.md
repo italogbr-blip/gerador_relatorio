@@ -58,6 +58,13 @@ O sistema é composto por duas camadas principais desacopladas e resilientes:
 ---
 
 ### 🎨 B. Interface & Experiência do Usuário (UI/UX)
+- [x] **Paginação na Aba Segurança (`painel_coord.tsx`):**
+  - Implementação de paginação dinâmica e independente (10 itens por página) para as 4 seções de auditoria e segurança:
+    1. *Dispositivos Logados & Auditoria de Sessões*
+    2. *Acessos ao Gerador de Relatórios (Página Inicial)*
+    3. *Acessos Falhos ao Painel (Tentativas Bloqueadas)*
+    4. *Firewall do Gerador — IPs Bloqueados*
+  - Suporte completo tanto na visualização em Tabela (desktop) quanto na lista em Cards (mobile), com indicador de páginas e botões Anterior / Próxima responsivos.
 - [x] **Formatação de Texto Aprimorada:**
   - Adicionado botão **[ Tachado ]** na barra de formatação (com suporte a `~texto~` no preview, no PDF vetorial `jsPDF` e no gerador HTML).
   - Removido o botão legado `[ Esquerda ]` da barra de formatação.
