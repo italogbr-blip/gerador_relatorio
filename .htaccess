@@ -1,13 +1,1 @@
-# ========================================================
-# CONFIGURAÇÃO GERAL APACHE / LITESPEED
-# ========================================================
-
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    
-    # Não intercepta requisições direcionadas para a API PHP
-    RewriteCond %{REQUEST_URI} ^/api/ [NC]
-    RewriteRule ^ - [L]
-</IfModule>
-
 Options -Indexes

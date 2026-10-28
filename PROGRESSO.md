@@ -34,12 +34,12 @@ O sistema é composto por duas camadas principais desacopladas e resilientes:
 - [x] **Padronização 100% sem Prefixos Específicos (`api/config_db.php`):**
   - Nomenclatura universal pronta para distribuição e expansão (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `API_SECRET_KEY`).
   - Remoção completa de prefixos e constantes legadas `MMS_`.
-  - Pré-configuração padrão com a base oficial `u596152436_relatorios` e usuário `u596152436_admin_mms`.
+  - Pré-configuração padrão com a base oficial `u596152436_relatorios`, usuário `u596152436_admin_mms` e senha configurada diretamente em `config_db.php` e `.env` local da API.
 - [x] **Autenticação, Desbloqueio e Auditoria (`api/auth.php` e `api/coord.php`):**
   - Criptografia com algoritmo moderno `password_verify` / `password_hash` (suporte a bcrypt `$2y$`, `$2a$`, `$2b$`, md5 e texto puro).
   - Busca flexível de usuários por `username`, `email` ou `nome` (case-insensitive e busca por prefixo).
   - Integração de hashes originais da base `u596152436_relatorios.sql` (usuário coordenador `italogabriel` e equipe).
-  - Validação estrita do Painel de Coordenação: desbloqueio restrito exclusivamente à senha mestra da tabela `coord_senha`, impedindo acesso via senhas pessoais de contas de usuários.
+  - Validação unificada no Painel de Coordenação: aceita tanto a senha mestre de `coord_senha` quanto a senha pessoal da conta de coordenação (nível 2).
   - Controle de sessões com "Lembrar-me" via tokens criptograficamente seguros de 64 caracteres.
   - Registro de auditoria em `registro_logins` e `coord_acessos_falhos`.
 - [x] **CRUD Completo de Relatórios (`api/relatorios.php`):**

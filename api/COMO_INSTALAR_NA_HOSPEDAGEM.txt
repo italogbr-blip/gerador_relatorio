@@ -48,8 +48,11 @@ Caso prefira, abra o arquivo "api/config_db.php" e informe as credenciais padrõ
 2. Vá até a pasta pública onde o domínio relatorios.atmai.com.br está apontado
    (geralmente "public_html/").
 3. Envie a pasta "api/" inteira para dentro de "public_html/".
-4. Verifique as permissões da pasta "public_html/api/storage_anexos/":
-   - Deve estar com permissão 755 (ou 775) para escrita das fotos.
+4. Verifique as permissões de pastas e arquivos no painel da Hostinger:
+   - A pasta "public_html/api/" e subpastas DEVEM estar com permissão 755 (drwxr-xr-x).
+     *ATENÇÃO: Não use 775 ou 777! No servidor LiteSpeed da Hostinger, permissão 775 causa erro 403 Forbidden.*
+   - Todos os arquivos PHP (".php") DEVEM estar com permissão 644 (-rw-r--r--).
+   - O arquivo ".htaccess" dentro de "api/" já vem configurado para permitir a execução.
 
 --------------------------------------------------------------------------------
 4. TESTES DE FUNCIONAMENTO

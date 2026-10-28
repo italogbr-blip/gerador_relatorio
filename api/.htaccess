@@ -1,5 +1,5 @@
 # ========================================================
-# PERMISSÕES E ACESSO DA API (APACHE / LITESPEED / HOSTINGER)
+# PERMISSOES E ACESSO DA API (APACHE / LITESPEED / HOSTINGER)
 # ========================================================
 
 # Permite acesso irrestrito aos scripts PHP desta pasta
@@ -21,16 +21,27 @@
     </IfModule>
 </FilesMatch>
 
-# Desativa reescritas de diretórios superiores para a API
+# Desativa reescritas de diretorios superiores para a API
 <IfModule mod_rewrite.c>
     RewriteEngine Off
 </IfModule>
 
-# Headers CORS completos caso o servidor filtre no nível do Apache
+# Headers CORS completos caso o servidor filtre no nivel do Apache
 <IfModule mod_headers.c>
     Header always set Access-Control-Allow-Origin "*"
     Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-Api-Key"
 </IfModule>
+
+# Bloqueia download direto de arquivos de configuracao de ambiente
+<FilesMatch "^\.(env|mms_env)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
 
 Options -Indexes

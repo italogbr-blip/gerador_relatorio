@@ -26,27 +26,28 @@ $envVars = [];
 $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
 
 $rawCandidates = [
-    // Caminhos relativos a partir da pasta /api/
-    dirname(__DIR__, 6) . '/.env',
-    dirname(__DIR__, 6) . '/.mms_env',
-    dirname(__DIR__, 5) . '/.env',
-    dirname(__DIR__, 5) . '/.mms_env',
-    dirname(__DIR__, 4) . '/.env',
-    dirname(__DIR__, 4) . '/.mms_env',
-    dirname(__DIR__, 3) . '/.env',
-    dirname(__DIR__, 3) . '/.mms_env',
-    dirname(__DIR__, 2) . '/.env',
-    dirname(__DIR__, 2) . '/.mms_env',
-    dirname(__DIR__) . '/.env',
-    dirname(__DIR__) . '/.mms_env',
+    // 1. Arquivo local prioritário dentro da própria pasta /api/
     __DIR__ . '/.env',
     __DIR__ . '/.mms_env',
-    // Caminhos baseados no DocumentRoot da Hospedagem
+    // 2. Caminhos relativos a partir da pasta /api/
+    dirname(__DIR__) . '/.env',
+    dirname(__DIR__) . '/.mms_env',
+    dirname(__DIR__, 2) . '/.env',
+    dirname(__DIR__, 2) . '/.mms_env',
+    dirname(__DIR__, 3) . '/.env',
+    dirname(__DIR__, 3) . '/.mms_env',
+    dirname(__DIR__, 4) . '/.env',
+    dirname(__DIR__, 4) . '/.mms_env',
+    dirname(__DIR__, 5) . '/.env',
+    dirname(__DIR__, 5) . '/.mms_env',
+    dirname(__DIR__, 6) . '/.env',
+    dirname(__DIR__, 6) . '/.mms_env',
+    // 3. Caminhos baseados no DocumentRoot da Hospedagem
     $docRoot ? $docRoot . '/../.env' : '',
     $docRoot ? $docRoot . '/../.mms_env' : '',
     $docRoot ? $docRoot . '/.env' : '',
     $docRoot ? $docRoot . '/.mms_env' : '',
-    // Caminhos estruturados da hospedagem Hostinger
+    // 4. Caminhos estruturados da hospedagem Hostinger
     '/home/u596152436/domains/mmssuportelogistica.com.br/.mms_env',
     '/home/u596152436/domains/mmssuportelogistica.com.br/.env',
     '/home/u596152436/domains/relatorios.atmai.com.br/.mms_env',
