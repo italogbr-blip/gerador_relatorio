@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
-import { salvarRelatorioApi, obterRelatorioApi, listarNotificacoesApi } from '../lib/api';
+import { salvarRelatorioApi, obterRelatorioApi, listarNotificacoesApi, verificarIpBloqueadoApi } from '../lib/api';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { formatReportPdfUrl } from '../lib/config';
 import { processarUploadFotos } from '../lib/anexosService';
@@ -916,14 +916,13 @@ export default function ReportGenerator() {
         const ip = await getPublicIp();
         if (!isMounted) return;
         setClientIp(ip);
-        if (ip && ip !== '127.0.0.1') {
-          const { data, error } = await supabase
-            .from('ips_bloqueados')
-            .select('ip')
-            .eq('ip', ip);
-          if (!error && data && data.length > 0) {
-            setIsIpBlocked(true);
-          }
+        if (ip && ip !== '127.0.0.1') {
+          try {
+            const resBloq = await verificarIpBloqueadoApi(ip);
+            if (resBloq.sucesso && resBloq.bloqueado) {
+              setIsIpBlocked(true);
+            }
+          } catch (_) {}
         }
       } catch (e) {
         // Silencioso se offline

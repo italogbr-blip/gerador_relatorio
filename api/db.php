@@ -26,28 +26,27 @@ $envVars = [];
 $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? '';
 
 $rawCandidates = [
-    // 1. Arquivo local prioritário dentro da própria pasta /api/
-    __DIR__ . '/.env',
-    __DIR__ . '/.mms_env',
-    // 2. Caminhos relativos a partir da pasta /api/
-    dirname(__DIR__) . '/.env',
-    dirname(__DIR__) . '/.mms_env',
-    dirname(__DIR__, 2) . '/.env',
-    dirname(__DIR__, 2) . '/.mms_env',
-    dirname(__DIR__, 3) . '/.env',
-    dirname(__DIR__, 3) . '/.mms_env',
-    dirname(__DIR__, 4) . '/.env',
-    dirname(__DIR__, 4) . '/.mms_env',
-    dirname(__DIR__, 5) . '/.env',
-    dirname(__DIR__, 5) . '/.mms_env',
+    // Caminhos relativos a partir da pasta /api/
     dirname(__DIR__, 6) . '/.env',
     dirname(__DIR__, 6) . '/.mms_env',
-    // 3. Caminhos baseados no DocumentRoot da Hospedagem
+    dirname(__DIR__, 5) . '/.env',
+    dirname(__DIR__, 5) . '/.mms_env',
+    dirname(__DIR__, 4) . '/.env',
+    dirname(__DIR__, 4) . '/.mms_env',
+    dirname(__DIR__, 3) . '/.env',
+    dirname(__DIR__, 3) . '/.mms_env',
+    dirname(__DIR__, 2) . '/.env',
+    dirname(__DIR__, 2) . '/.mms_env',
+    dirname(__DIR__) . '/.env',
+    dirname(__DIR__) . '/.mms_env',
+    __DIR__ . '/.env',
+    __DIR__ . '/.mms_env',
+    // Caminhos baseados no DocumentRoot da Hospedagem
     $docRoot ? $docRoot . '/../.env' : '',
     $docRoot ? $docRoot . '/../.mms_env' : '',
     $docRoot ? $docRoot . '/.env' : '',
     $docRoot ? $docRoot . '/.mms_env' : '',
-    // 4. Caminhos estruturados da hospedagem Hostinger
+    // Caminhos estruturados da hospedagem Hostinger
     '/home/u596152436/domains/mmssuportelogistica.com.br/.mms_env',
     '/home/u596152436/domains/mmssuportelogistica.com.br/.env',
     '/home/u596152436/domains/relatorios.atmai.com.br/.mms_env',
@@ -250,6 +249,23 @@ function inicializarTabelasSeNecessario(PDO $pdo): void {
             acao VARCHAR(100) NOT NULL,
             detalhes TEXT NULL,
             data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // 9. Tabela de IPs bloqueados (Firewall)
+        $pdo->exec("CREATE TABLE IF NOT EXISTS ips_bloqueados (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            ip VARCHAR(45) NOT NULL UNIQUE,
+            motivo VARCHAR(255) NULL,
+            bloqueado_por VARCHAR(100) NULL,
+            data_bloqueio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // 10. Configurações gerais Chave-Valor (Rodapé, etc)
+        $pdo->exec("CREATE TABLE IF NOT EXISTS configuracoes (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            chave VARCHAR(100) NOT NULL UNIQUE,
+            valor LONGTEXT NOT NULL,
+            atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     } catch (Exception $e) {

@@ -52,6 +52,14 @@ switch ($action) {
         excluirNotificacao($pdo, $input);
         break;
 
+    case 'obter_footer':
+        obterConfigFooter($pdo);
+        break;
+
+    case 'salvar_footer':
+        salvarConfigFooter($pdo, $input);
+        break;
+
     default:
         jsonResponse(['sucesso' => false, 'erro' => 'Ação de configuração desconhecida.'], 400);
 }
@@ -242,6 +250,45 @@ function excluirNotificacao(PDO $pdo, array $input): void {
         $stmt = $pdo->prepare("DELETE FROM notificacoes WHERE id = :id");
         $stmt->execute([':id' => $id]);
         jsonResponse(['sucesso' => true, 'mensagem' => 'Notificação excluída com sucesso.']);
+    } catch (Exception $e) {
+        jsonResponse(['sucesso' => false, 'erro' => $e->getMessage()], 500);
+    }
+}
+
+
+/**
+ * Obtém a configuração salva do rodapé (footer_config)
+ */
+function obterConfigFooter(PDO $pdo): void {
+    try {
+        $stmt = $pdo->prepare("SELECT valor FROM configuracoes WHERE chave = 'footer_config' LIMIT 1");
+        $stmt->execute();
+        $row = $stmt->fetch();
+        if ($row && !empty($row['valor'])) {
+            $parsed = json_decode($row['valor'], true);
+            jsonResponse(['sucesso' => true, 'config' => $parsed ?: []]);
+        }
+    } catch (Exception $e) {}
+    jsonResponse(['sucesso' => true, 'config' => null]);
+}
+
+/**
+ * Salva a configuração personalizada do rodapé
+ */
+function salvarConfigFooter(PDO $pdo, array $input): void {
+    $config = $input['config'] ?? $input;
+    if (is_array($config)) {
+        unset($config['action']);
+    }
+    $json = json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO configuracoes (chave, valor) VALUES ('footer_config', :val)
+            ON DUPLICATE KEY UPDATE valor = :val2
+        ");
+        $stmt->execute([':val' => $json, ':val2' => $json]);
+        jsonResponse(['sucesso' => true, 'mensagem' => 'Configuração do rodapé salva no MySQL com sucesso!']);
     } catch (Exception $e) {
         jsonResponse(['sucesso' => false, 'erro' => $e->getMessage()], 500);
     }
