@@ -16,9 +16,10 @@ O sistema é composto por duas camadas principais desacopladas e resilientes:
    - Adaptador unificado [`core-app/src/lib/api.ts`](file:///c:/Users/Italo/Desktop/MMS/Scripts/mms_tools/gerador_relatorio_supabase/core-app/src/lib/api.ts) para comunicação com o backend.
 
 2. **Backend e API REST (`api/`):**
-   - Construído em **PHP nativo com PDO**, sem dependências pesadas, ideal para hospedagens compartilhadas (Hostinger, cPanel, VPS).
+   - Construído em **PHP nativo com PDO**, sem dependências pesadas, hospedado na **Hostinger** (`https://mmssuportelogistica.com.br/api/`).
+   - Roteamento e reverse proxy no `vercel.json` encaminhando transparentemente `/api/*` da Vercel para o servidor da Hostinger.
    - Conexão com banco de dados **MySQL** utilizando nomes de variáveis padronizados da indústria (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`).
-   - Leitura automática de variáveis de ambiente (`.env` ou `.mms_env`).
+   - Leitura prioritária de `api/.env` e `api/config_db.php`.
    - Sistema de armazenamento protegido para anexos fotográficos com barreira `.htaccess` (403 Forbidden).
 
 ---

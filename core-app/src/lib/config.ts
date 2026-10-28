@@ -3,14 +3,22 @@
  * Permite integração entre o App e o Servidor PHP na hospedagem.
  */
 
-export const DEFAULT_SERVER_URL = 'https://relatorios.atmai.com.br';
+export const DEFAULT_SERVER_URL = 'https://mmssuportelogistica.com.br';
 
 /**
- * Detecta a URL base do servidor dinamicamente
+ * Detecta a URL base do servidor dinamicamente.
+ * O backend PHP e o banco de dados MySQL estão hospedados em mmssuportelogistica.com.br.
  */
 export function getServerBaseUrl(): string {
   if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    // Se estiver rodando na Vercel (relatorios.atmai.com.br / *.vercel.app) ou em ambiente local,
+    // direciona as chamadas da API diretamente para a Hostinger.
+    if (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.includes('atmai.com.br') ||
+      window.location.hostname.endsWith('vercel.app')
+    ) {
       return DEFAULT_SERVER_URL;
     }
     return window.location.origin;

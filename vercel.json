@@ -3,6 +3,10 @@
   "outputDirectory": "core-app/dist",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://mmssuportelogistica.com.br/api/:path*"
+    },
+    {
       "source": "/painel_coord",
       "destination": "/painel_coord/index.html"
     },
