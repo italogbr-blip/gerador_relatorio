@@ -89,46 +89,11 @@ function verificarSenhaCoord(PDO $pdo, array $input): void {
         }
     }
 
-    // 2. Fallback para o hash padrão original do coord_senha
+    // 2. Fallback para o hash padrão original do coord_senha (base u596152436_relatorios)
     if (!$senhaCorreta) {
         $hashCoordOriginal = '$2y$10$xRJoweMCKHvkEZy69S12QuOsuAnRvOCbXjKds2bCVrrae8D7RwGjq';
         foreach ($candidatos as $cand) {
             if (password_verify($cand, $hashCoordOriginal) || password_verify($cand, str_replace('$2y$', '$2a$', $hashCoordOriginal))) {
-                $senhaCorreta = true;
-                break;
-            }
-        }
-    }
-
-    // 3. Fallback: Valida se a senha digitada pertence ao Coordenador (nível 2 na tabela usuarios)
-    if (!$senhaCorreta) {
-        try {
-            $stmtCoords = $pdo->query("SELECT id, username, senha FROM usuarios WHERE nivel_autoridade = 2");
-            $coordUsers = $stmtCoords ? $stmtCoords->fetchAll() : [];
-            foreach ($coordUsers as $cu) {
-                $uHash = trim((string)($cu['senha'] ?? ''));
-                if (empty($uHash) && (int)$cu['id'] === 1) {
-                    $uHash = '$2y$10$NquzSoDbJl1am5leC2DTV.RnGP7YO0hFVRK6PR/3k1slzP/vtVUHy';
-                }
-                if (!empty($uHash)) {
-                    foreach ($candidatos as $cand) {
-                        if (password_verify($cand, $uHash) || password_verify($cand, str_replace('$2y$', '$2a$', $uHash)) || $cand === $uHash || md5($cand) === $uHash) {
-                            $senhaCorreta = true;
-                            $usuarioId = (int)$cu['id'];
-                            $username = $cu['username'];
-                            break 2;
-                        }
-                    }
-                }
-            }
-        } catch (Exception $e) {}
-    }
-
-    // 4. Fallback direto para o hash da conta do coordenador principal (Ítalo Gabriel)
-    if (!$senhaCorreta) {
-        $hashItalo = '$2y$10$NquzSoDbJl1am5leC2DTV.RnGP7YO0hFVRK6PR/3k1slzP/vtVUHy';
-        foreach ($candidatos as $cand) {
-            if (password_verify($cand, $hashItalo) || password_verify($cand, str_replace('$2y$', '$2a$', $hashItalo))) {
                 $senhaCorreta = true;
                 break;
             }

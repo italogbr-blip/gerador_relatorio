@@ -602,7 +602,7 @@ export async function unlockCoordinatorPanel(
 
     let senhaValida = false;
 
-    // 3. Consulta a tabela coord_senha igual ao coord/index.php ("SELECT senha_hash FROM coord_senha WHERE id = 1")
+    // 3. Consulta estritamente a tabela coord_senha igual ao coord/index.php ("SELECT senha_hash FROM coord_senha WHERE id = 1")
     try {
       const { data: coordRow } = await supabase
         .from('coord_senha')
@@ -615,40 +615,11 @@ export async function unlockCoordinatorPanel(
       }
     } catch (_) {}
 
-    // 4. Confere também a senha do próprio usuário coordenador na tabela public.usuarios
-    const coordUserHash = getEffectiveUserHash(coordUser);
-    if (!senhaValida && coordUserHash) {
-      if (verifyPasswordAgainstStored(senhaDigitada, coordUserHash)) {
-        senhaValida = true;
-      }
-    }
-
-    // 5. Fallback para os hashes padrão do coord_senha e coordenador caso RLS bloqueie leitura
+    // 4. Fallback estrito para o hash padrão da coordenação (tabela coord_senha da base u596152436_relatorios)
     if (!senhaValida) {
       const HASH_COORD_PAINEL = '$2a$10$xRJoweMCKHvkEZy69S12QuOsuAnRvOCbXjKds2bCVrrae8D7RwGjq';
-      const HASH_COORD_ITALO = '$2a$10$NquzSoDbJl1am5leC2DTV.RnGP7YO0hFVRK6PR/3k1slzP/vtVUHy';
-      if (
-        verifyPasswordAgainstStored(senhaDigitada, HASH_COORD_PAINEL) ||
-        verifyPasswordAgainstStored(senhaDigitada, HASH_COORD_ITALO)
-      ) {
+      if (verifyPasswordAgainstStored(senhaDigitada, HASH_COORD_PAINEL)) {
         senhaValida = true;
-      }
-    }
-
-    // 6. Tenta autenticação nativa com Supabase Auth se houver e-mail
-    if (!senhaValida) {
-      const emailToAuth = coordUser?.email || (login.includes('@') ? login : 'italogabriel1503@gmail.com');
-      if (emailToAuth) {
-        try {
-          const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
-            email: emailToAuth,
-            password: senhaDigitada,
-          });
-
-          if (!authErr && authData?.session) {
-            senhaValida = true;
-          }
-        } catch (_) {}
       }
     }
 

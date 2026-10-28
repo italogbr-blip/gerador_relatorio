@@ -157,27 +157,6 @@ function executarLogin(PDO $pdo, array $input): void {
         }
     }
 
-    // Se ainda não validou e o usuário é coordenador (nível 2), permite a senha da tabela coord_senha
-    if (!$senhaValida && (int)($user['nivel_autoridade'] ?? 1) === 2) {
-        try {
-            $stmtC = $pdo->query("SELECT senha_hash FROM coord_senha WHERE id = 1 LIMIT 1");
-            $cRow = $stmtC ? $stmtC->fetch() : null;
-            if ($cRow && !empty($cRow['senha_hash'])) {
-                $cHash = trim($cRow['senha_hash']);
-                foreach ($candidatos as $cand) {
-                    if (password_verify($cand, $cHash) || $cand === $cHash || md5($cand) === $cHash) {
-                        $senhaValida = true;
-                        break;
-                    }
-                    if (str_starts_with($cHash, '$2y$') && password_verify($cand, str_replace('$2y$', '$2a$', $cHash))) {
-                        $senhaValida = true;
-                        break;
-                    }
-                }
-            }
-        } catch (Exception $e) {}
-    }
-
     if (!$senhaValida) {
         jsonResponse(['sucesso' => false, 'erro' => 'Usuário ou senha inválidos.'], 401);
     }

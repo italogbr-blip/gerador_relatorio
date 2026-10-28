@@ -39,7 +39,7 @@ O sistema é composto por duas camadas principais desacopladas e resilientes:
   - Criptografia com algoritmo moderno `password_verify` / `password_hash` (suporte a bcrypt `$2y$`, `$2a$`, `$2b$`, md5 e texto puro).
   - Busca flexível de usuários por `username`, `email` ou `nome` (case-insensitive e busca por prefixo).
   - Integração de hashes originais da base `u596152436_relatorios.sql` (usuário coordenador `italogabriel` e equipe).
-  - Validação unificada no Painel de Coordenação: aceita tanto a senha mestre de `coord_senha` quanto a senha pessoal da conta de coordenação (nível 2).
+  - Validação estrita do Painel de Coordenação: desbloqueio restrito exclusivamente à senha mestra da tabela `coord_senha`, impedindo acesso via senhas pessoais de contas de usuários.
   - Controle de sessões com "Lembrar-me" via tokens criptograficamente seguros de 64 caracteres.
   - Registro de auditoria em `registro_logins` e `coord_acessos_falhos`.
 - [x] **CRUD Completo de Relatórios (`api/relatorios.php`):**
