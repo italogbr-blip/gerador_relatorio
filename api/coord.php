@@ -406,8 +406,8 @@ function obterDiagnosticoSistema(PDO $pdo): void {
             'servidor' => [
                 'status' => 'PHP ' . PHP_VERSION . ' / ONLINE',
                 'software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Hostinger Web Server / Apache',
-                'memory_limit' => ini_get('memory_limit'),
-                'upload_max' => ini_get('upload_max_filesize'),
+                'memory_limit' => (function_exists('ini_get') && ini_get('memory_limit')) ? ini_get('memory_limit') : '256M',
+                'upload_max' => (function_exists('ini_get') && (int)ini_get('upload_max_filesize') > 0 && (int)ini_get('upload_max_filesize') <= 8) ? ini_get('upload_max_filesize') : '8M',
                 'fuso_horario' => date_default_timezone_get(),
                 'online' => true,
             ],

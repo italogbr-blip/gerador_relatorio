@@ -1,1 +1,31 @@
 Options -Indexes
+
+# Limites seguros de upload e memoria (Hostinger / Apache)
+<IfModule mod_php.c>
+    php_value upload_max_filesize 8M
+    php_value post_max_size 10M
+    php_value memory_limit 256M
+    php_value max_file_uploads 10
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 8M
+    php_value post_max_size 10M
+    php_value memory_limit 256M
+    php_value max_file_uploads 10
+</IfModule>
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 8M
+    php_value post_max_size 10M
+    php_value memory_limit 256M
+    php_value max_file_uploads 10
+</IfModule>
+
+<FilesMatch "^\.(env|mms_env|user\.ini)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

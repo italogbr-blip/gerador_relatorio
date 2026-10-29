@@ -6,15 +6,18 @@
  * para armazenamento protegido de fotos na hospedagem.
  */
 
+// Limites seguros de upload e memória configurados em tempo de execução
+@ini_set('upload_max_filesize', '8M');
+@ini_set('post_max_size', '10M');
+
 // Chave secreta de autenticação entre o aplicativo e a sua hospedagem PHP.
-// Recomenda-se manter uma chave forte e nunca compartilhá-la publicamente.
 define('API_SECRET_KEY', 'e94a8f61c32b50d998a4c146e28fb05cf711d9546059d2489e2171ec55fb8f29');
 
 // Diretório local onde os arquivos físicos serão salvos
 define('STORAGE_DIR', __DIR__ . '/storage_anexos/');
 
-// Tamanho máximo permitido por foto (em bytes). Padrão: 12MB
-define('MAX_FILE_SIZE_BYTES', 12 * 1024 * 1024);
+// Tamanho máximo permitido por foto (em bytes). Reduzido para 8MB seguro para evitar injeção de arquivos maliciosos
+define('MAX_FILE_SIZE_BYTES', 8 * 1024 * 1024);
 
 // Domínio base ou URL onde a pasta /api/ está instalada
 // Se deixado vazio (''), a URL será detectada automaticamente pelo script.
@@ -38,4 +41,3 @@ function getApiBaseUrl(): string {
     $scriptDir = str_replace('\\', '/', $scriptDir);
     return rtrim($protocol . $host . $scriptDir, '/');
 }
-

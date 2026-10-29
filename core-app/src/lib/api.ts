@@ -598,8 +598,8 @@ export async function obterDiagnosticoSistemaApi(): Promise<{ sucesso: boolean; 
         servidor: {
           status: 'PHP 8.x / ONLINE',
           software: 'Hostinger Web Server / Apache',
-          memory_limit: '512M',
-          upload_max: '64M',
+          memory_limit: '256M',
+          upload_max: '8M',
           fuso_horario: 'America/Sao_Paulo',
           online: true,
         },

@@ -4444,7 +4444,7 @@ export default function PainelCoordScreen() {
                     {diagnostico?.servidor?.software || 'Hostinger Web Server / Apache'} • Fuso: Brasília
                   </Text>
                   <Text style={[styles.sysStatusInfo, { fontSize: 10, color: '#64748b', marginTop: 3 }]}>
-                    Upload Máx: {diagnostico?.servidor?.upload_max || '64M'} • Memória: {diagnostico?.servidor?.memory_limit || '512M'}
+                    Upload Máx: {diagnostico?.servidor?.upload_max || '8M'} • Memória: {diagnostico?.servidor?.memory_limit || '256M'}
                   </Text>
                 </View>
 

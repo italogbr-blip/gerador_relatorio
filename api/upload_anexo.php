@@ -144,6 +144,46 @@ if (!isset($allowedMimeTypes[$detectedMime])) {
     exit;
 }
 
+// 7.1. Validação Criteriosa da Estrutura Real da Imagem (getimagesize)
+$imgInfo = @getimagesize($tempFilePath);
+if ($imgInfo === false || empty($imgInfo[0]) || empty($imgInfo[1])) {
+    if (isset($decoded)) @unlink($tempFilePath);
+    http_response_code(415);
+    echo json_encode([
+        'sucesso' => false,
+        'erro' => 'Arquivo rejeitado: não é uma imagem válida ou está corrompido.'
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// 7.2. Varredura Anti-Malware / Anti-Webshell (Prevenção de Injeção de Código em Polyglots e Scripts Ocultos)
+$contentSample = @file_get_contents($tempFilePath, false, null, 0, 512 * 1024);
+if ($contentSample !== false) {
+    $maliciousPatterns = [
+        '/<?php/i',
+        '/<?=/i',
+        '/<script/i',
+        '/evals*(/i',
+        '/base64_decodes*(/i',
+        '/systems*(/i',
+        '/shell_execs*(/i',
+        '/passthrus*(/i',
+        '/popens*(/i',
+        '/proc_opens*(/i',
+    ];
+    foreach ($maliciousPatterns as $pattern) {
+        if (preg_match($pattern, $contentSample)) {
+            if (isset($decoded)) @unlink($tempFilePath);
+            http_response_code(403);
+            echo json_encode([
+                'sucesso' => false,
+                'erro' => 'Upload rejeitado: arquivo contém assinatura suspeita de código executável.'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+}
+
 // 8. Gera Nome Imprevisível e Criptograficamente Seguro
 $extension = $allowedMimeTypes[$detectedMime];
 $safeFileName = bin2hex(random_bytes(16)) . '_' . time() . '.' . $extension;
