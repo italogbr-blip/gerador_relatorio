@@ -336,23 +336,51 @@ function obterEstatisticas(PDO $pdo, array $input): void {
 
 
 /**
- * Retorna o Ranking Completo de Prepostos e Empresas com números reais de toda a base
+ * Retorna o Ranking Completo de Prepostos e Empresas com números reais de toda a base ou filtrado por período
  */
 function obterRankings(PDO $pdo): void {
     try {
-        // 1. Ranking de Empresas (Direto via SQL agrupado de todos os relatórios)
-        $stmtEmp = $pdo->query("
+        $periodo = trim($_GET['periodo'] ?? ''); // '2026-10', '2026-05', etc., ou 'todos'
+        $mes = isset($_GET['mes']) ? (int)$_GET['mes'] : 0;
+        $ano = isset($_GET['ano']) ? (int)$_GET['ano'] : 0;
+
+        if (!empty($periodo) && preg_match('/^(\d{4})-(\d{1,2})$/', $periodo, $m)) {
+            $ano = (int)$m[1];
+            $mes = (int)$m[2];
+        }
+
+        $temFiltroData = ($ano >= 2000 && $mes >= 1 && $mes <= 12);
+        $whereEmp = "";
+        $wherePrep = "";
+        $params = [];
+
+        if ($temFiltroData) {
+            $dtInicio = sprintf('%04d-%02d-01 00:00:00', $ano, $mes);
+            $dtFim = date('Y-m-t 23:59:59', strtotime($dtInicio));
+            $whereEmp = "WHERE data_criacao >= :dt1 AND data_criacao <= :dt2";
+            $wherePrep = "WHERE r.data_criacao >= :dt1 AND r.data_criacao <= :dt2";
+            $params = [
+                ':dt1' => $dtInicio,
+                ':dt2' => $dtFim
+            ];
+        }
+
+        // 1. Ranking de Empresas (Direto via SQL agrupado)
+        $sqlEmp = "
             SELECT 
                 COALESCE(NULLIF(TRIM(empresa), ''), 'OUTROS') AS empresa, 
                 COUNT(*) AS total
             FROM relatorios
+            {$whereEmp}
             GROUP BY COALESCE(NULLIF(TRIM(empresa), ''), 'OUTROS')
             ORDER BY total DESC
-        ");
+        ";
+        $stmtEmp = $pdo->prepare($sqlEmp);
+        $stmtEmp->execute($params);
         $empresas = $stmtEmp ? $stmtEmp->fetchAll() : [];
 
-        // 2. Ranking de Prepostos (Processa todos os relatórios para totalização fiel)
-        $stmtPrep = $pdo->query("
+        // 2. Ranking de Prepostos (Processa relatórios para totalização fiel)
+        $sqlPrep = "
             SELECT 
                 r.id, 
                 r.usuario_id, 
@@ -363,8 +391,11 @@ function obterRankings(PDO $pdo): void {
                 u.username AS user_username
             FROM relatorios r
             LEFT JOIN usuarios u ON u.id = r.usuario_id
+            {$wherePrep}
             ORDER BY r.id DESC
-        ");
+        ";
+        $stmtPrep = $pdo->prepare($sqlPrep);
+        $stmtPrep->execute($params);
         $rows = $stmtPrep ? $stmtPrep->fetchAll() : [];
 
         $mapaPrepostos = [];
@@ -415,6 +446,7 @@ function obterRankings(PDO $pdo): void {
 
         jsonResponse([
             'sucesso' => true,
+            'periodo' => $temFiltroData ? sprintf('%04d-%02d', $ano, $mes) : 'todos',
             'ranking_empresas' => $empresas,
             'ranking_prepostos' => $rankingPrepostos,
             'total_relatorios' => count($rows)

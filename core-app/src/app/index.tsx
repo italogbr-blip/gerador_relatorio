@@ -2167,7 +2167,7 @@ export default function ReportGenerator() {
       }
 
       const loadedTab: TabData = {
-        grupo: parsed.grupo || report.empresa || 'ALPHA OFFSHORE',
+        grupo: parsed.grupo || report.empresa || 'TECHNIP',
         unidade: parsed.unidade || report.unidade || '',
         data: dataVal,
         local: parsed.local || report.local_atendimento || '',
@@ -4068,7 +4068,7 @@ export default function ReportGenerator() {
                 onPress={() => setIsGrupoDropdownOpen(!isGrupoDropdownOpen)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.selectBoxText}>{currentData.grupo || 'ALPHA OFFSHORE'}</Text>
+                <Text style={styles.selectBoxText}>{currentData.grupo || 'TECHNIP'}</Text>
                 <Text style={styles.selectBoxChevron}>{isGrupoDropdownOpen ? '▲' : '▼'}</Text>
               </TouchableOpacity>
 

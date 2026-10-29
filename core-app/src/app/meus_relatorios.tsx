@@ -30,7 +30,7 @@ const corporateFont = Platform.OS === 'web'
   ? '"Times New Roman", Times, serif'
   : undefined;
 
-const EMPRESAS = ['TODAS', 'ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
+const EMPRESAS = ['TODAS', 'TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'];
 
 export default function MeusRelatoriosScreen() {
   const router = useRouter();
@@ -76,16 +76,20 @@ export default function MeusRelatoriosScreen() {
 
   // Empresas dinâmicas cadastradas no banco de dados
   const [empresasFiltroOptions, setEmpresasFiltroOptions] = useState<string[]>(() => {
+    const FICTICIAS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'NEXUS LOGISTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'VANGUARD MARITIMA'];
     if (typeof localStorage !== 'undefined') {
       try {
         const raw = localStorage.getItem('mms_empresas_cadastradas');
         if (raw) {
           const list = JSON.parse(raw);
-          if (Array.isArray(list) && list.length > 0) return ['TODAS', ...list];
+          if (Array.isArray(list) && list.length > 0) {
+            const limpa = list.filter((item) => !FICTICIAS.includes(String(item).trim().toUpperCase()));
+            if (limpa.length > 0) return ['TODAS', ...limpa];
+          }
         }
       } catch (_) {}
     }
-    return ['TODAS', 'TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
+    return ['TODAS', 'TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'];
   });
 
   const carregarEmpresasFiltro = async () => {

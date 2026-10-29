@@ -139,14 +139,17 @@ export async function obterEstatisticasApi(): Promise<{ sucesso: boolean; estati
   }
 }
 
-export async function obterRankingsApi(): Promise<{
+export async function obterRankingsApi(periodo?: string): Promise<{
   sucesso: boolean;
   ranking_prepostos?: Array<{ nome: string; total: number; ultimaEmpresa: string }>;
   ranking_empresas?: Array<{ empresa: string; total: number }>;
+  total_relatorios?: number;
+  periodo?: string;
   erro?: string;
 }> {
   try {
-    return await apiFetch('/api/relatorios.php?action=rankings');
+    const q = periodo && periodo !== 'todos' ? `&periodo=${encodeURIComponent(periodo)}` : '';
+    return await apiFetch(`/api/relatorios.php?action=rankings${q}`);
   } catch (error: any) {
     return { sucesso: false, erro: error.message };
   }
@@ -389,6 +392,7 @@ export interface EmpresaRecord {
   nome: string;
   ativa: number | boolean;
   data_cadastro?: string;
+  total_relatorios?: number;
 }
 
 export async function listarEmpresasApi(): Promise<{ sucesso: boolean; empresas: EmpresaRecord[] }> {

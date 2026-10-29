@@ -318,12 +318,21 @@ function garantirTabelaEmpresas(PDO $pdo): void {
             data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        // Remove empresas fictícias legadas se existirem e não possuírem relatórios reais associados
+        $ficticias = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'NEXUS LOGISTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'VANGUARD MARITIMA'];
+        foreach ($ficticias as $fict) {
+            try {
+                $temRel = (int)$pdo->query("SELECT COUNT(*) FROM relatorios WHERE UPPER(TRIM(empresa)) = " . $pdo->quote(strtoupper($fict)))->fetchColumn();
+                if ($temRel === 0) {
+                    $pdo->exec("DELETE FROM empresas WHERE UPPER(TRIM(nome)) = " . $pdo->quote(strtoupper($fict)));
+                }
+            } catch (Exception $exFict) {}
+        }
+
         $count = (int)$pdo->query("SELECT COUNT(*) FROM empresas")->fetchColumn();
         if ($count === 0) {
             $defaultEmpresas = [
-                'TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 
-                'ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 
-                'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'
+                'TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'
             ];
             $stmt = $pdo->prepare("INSERT IGNORE INTO empresas (nome, ativa) VALUES (:nome, 1)");
             foreach ($defaultEmpresas as $emp) {
@@ -334,16 +343,37 @@ function garantirTabelaEmpresas(PDO $pdo): void {
 }
 
 /**
- * Lista todas as empresas cadastradas
+ * Lista todas as empresas cadastradas com total de relatórios gerados
  */
 function listarEmpresas(PDO $pdo): void {
     garantirTabelaEmpresas($pdo);
     try {
-        $stmt = $pdo->query("SELECT id, nome, ativa, data_cadastro FROM empresas ORDER BY nome ASC");
+        $sql = "
+            SELECT 
+                e.id, 
+                e.nome, 
+                e.ativa, 
+                e.data_cadastro,
+                (SELECT COUNT(*) FROM relatorios r WHERE UPPER(TRIM(r.empresa)) = UPPER(TRIM(e.nome))) AS total_relatorios
+            FROM empresas e 
+            ORDER BY total_relatorios DESC, e.nome ASC
+        ";
+        $stmt = $pdo->query($sql);
         $empresas = $stmt ? $stmt->fetchAll() : [];
+        foreach ($empresas as &$item) {
+            $item['total_relatorios'] = isset($item['total_relatorios']) ? (int)$item['total_relatorios'] : 0;
+            $item['ativa'] = (int)$item['ativa'];
+            $item['id'] = (int)$item['id'];
+        }
         jsonResponse(['sucesso' => true, 'empresas' => $empresas]);
     } catch (Exception $e) {
-        jsonResponse(['sucesso' => false, 'empresas' => [], 'erro' => $e->getMessage()]);
+        try {
+            $stmt = $pdo->query("SELECT id, nome, ativa, data_cadastro, 0 AS total_relatorios FROM empresas ORDER BY nome ASC");
+            $empresas = $stmt ? $stmt->fetchAll() : [];
+            jsonResponse(['sucesso' => true, 'empresas' => $empresas]);
+        } catch (Exception $e2) {
+            jsonResponse(['sucesso' => false, 'empresas' => [], 'erro' => $e->getMessage()]);
+        }
     }
 }
 

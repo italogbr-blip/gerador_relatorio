@@ -92,7 +92,7 @@ const corporateFont = Platform.OS === 'web'
   ? '"Times New Roman", Times, serif'
   : undefined;
 
-const EMPRESAS = ['TODAS', 'ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
+const EMPRESAS = ['TODAS', 'TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'];
 
 export default function PainelCoordScreen() {
   const router = useRouter();
@@ -273,12 +273,16 @@ export default function PainelCoordScreen() {
 
   // Estados de Gestão de Empresas / Grupos Cadastrados
   const [empresasCadastradas, setEmpresasCadastradas] = useState<EmpresaRecord[]>(() => {
+    const FICTICIAS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'NEXUS LOGISTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'VANGUARD MARITIMA'];
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
       try {
         const cached = localStorage.getItem('mms_coord_cache_empresas_list');
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const limpas = parsed.filter((e) => !FICTICIAS.includes(String(e.nome || '').trim().toUpperCase()));
+            if (limpas.length > 0) return limpas;
+          }
         }
       } catch (_) {}
     }
@@ -288,12 +292,7 @@ export default function PainelCoordScreen() {
       { id: 3, nome: 'TECHNIP/DOF', ativa: 1 },
       { id: 4, nome: 'CONSTELLATION', ativa: 1 },
       { id: 5, nome: 'ZONDA', ativa: 1 },
-      { id: 6, nome: 'ALPHA OFFSHORE', ativa: 1 },
-      { id: 7, nome: 'NEXUS LOGÍSTICA', ativa: 1 },
-      { id: 8, nome: 'OCEANIC ENERGY', ativa: 1 },
-      { id: 9, nome: 'SOLARIS SHIPPING', ativa: 1 },
-      { id: 10, nome: 'VANGUARD MARÍTIMA', ativa: 1 },
-      { id: 11, nome: 'OUTROS', ativa: 1 },
+      { id: 6, nome: 'OUTROS', ativa: 1 },
     ];
   });
   const [loadingEmpresas, setLoadingEmpresas] = useState<boolean>(false);
@@ -305,10 +304,11 @@ export default function PainelCoordScreen() {
   const [salvandoEmpresa, setSalvandoEmpresa] = useState<boolean>(false);
 
   const empresasFiltroOptions = useMemo(() => {
+    const FICTICIAS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'NEXUS LOGISTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'VANGUARD MARITIMA'];
     const ativas = empresasCadastradas
       .filter((e) => e.ativa === 1 || e.ativa === true)
       .map((e) => e.nome.trim())
-      .filter((nome) => nome.length > 0);
+      .filter((nome) => nome.length > 0 && !FICTICIAS.includes(nome.toUpperCase()));
     return ['TODAS', ...(ativas.length > 0 ? ativas : ['TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'])];
   }, [empresasCadastradas]);
   const [popups, setPopups] = useState<any[]>([]);
@@ -421,6 +421,12 @@ export default function PainelCoordScreen() {
     return [];
   });
   const [loadingRankings, setLoadingRankings] = useState<boolean>(false);
+
+  // Filtro de Período Mês/Ano para Rankings
+  const [rankingPeriodoTipo, setRankingPeriodoTipo] = useState<'todos' | 'mes'>('todos');
+  const [rankingMes, setRankingMes] = useState<number>(() => new Date().getMonth());
+  const [rankingAno, setRankingAno] = useState<number>(() => new Date().getFullYear());
+  const [rankingTotalRelatorios, setRankingTotalRelatorios] = useState<number>(0);
 
   // Sub-abas e Paginação de Rankings
   const [subTabRanking, setSubTabRanking] = useState<'prepostos' | 'empresas'>('prepostos');
@@ -1205,14 +1211,18 @@ export default function PainelCoordScreen() {
   };
 
   // Carregamento Confiável e 100% Funcional dos Relatórios com select('*')
-  const carregarRankings = async () => {
+  const carregarRankings = async (customTipo?: 'todos' | 'mes', customMes?: number, customAno?: number) => {
     setLoadingRankings(true);
     try {
-      const res = await obterRankingsApi();
+      const tipo = customTipo ?? rankingPeriodoTipo;
+      const mes = customMes ?? rankingMes;
+      const ano = customAno ?? rankingAno;
+      const param = tipo === 'mes' ? `${ano}-${String(mes + 1).padStart(2, '0')}` : 'todos';
+      const res = await obterRankingsApi(param);
       if (res.sucesso) {
         if (res.ranking_prepostos) {
           setRankingPrepostosDb(res.ranking_prepostos);
-          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined' && tipo === 'todos') {
             try {
               localStorage.setItem('mms_coord_cache_ranking_prepostos', JSON.stringify(res.ranking_prepostos));
             } catch (_) {}
@@ -1220,11 +1230,14 @@ export default function PainelCoordScreen() {
         }
         if (res.ranking_empresas) {
           setRankingEmpresasDb(res.ranking_empresas);
-          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined' && tipo === 'todos') {
             try {
               localStorage.setItem('mms_coord_cache_ranking_empresas', JSON.stringify(res.ranking_empresas));
             } catch (_) {}
           }
+        }
+        if (typeof res.total_relatorios === 'number') {
+          setRankingTotalRelatorios(res.total_relatorios);
         }
       }
     } catch (e) {
@@ -1506,12 +1519,14 @@ export default function PainelCoordScreen() {
     setLoadingEmpresas(true);
     try {
       const res = await listarEmpresasApi();
+      const FICTICIAS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'NEXUS LOGISTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'VANGUARD MARITIMA'];
       if (res && res.sucesso && Array.isArray(res.empresas) && res.empresas.length > 0) {
-        setEmpresasCadastradas(res.empresas);
+        const limpas = res.empresas.filter((e) => !FICTICIAS.includes(String(e.nome || '').trim().toUpperCase()));
+        setEmpresasCadastradas(limpas);
         if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
           try {
-            localStorage.setItem('mms_coord_cache_empresas_list', JSON.stringify(res.empresas));
-            const ativas = res.empresas.filter((e) => e.ativa === 1 || e.ativa === true).map((e) => e.nome.trim());
+            localStorage.setItem('mms_coord_cache_empresas_list', JSON.stringify(limpas));
+            const ativas = limpas.filter((e) => e.ativa === 1 || e.ativa === true).map((e) => e.nome.trim());
             localStorage.setItem('mms_empresas_cadastradas', JSON.stringify(ativas));
           } catch (_) {}
         }
@@ -2120,7 +2135,7 @@ export default function PainelCoordScreen() {
 
   // Cálculo de Ranking: Prepostos (Todos os prepostos e usuários geradores)
   const rankingPrepostos = useMemo(() => {
-    if (rankingPrepostosDb && rankingPrepostosDb.length > 0) {
+    if (rankingPeriodoTipo === 'mes' || (rankingPrepostosDb && rankingPrepostosDb.length > 0)) {
       return rankingPrepostosDb;
     }
 
@@ -2157,7 +2172,7 @@ export default function PainelCoordScreen() {
 
   // Cálculo de Ranking: Empresas (Volume por empresa/cliente)
   const rankingEmpresas = useMemo(() => {
-    if (rankingEmpresasDb && rankingEmpresasDb.length > 0) {
+    if (rankingPeriodoTipo === 'mes' || (rankingEmpresasDb && rankingEmpresasDb.length > 0)) {
       return rankingEmpresasDb;
     }
 
@@ -2685,7 +2700,10 @@ export default function PainelCoordScreen() {
 
             <TouchableOpacity
               style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => setActiveTab('ranking')}
+              onPress={() => {
+                setActiveTab('ranking');
+                carregarRankings();
+              }}
               activeOpacity={0.85}
             >
               <Text style={{ fontSize: 13, marginRight: 6 }}>🏆</Text>
@@ -2696,7 +2714,10 @@ export default function PainelCoordScreen() {
 
             <TouchableOpacity
               style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'empresas' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => setActiveTab('empresas')}
+              onPress={() => {
+                setActiveTab('empresas');
+                carregarEmpresasCadastradas();
+              }}
               activeOpacity={0.85}
             >
               <Text style={{ fontSize: 13, marginRight: 6 }}>🏢</Text>
@@ -3101,7 +3122,7 @@ export default function PainelCoordScreen() {
             <View style={styles.rankingCard}>
               {/* Header do Card de Rankings com Seletor de Sub-abas */}
               <View style={styles.rankingHeader}>
-                <View style={styles.rankingHeaderTopRow}>
+                <View style={[styles.rankingHeaderTopRow, { flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center' }]}>
                   <View style={styles.rankingHeaderLeft}>
                     <View style={styles.rankingIconBox}>
                       <Text style={{ fontSize: 20, color: '#ffffff' }}>🏆</Text>
@@ -3110,10 +3131,138 @@ export default function PainelCoordScreen() {
                       <Text style={styles.rankingTitle}>RANKINGS GERAIS</Text>
                       <Text style={styles.rankingSubtitle}>
                         {subTabRanking === 'prepostos'
-                          ? 'Classificação de prepostos por volume de relatórios emitidos'
-                          : 'Distribuição de relatórios gerados por empresa atendida'}
+                          ? `Classificação de prepostos por volume de relatórios emitidos ${rankingPeriodoTipo === 'mes' ? `(${MESES_NOMES[rankingMes]} de ${rankingAno})` : '(Todo o período)'}`
+                          : `Distribuição de relatórios gerados por empresa atendida ${rankingPeriodoTipo === 'mes' ? `(${MESES_NOMES[rankingMes]} de ${rankingAno})` : '(Todo o período)'}`}
                       </Text>
                     </View>
+                  </View>
+
+                  {/* Filtro de Período Mês / Ano */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    backgroundColor: isDarkMode ? '#0f172a' : '#f1f5f9',
+                    padding: 6,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: isDarkMode ? '#334155' : '#cbd5e1'
+                  }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setRankingPeriodoTipo('todos');
+                        setPaginaRankingPrepostos(1);
+                        setPaginaRankingEmpresas(1);
+                        carregarRankings('todos');
+                      }}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 7,
+                        borderRadius: 6,
+                        backgroundColor: rankingPeriodoTipo === 'todos' ? '#0284c7' : 'transparent',
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={{
+                        fontSize: 11,
+                        fontWeight: '800',
+                        color: rankingPeriodoTipo === 'todos' ? '#ffffff' : (isDarkMode ? '#94a3b8' : '#475569')
+                      }}>
+                        🌐 TODO O PERÍODO
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        setRankingPeriodoTipo('mes');
+                        setPaginaRankingPrepostos(1);
+                        setPaginaRankingEmpresas(1);
+                        carregarRankings('mes', rankingMes, rankingAno);
+                      }}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 7,
+                        borderRadius: 6,
+                        backgroundColor: rankingPeriodoTipo === 'mes' ? '#0284c7' : 'transparent',
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={{
+                        fontSize: 11,
+                        fontWeight: '800',
+                        color: rankingPeriodoTipo === 'mes' ? '#ffffff' : (isDarkMode ? '#94a3b8' : '#475569')
+                      }}>
+                        🗓️ FILTRAR MÊS / ANO
+                      </Text>
+                    </TouchableOpacity>
+
+                    {rankingPeriodoTipo === 'mes' && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 4 }}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            let novoMes = rankingMes - 1;
+                            let novoAno = rankingAno;
+                            if (novoMes < 0) {
+                              novoMes = 11;
+                              novoAno -= 1;
+                            }
+                            setRankingMes(novoMes);
+                            setRankingAno(novoAno);
+                            setPaginaRankingPrepostos(1);
+                            setPaginaRankingEmpresas(1);
+                            carregarRankings('mes', novoMes, novoAno);
+                          }}
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 5,
+                            borderRadius: 6,
+                            backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                            borderWidth: 1,
+                            borderColor: isDarkMode ? '#334155' : '#cbd5e1'
+                          }}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: 'bold', color: isDarkMode ? '#ffffff' : '#0f172a' }}>◀</Text>
+                        </TouchableOpacity>
+
+                        <View style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          backgroundColor: '#0284c7',
+                          borderRadius: 6
+                        }}>
+                          <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 11, textTransform: 'uppercase' }}>
+                            {MESES_ABREV[rankingMes]} / {rankingAno}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          onPress={() => {
+                            let novoMes = rankingMes + 1;
+                            let novoAno = rankingAno;
+                            if (novoMes > 11) {
+                              novoMes = 0;
+                              novoAno += 1;
+                            }
+                            setRankingMes(novoMes);
+                            setRankingAno(novoAno);
+                            setPaginaRankingPrepostos(1);
+                            setPaginaRankingEmpresas(1);
+                            carregarRankings('mes', novoMes, novoAno);
+                          }}
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 5,
+                            borderRadius: 6,
+                            backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                            borderWidth: 1,
+                            borderColor: isDarkMode ? '#334155' : '#cbd5e1'
+                          }}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: 'bold', color: isDarkMode ? '#ffffff' : '#0f172a' }}>▶</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 </View>
 
@@ -4051,6 +4200,11 @@ export default function PainelCoordScreen() {
                 </View>
 
                 <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  <View style={{ backgroundColor: '#eff6ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#bfdbfe' }}>
+                    <Text style={{ color: '#1d4ed8', fontSize: 11, fontWeight: '800' }}>
+                      📄 {empresasCadastradas.reduce((acc, curr) => acc + (curr.total_relatorios || 0), 0)} RELATÓRIOS GERADOS
+                    </Text>
+                  </View>
                   <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#bbf7d0' }}>
                     <Text style={{ color: '#166534', fontSize: 11, fontWeight: '800' }}>
                       {empresasCadastradas.filter(e => e.ativa === 1 || e.ativa === true).length} ATIVAS NO GERADOR
@@ -4119,6 +4273,18 @@ export default function PainelCoordScreen() {
                                   }}>
                                     <Text style={{ fontSize: 10, fontWeight: '800', color: isAtiva ? '#059669' : '#64748b' }}>
                                       {isAtiva ? '● ATIVA NO FORMULÁRIO' : '○ INATIVA'}
+                                    </Text>
+                                  </View>
+                                  <View style={{
+                                    backgroundColor: (emp.total_relatorios ?? 0) > 0 ? '#eff6ff' : '#f8fafc',
+                                    borderWidth: 1,
+                                    borderColor: (emp.total_relatorios ?? 0) > 0 ? '#bfdbfe' : '#e2e8f0',
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 2,
+                                    borderRadius: 4,
+                                  }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: (emp.total_relatorios ?? 0) > 0 ? '#1d4ed8' : '#64748b' }}>
+                                      📊 {emp.total_relatorios ?? 0} {emp.total_relatorios === 1 ? 'relatório emitido' : 'relatórios emitidos'}
                                     </Text>
                                   </View>
                                 </View>
