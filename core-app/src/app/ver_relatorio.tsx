@@ -222,30 +222,8 @@ export default function VerRelatorioScreen() {
           }
         } catch (_) {}
 
-        const { data, error } = await supabase
-          .from('relatorios')
-          .select('*')
-          .eq('id', reportId)
-          .single();
-
-        if (error || !data) {
-          setLoading(false);
-          return;
-        }
-
-        setReport(data);
-        const dataExtracted = extractPdfData(data);
-        setPdfData(dataExtracted);
-
-        if (Platform.OS === 'web') {
-          const rawUrl = data.pdf_url || data.caminho_pdf;
-          const formattedUrl = formatReportPdfUrl(rawUrl);
-          gerarPdfBlob(dataExtracted, formattedUrl)
-            .then((b) => {
-              cachedBlobRef.current = b;
-            })
-            .catch(() => {});
-        }
+        setLoading(false);
+        return;
       } catch (err) {
         console.warn('Erro ao carregar relatório:', err);
       } finally {

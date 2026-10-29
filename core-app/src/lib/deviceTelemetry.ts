@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import { supabase } from './supabase';
 
 export interface DeviceTelemetryInfo {
   deviceId: string;
@@ -221,31 +220,7 @@ export async function collectDeviceTelemetry(
     } catch (_) {}
   }
 
-  // Se ainda não tiver preposto, busca o último relatório gerado a partir deste IP
-  if (!resolvedUsername && ip && ip !== '127.0.0.1') {
-    try {
-      const { data } = await supabase
-        .from('relatorios')
-        .select('dados_json')
-        .eq('ip_origem', ip)
-        .order('id', { ascending: false })
-        .limit(1);
 
-      if (data && data.length > 0) {
-        const rawJson = data[0].dados_json;
-        const parsed = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
-        const prep = parsed?.preposto || parsed?.nome_preposto || parsed?.preposto_nome || parsed?.responsavel;
-        if (prep && typeof prep === 'string' && prep.trim() !== '' && prep.trim().toUpperCase() !== 'N/A') {
-          resolvedUsername = prep.trim();
-          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-            try {
-              localStorage.setItem('mms_telemetria_preposto', resolvedUsername);
-            } catch (_) {}
-          }
-        }
-      }
-    } catch (_) {}
-  }
 
   let screenResolution = 'N/A';
   let hardware = 'Padrão';
@@ -333,20 +308,9 @@ export async function registerDeviceAccess(
       data_tentativa: telemetry.dataRegistro,
     };
 
-    await supabase.from('coord_acessos_falhos').insert([payload]);
+    // Telemetria gravada localmente e gerenciada no MySQL pelas APIs PHP
   } catch (err) {
     console.warn('Falha na gravação remota de telemetria:', err);
-  }
-
-  // 3. Se for login com sucesso, grava também em registro_logins
-  if (tipo === 'login_sucesso') {
-    try {
-      await supabase.from('registro_logins').insert([{
-        usuario_id: usuarioId ? Number(usuarioId) : 1,
-        ip: telemetry.ip,
-        data_login: telemetry.dataRegistro,
-      }]);
-    } catch (_) {}
   }
 
   return telemetry;

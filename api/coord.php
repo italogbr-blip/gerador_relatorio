@@ -29,6 +29,26 @@ switch ($action) {
         listarLogins($pdo);
         break;
 
+    case 'ips_bloqueados':
+        listarIpsBloqueados($pdo);
+        break;
+
+    case 'bloquear_ip':
+        bloquearIp($pdo, $input);
+        break;
+
+    case 'desbloquear_ip':
+        desbloquearIp($pdo, $input);
+        break;
+
+    case 'verificar_ip_bloqueado':
+        verificarIpBloqueado($pdo);
+        break;
+
+    case 'diagnostico':
+        obterDiagnosticoSistema($pdo);
+        break;
+
     default:
         jsonResponse(['sucesso' => false, 'erro' => 'Ação de coordenação desconhecida.'], 400);
 }

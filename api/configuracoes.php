@@ -72,6 +72,22 @@ switch ($action) {
         excluirEmpresa($pdo, $input);
         break;
 
+    case 'listar_mensagens':
+        listarMensagens($pdo);
+        break;
+
+    case 'salvar_mensagem':
+        salvarMensagem($pdo, $input);
+        break;
+
+    case 'excluir_mensagem':
+        excluirMensagem($pdo, $input);
+        break;
+
+    case 'marcar_mensagens_lidas':
+        marcarMensagensLidas($pdo, $input);
+        break;
+
     default:
         jsonResponse(['sucesso' => false, 'erro' => 'Ação de configuração desconhecida.'], 400);
 }
@@ -426,5 +442,129 @@ function excluirEmpresa(PDO $pdo, array $input): void {
         jsonResponse(['sucesso' => true, 'mensagem' => 'Empresa excluída com sucesso!']);
     } catch (Exception $e) {
         jsonResponse(['sucesso' => false, 'erro' => 'Erro ao excluir empresa: ' . $e->getMessage()], 500);
+    }
+}
+
+
+/**
+ * Garante que a tabela mms_mensagens exista no MySQL
+ */
+function garantirTabelaMensagens(PDO $pdo): void {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS mms_mensagens (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            titulo VARCHAR(150) NOT NULL,
+            mensagem TEXT NOT NULL,
+            tipo VARCHAR(50) DEFAULT 'aviso',
+            autor_id INT DEFAULT 1,
+            destinatario_id INT DEFAULT NULL,
+            data_envio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS mms_mensagens_lidas (
+            mensagem_id INT NOT NULL,
+            usuario_id INT NOT NULL,
+            data_leitura TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (mensagem_id, usuario_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // Se vazia, popula com mensagens padrão da coordenação
+        $count = (int)$pdo->query("SELECT COUNT(*) FROM mms_mensagens")->fetchColumn();
+        if ($count === 0) {
+            $pdo->exec("INSERT INTO mms_mensagens (titulo, mensagem, tipo, data_envio) VALUES
+                ('Lançamento da Nova Versão do Sistema Gerador de Relatórios', 'Olá a todos! O sistema foi atualizado com maior velocidade e novos recursos.', 'aviso', NOW() - INTERVAL 5 DAY),
+                ('[Aviso] Instabilidade temporária no Gerador de Relatórios', 'Pessoal, bom dia! Tivemos uma breve oscilação já normalizada.', 'aviso', NOW() - INTERVAL 4 DAY),
+                ('Sistema funcionando novamente!', 'Bom dia pessoal! Todos os serviços operando com estabilidade.', 'urgente', NOW() - INTERVAL 3 DAY),
+                ('Feedback', 'Olá, pessoal! Envie seu feedback para melhorias contínuas.', 'feedback', NOW() - INTERVAL 1 DAY)
+            ");
+        }
+    } catch (Exception $e) {}
+}
+
+/**
+ * Lista mensagens diretas in-app
+ */
+function listarMensagens(PDO $pdo): void {
+    garantirTabelaMensagens($pdo);
+    try {
+        $stmt = $pdo->query("SELECT id, titulo, mensagem, tipo, autor_id, destinatario_id, data_envio FROM mms_mensagens ORDER BY data_envio DESC, id DESC LIMIT 50");
+        $msgs = $stmt ? $stmt->fetchAll() : [];
+        foreach ($msgs as &$m) {
+            $m['id'] = (int)$m['id'];
+        }
+        jsonResponse(['sucesso' => true, 'mensagens' => $msgs]);
+    } catch (Exception $e) {
+        jsonResponse(['sucesso' => true, 'mensagens' => []]);
+    }
+}
+
+/**
+ * Salva ou envia uma nova mensagem direta in-app
+ */
+function salvarMensagem(PDO $pdo, array $input): void {
+    garantirTabelaMensagens($pdo);
+    $titulo = trim((string)($input['titulo'] ?? ''));
+    $mensagem = trim((string)($input['mensagem'] ?? ''));
+    $tipo = trim((string)($input['tipo'] ?? 'aviso'));
+    $autorId = !empty($input['autor_id']) ? (int)$input['autor_id'] : 1;
+    $destinatarioId = !empty($input['destinatario_id']) ? (int)$input['destinatario_id'] : null;
+
+    if (empty($titulo) || empty($mensagem)) {
+        jsonResponse(['sucesso' => false, 'erro' => 'Título e mensagem são obrigatórios.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("INSERT INTO mms_mensagens (titulo, mensagem, tipo, autor_id, destinatario_id, data_envio) VALUES (:t, :m, :tp, :aid, :did, NOW())");
+        $stmt->execute([
+            ':t' => $titulo,
+            ':m' => $mensagem,
+            ':tp' => $tipo,
+            ':aid' => $autorId,
+            ':did' => $destinatarioId,
+        ]);
+        jsonResponse(['sucesso' => true, 'id' => (int)$pdo->lastInsertId(), 'mensagem' => 'Mensagem enviada com sucesso!']);
+    } catch (Exception $e) {
+        jsonResponse(['sucesso' => false, 'erro' => 'Erro ao salvar mensagem: ' . $e->getMessage()], 500);
+    }
+}
+
+/**
+ * Exclui uma mensagem
+ */
+function excluirMensagem(PDO $pdo, array $input): void {
+    garantirTabelaMensagens($pdo);
+    $id = !empty($input['id']) ? (int)$input['id'] : null;
+    if (!$id) {
+        jsonResponse(['sucesso' => false, 'erro' => 'ID da mensagem não informado.'], 400);
+    }
+    try {
+        $stmt = $pdo->prepare("DELETE FROM mms_mensagens WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        jsonResponse(['sucesso' => true, 'mensagem' => 'Mensagem excluída com sucesso!']);
+    } catch (Exception $e) {
+        jsonResponse(['sucesso' => false, 'erro' => $e->getMessage()], 500);
+    }
+}
+
+/**
+ * Registra mensagens como lidas
+ */
+function marcarMensagensLidas(PDO $pdo, array $input): void {
+    garantirTabelaMensagens($pdo);
+    $usuarioId = !empty($input['usuario_id']) ? (int)$input['usuario_id'] : 1;
+    $ids = $input['ids'] ?? [];
+    if (!is_array($ids)) $ids = [$ids];
+
+    try {
+        $stmt = $pdo->prepare("INSERT IGNORE INTO mms_mensagens_lidas (mensagem_id, usuario_id) VALUES (:mid, :uid)");
+        foreach ($ids as $mid) {
+            $numMid = (int)$mid;
+            if ($numMid > 0) {
+                $stmt->execute([':mid' => $numMid, ':uid' => $usuarioId]);
+            }
+        }
+        jsonResponse(['sucesso' => true]);
+    } catch (Exception $e) {
+        jsonResponse(['sucesso' => true]);
     }
 }

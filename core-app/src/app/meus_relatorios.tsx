@@ -309,17 +309,14 @@ export default function MeusRelatoriosScreen() {
         setCustomDialog((prev) => ({ ...prev, visible: false }));
         setLoading(true);
         try {
-          await excluirRelatorioApi(id);
-        } catch (_) {}
-        let deleteQuery = supabase.from('relatorios').delete().eq('id', id);
-        if (userSession?.user?.id && !isUserCoordinator(userSession)) {
-          deleteQuery = deleteQuery.eq('usuario_id', userSession.user.id);
-        }
-        const { error } = await deleteQuery;
-        if (error) {
-          alert('Erro ao excluir relatório: ' + error.message);
-        } else {
-          fetchRelatorios(userSession);
+          const resDel = await excluirRelatorioApi(id);
+          if (!resDel.sucesso && resDel.erro) {
+            alert('Erro ao excluir relatório: ' + resDel.erro);
+          } else {
+            fetchRelatorios(userSession);
+          }
+        } catch (err: any) {
+          alert('Erro ao excluir relatório: ' + (err?.message || err));
         }
       },
     });

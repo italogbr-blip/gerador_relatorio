@@ -19,6 +19,7 @@ import {
   obterEstatisticasApi,
   obterRankingsApi,
   listarRelatoriosApi,
+  obterRelatorioApi,
   excluirRelatorioApi,
   listarUsuariosApi,
   atualizarStatusUsuarioApi,
@@ -631,13 +632,7 @@ export default function PainelCoordScreen() {
             localStorage.setItem('mms_registro_logins', JSON.stringify(lista.slice(0, 50)));
           } catch (e) {}
         }
-        try {
-          await supabase.from('registro_logins').insert([{
-            usuario_id: loginObj.usuario_id,
-            ip: loginObj.ip,
-            data_login: loginObj.data_login,
-          }]);
-        } catch (e) {}
+// Logins registrados no MySQL pela API auth
 
         // Telemetria detalhada de hardware / telefone
         registerDeviceAccess('painel_coord', {
@@ -668,9 +663,7 @@ export default function PainelCoordScreen() {
           } catch (e) {}
         }
 
-        try {
-          await supabase.from('coord_acessos_falhos').insert([falhaObj]);
-        } catch (e) { }
+// Falhas registradas no MySQL pela API coord
 
         registerDeviceAccess('painel_coord', {
           tipo: 'login_falho',
@@ -1350,43 +1343,20 @@ export default function PainelCoordScreen() {
       setFiltroDataFim(`${String(ultimoDiaNum).padStart(2, '0')}/${String(m + 1).padStart(2, '0')}/${a}`);
       setPaginaRelatorios(1);
 
-      // 2. Busca contagem de relatórios daquele mês/ano específico para atualizar os KPIs
-      const { count: countMes } = await supabase
-        .from('relatorios')
-        .select('*', { count: 'exact', head: true })
-        .gte('data_criacao', primeiroDia)
-        .lte('data_criacao', ultimoDia);
+      // 2. Busca relatórios daquele mês/ano específico via API MySQL
+      const apiRes = await listarRelatoriosApi({
+        empresa: filtroEmpresa !== 'TODAS' ? filtroEmpresa : undefined,
+        usuario_id: filtroUsuarioId || 'all',
+        busca: filtroBusca.trim() || undefined,
+        data_inicio: primeiroDia,
+        data_fim: ultimoDia,
+        pagina: 1,
+        limite: porPagina,
+      });
 
-      if (typeof countMes === 'number') {
-        setRelatoriosMesCount(countMes);
-      }
-
-      // 3. Busca a listagem de relatórios desse período para atualizar a tabela e os rankings
-      let query = supabase
-        .from('relatorios')
-        .select('*', { count: 'exact' })
-        .gte('data_criacao', primeiroDia)
-        .lte('data_criacao', ultimoDia);
-
-      if (filtroEmpresa && filtroEmpresa !== 'TODAS') {
-        query = query.eq('empresa', filtroEmpresa);
-      }
-
-      if (filtroUsuarioId) {
-        query = query.eq('usuario_id', filtroUsuarioId);
-      }
-
-      if (filtroBusca.trim()) {
-        const term = escapeOrValue(`%${filtroBusca.trim()}%`);
-        query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term}`);
-      }
-
-      const { data: relsMes } = await query
-        .order('data_criacao', { ascending: false })
-        .range(0, porPagina - 1);
-
-      if (relsMes) {
-        setRelatorios(relsMes);
+      if (apiRes.sucesso) {
+        setRelatoriosMesCount(apiRes.total || 0);
+        setRelatorios(apiRes.relatorios || []);
       }
 
       setIsMonthPickerOpen(false);
@@ -1414,13 +1384,9 @@ export default function PainelCoordScreen() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('relatorios')
-        .select('*')
-        .eq('id', item.id)
-        .single();
-      if (!error && data) {
-        setSelectedReport(data);
+      const apiRes = await obterRelatorioApi(Number(item.id));
+      if (apiRes.sucesso && apiRes.relatorio) {
+        setSelectedReport(apiRes.relatorio);
       } else {
         setSelectedReport(item);
       }
@@ -1710,24 +1676,12 @@ export default function PainelCoordScreen() {
 
   const carregarPopups = async () => {
     try {
-      try {
-        const notifs = await listarNotificacoesApi(true);
-        if (notifs) {
-          setPopups(notifs);
-          return;
-        }
-      } catch (_) {}
-
-      const { data, error } = await supabase
-        .from('notificacoes')
-        .select('*')
-        .order('id', { ascending: false });
-
-      if (!error && data) {
-        setPopups(data);
+      const notifs = await listarNotificacoesApi(true);
+      if (Array.isArray(notifs)) {
+        setPopups(notifs);
       }
     } catch (e) {
-      console.warn('Erro ao carregar popups:', e);
+      console.warn('Erro ao carregar comunicados/popups:', e);
     }
   };
 
@@ -1747,13 +1701,13 @@ export default function PainelCoordScreen() {
       `Tem certeza que deseja ${acaoNome} este usuário?`,
       async () => {
         try {
-          const { error } = await supabase
-            .from('usuarios')
-            .update({ nivel_autoridade: novoNivel })
-            .eq('id', userId);
+          const res = await atualizarStatusUsuarioApi({
+            usuario_id: userId,
+            nivel_autoridade: novoNivel,
+          });
 
-          if (error) {
-            showCustomAlert('Erro', 'Não foi possível alterar a autoridade: ' + error.message);
+          if (!res.sucesso && res.erro) {
+            showCustomAlert('Erro', 'Não foi possível alterar a autoridade: ' + res.erro);
           } else {
             setUsuarios((prev) =>
               prev.map((u) => (u.id === userId ? { ...u, nivel_autoridade: novoNivel } : u))
@@ -2008,18 +1962,9 @@ export default function PainelCoordScreen() {
           }
         } catch (e) {}
       }
-      const { error } = await supabase
-        .from('notificacoes')
-        .update({ ativa: novoStatus ? 1 : 0 })
-        .eq('id', popupId);
-
-      if (error) {
-        showCustomAlert('Erro', error.message);
-      } else {
-        setPopups((prev) =>
-          prev.map((p) => (p.id === popupId ? { ...p, ativa: novoStatus ? 1 : 0 } : p))
-        );
-      }
+      setPopups((prev) =>
+        prev.map((p) => (p.id === popupId ? { ...p, ativa: novoStatus ? 1 : 0 } : p))
+      );
     } catch (e: any) {
       showCustomAlert('Erro', e.message);
     }
@@ -2075,33 +2020,20 @@ export default function PainelCoordScreen() {
     try {
       const regraFinal = `${novoPopupFrequencia}${novoPopupDestinatario !== 'todos' ? ':' + novoPopupDestinatario : ''}`;
 
-      try {
-        await salvarNotificacaoApi({
-          titulo: novoPopupTitulo.trim(),
-          mensagem: novoPopupMensagem.trim(),
-          tipo: novoPopupTipo,
-          ativa: 1,
-          regra_exibicao: regraFinal,
-          mostrar_feedback: 1,
-        });
-      } catch (_) {}
+      const resSalvar = await salvarNotificacaoApi({
+        titulo: novoPopupTitulo.trim(),
+        mensagem: novoPopupMensagem.trim(),
+        tipo: novoPopupTipo,
+        ativa: 1,
+        regra_exibicao: regraFinal,
+        mostrar_feedback: 1,
+      });
 
-      const { data, error } = await supabase.from('notificacoes').insert([
-        {
-          titulo: novoPopupTitulo.trim(),
-          mensagem: novoPopupMensagem.trim(),
-          tipo: novoPopupTipo,
-          ativa: 1,
-          regra_exibicao: regraFinal,
-          mostrar_feedback: 1,
-        },
-      ]).select();
-
-      if (error) {
-        showCustomAlert('Erro', error.message);
+      if (!resSalvar.sucesso && resSalvar.erro) {
+        showCustomAlert('Erro', resSalvar.erro);
       } else {
-        const createdPopup = data && data[0] ? data[0] : {
-          id: Date.now(),
+        const createdPopup = {
+          id: resSalvar.id || Date.now(),
           titulo: novoPopupTitulo.trim(),
           mensagem: novoPopupMensagem.trim(),
           tipo: novoPopupTipo,
@@ -4781,7 +4713,7 @@ export default function PainelCoordScreen() {
                   )}
                 </View>
               ) : (
-                <View style={[styles.versionTableContainer, { marginTop: 14, width: '100%' }]}>
+                <View style={[styles.versionTableContainer, { marginTop: 14, width: '100%', overflowX: 'hidden' as any }]}>
                   <View style={[styles.versionTableHeaderRow, { width: '100%' }]}>
                     <Text style={[styles.versionHeaderColText, { width: '22%' }]}>TÍTULO</Text>
                     <Text style={[styles.versionHeaderColText, { flex: 1 }]}>MENSAGEM</Text>

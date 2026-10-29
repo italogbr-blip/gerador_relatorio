@@ -361,7 +361,7 @@ export async function salvarNotificacaoApi(notificacao: {
   regra_exibicao?: string;
   validade_dias?: number;
   mostrar_feedback?: number;
-}): Promise<{ sucesso: boolean; erro?: string }> {
+}): Promise<{ sucesso: boolean; id?: number; erro?: string }> {
   try {
     return await apiFetch('/api/configuracoes.php?action=salvar_notificacao', {
       method: 'POST',
@@ -380,6 +380,55 @@ export async function excluirNotificacaoApi(id: number): Promise<{ sucesso: bool
     });
   } catch (error: any) {
     return { sucesso: false, erro: error.message };
+  }
+}
+
+export async function listarMensagensApi(): Promise<any[]> {
+  try {
+    const res = await apiFetch('/api/configuracoes.php?action=listar_mensagens');
+    return res.mensagens || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function salvarMensagemApi(msg: {
+  titulo: string;
+  mensagem: string;
+  tipo?: string;
+  autor_id?: number;
+  destinatario_id?: number | null;
+}): Promise<{ sucesso: boolean; id?: number; erro?: string }> {
+  try {
+    return await apiFetch('/api/configuracoes.php?action=salvar_mensagem', {
+      method: 'POST',
+      body: JSON.stringify(msg),
+    });
+  } catch (error: any) {
+    return { sucesso: false, erro: error.message };
+  }
+}
+
+export async function excluirMensagemApi(id: number): Promise<{ sucesso: boolean; erro?: string }> {
+  try {
+    return await apiFetch('/api/configuracoes.php?action=excluir_mensagem', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    });
+  } catch (error: any) {
+    return { sucesso: false, erro: error.message };
+  }
+}
+
+export async function marcarMensagensLidasApi(ids: number[], usuarioId?: number): Promise<boolean> {
+  try {
+    const res = await apiFetch('/api/configuracoes.php?action=marcar_mensagens_lidas', {
+      method: 'POST',
+      body: JSON.stringify({ ids, usuario_id: usuarioId }),
+    });
+    return Boolean(res.sucesso);
+  } catch (error) {
+    return false;
   }
 }
 

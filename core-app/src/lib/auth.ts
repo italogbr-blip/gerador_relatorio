@@ -212,23 +212,8 @@ export async function getValidatedUserSession(): Promise<AppUserSession | null> 
  * Encerra a sessão ativa completamente (idêntico ao logout.php).
  */
 export async function logoutUserSession(): Promise<void> {
-  const current = getSavedSessionSync();
-  if (current?.user?.id && (typeof current.user.id === 'number' || /^\d+$/.test(String(current.user.id)))) {
-    try {
-      await supabase
-        .from('usuarios')
-        .update({ remember_token: null })
-        .eq('id', Number(current.user.id));
-    } catch (_) {}
-  }
-
   saveRememberTokenLocal(null);
   saveSessionLocal(null);
-  try {
-    await supabase.auth.signOut();
-  } catch (e) {
-    console.warn('Erro ao deslogar do Supabase Auth:', e);
-  }
 }
 
 /**
