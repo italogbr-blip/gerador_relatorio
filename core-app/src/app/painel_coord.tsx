@@ -4823,9 +4823,11 @@ export default function PainelCoordScreen() {
                         </View>
 
                         <View style={styles.mobileCardBody}>
-                          <View style={styles.mobileCardRow}>
+                          <View style={[styles.mobileCardRow, isMobile && { flexWrap: 'wrap', gap: 6, alignItems: 'center' }]}>
                             <Text style={styles.mobileCardLabel}>IP de Origem:</Text>
-                            <Text style={styles.mobileCardValueMono}>🌐 {lg.ip || '127.0.0.1'}</Text>
+                            <View style={isMobile ? { backgroundColor: '#f0f9ff', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#bae6fd', flexShrink: 1, maxWidth: '100%' } : { flex: 1, alignItems: 'flex-end' }}>
+                              <Text style={[styles.mobileCardValueMono, isMobile && { textAlign: 'left', fontSize: 11 }]}>🌐 {lg.ip || '127.0.0.1'}</Text>
+                            </View>
                           </View>
                           <View style={styles.mobileCardRow}>
                             <Text style={styles.mobileCardLabel}>Aparelho:</Text>
@@ -7309,7 +7311,7 @@ const styles = StyleSheet.create({
   cardContainer: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 20,
+    padding: (Platform.OS === 'web' && typeof window !== 'undefined' && window.innerWidth < 768) ? 14 : 20,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#000000',

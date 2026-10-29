@@ -457,9 +457,9 @@ export default function MeusRelatoriosScreen() {
   if (authChecked && !userSession) {
     return (
       <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
-        <View style={[styles.navbar, !isDarkMode && { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
+        <View style={styles.navbar}>
           <View style={styles.navLeft}>
-            <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>HISTÓRICO DE RELATÓRIOS</Text>
+            <Text style={styles.navTitle}>HISTÓRICO DE RELATÓRIOS</Text>
           </View>
           <View style={styles.navRight}>
             <TouchableOpacity
@@ -663,9 +663,22 @@ export default function MeusRelatoriosScreen() {
   return (
     <SafeAreaView style={[styles.container, !isDarkMode && { backgroundColor: '#f1f5f9' }]}>
       {/* Top Navbar */}
-      <View style={[styles.navbar, !isDarkMode && { backgroundColor: '#ffffff', borderBottomColor: '#e2e8f0' }]}>
+      <View style={styles.navbar}>
         <View style={styles.navLeft}>
-          <Text style={[styles.navTitle, !isDarkMode && { color: '#0f172a' }]}>MEUS RELATÓRIOS</Text>
+          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: '#2563eb', justifyContent: 'center', alignItems: 'center', marginRight: 10 }}>
+            {Platform.OS === 'web' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+            ) : (
+              <Text style={{ fontSize: 16 }}>📄</Text>
+            )}
+          </View>
+          <Text style={styles.navTitle}>MEUS RELATÓRIOS</Text>
         </View>
         <View style={styles.navRight}>
           <TouchableOpacity

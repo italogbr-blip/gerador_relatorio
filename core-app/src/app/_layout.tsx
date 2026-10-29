@@ -9,6 +9,16 @@ export default function Layout() {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       document.title = 'Relatórios | Gerador de Relatórios';
 
+      // 1.1 Meta Theme-Color Homogêneo (#0f172a)
+      let metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (!metaTheme) {
+        metaTheme = document.createElement('meta');
+        metaTheme.setAttribute('name', 'theme-color');
+        document.head.appendChild(metaTheme);
+      }
+      metaTheme.setAttribute('content', '#0f172a');
+
+
       // 1. Desativar Zoom via Viewport Meta Tag
       let meta = document.querySelector('meta[name="viewport"]');
       if (!meta) {

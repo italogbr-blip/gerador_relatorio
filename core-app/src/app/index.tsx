@@ -868,6 +868,58 @@ export default function ReportGenerator() {
           } catch (e) { }
         }
       }
+
+      // Fallback para chaves avulsas salvas (mms_save_*) caso existam no navegador
+      if (!foundAny) {
+        const legacyUnidade = localStorage.getItem('mms_save_unidade');
+        const legacyGrupo = localStorage.getItem('mms_save_grupo');
+        const legacyData = localStorage.getItem('mms_save_data');
+        const legacyLocal = localStorage.getItem('mms_save_local');
+        const legacyModal = localStorage.getItem('mms_save_modal');
+        const legacyObs = localStorage.getItem('mms_save_observacao');
+        const legacyPreposto = localStorage.getItem('mms_save_preposto');
+        const legacyInfo = localStorage.getItem('mms_save_info');
+        const legacyPax1 = localStorage.getItem('mms_save_pax1');
+        const legacyPax2 = localStorage.getItem('mms_save_pax2');
+        const legacyH3 = localStorage.getItem('mms_save_h3');
+        const legacyM3 = localStorage.getItem('mms_save_m3');
+        const legacyH4 = localStorage.getItem('mms_save_h4');
+        const legacyM4 = localStorage.getItem('mms_save_m4');
+        const legacyH5 = localStorage.getItem('mms_save_h5');
+        const legacyM5 = localStorage.getItem('mms_save_m5');
+        const legacyH6 = localStorage.getItem('mms_save_h6');
+        const legacyM6 = localStorage.getItem('mms_save_m6');
+        const legacySaidas = localStorage.getItem('mms_saidas_hotel');
+
+        if (legacyUnidade || legacyData || legacyLocal || legacyInfo || legacyPax1 || legacyPax2 || legacySaidas) {
+          try {
+            initial[1] = {
+              ...createDefaultTab(),
+              grupo: legacyGrupo || 'TECHNIP',
+              unidade: legacyUnidade || '',
+              data: legacyData || '',
+              local: legacyLocal || '',
+              modal: legacyModal || 'Helicóptero',
+              observacao: legacyObs || '',
+              preposto: legacyPreposto || '',
+              info: legacyInfo || '',
+              pax1: legacyPax1 || '',
+              pax2: legacyPax2 || '',
+              h3: legacyH3 || '',
+              m3: legacyM3 || '',
+              h4: legacyH4 || '',
+              m4: legacyM4 || '',
+              h5: legacyH5 || '',
+              m5: legacyM5 || '',
+              h6: legacyH6 || '',
+              m6: legacyM6 || '',
+              listaSaidas: legacySaidas ? JSON.parse(legacySaidas) : [{ id: '1', label1: 'Previsto', h1: '', m1: '', label2: 'Real', h2: '', m2: '' }],
+            };
+            foundAny = true;
+          } catch (e) { }
+        }
+      }
+
       if (foundAny) return initial;
     }
     initial[1] = createDefaultTab();
@@ -1988,9 +2040,12 @@ export default function ReportGenerator() {
       setUserSession(session);
       if (session?.user) {
         const userName = session.user.user_metadata?.name || session.user.email?.split('@')[0] || '';
-        updateCurrentTab({ preposto: userName });
-      } else {
-        updateCurrentTab({ preposto: '' });
+        if (userName) {
+          updateCurrentTab((prev) => ({
+            ...prev,
+            preposto: prev.preposto || userName,
+          }));
+        }
       }
       setIsAuthChecking(false);
       carregarNotificacoesInApp();
@@ -2047,23 +2102,66 @@ export default function ReportGenerator() {
     };
   }, []);
 
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
   const currentData: TabData = { ...createDefaultTab(), ...(tabStore[activeTab] || {}) };
 
   const updateCurrentTab = (updater: Partial<TabData> | ((prev: TabData) => TabData)) => {
+    const tabToUpdate = activeTabRef.current;
     setTabStore((prev) => {
-      const existing = prev[activeTab] || createDefaultTab();
+      const existing = prev[tabToUpdate] || createDefaultTab();
       const nextData = typeof updater === 'function' ? updater(existing) : { ...existing, ...updater };
 
       // Persistência automática idêntica ao index.php
       if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
         try {
-          localStorage.setItem('mms_tab_' + activeTab, JSON.stringify(nextData));
-          localStorage.setItem('mms_active_tab', String(activeTab));
-        } catch (e) { }
+          // Salva os campos textuais individuais para compatibilidade e resiliência total
+          if (tabToUpdate === 1) {
+            if (nextData.grupo !== undefined) localStorage.setItem('mms_save_grupo', nextData.grupo);
+            if (nextData.unidade !== undefined) localStorage.setItem('mms_save_unidade', nextData.unidade);
+            if (nextData.data !== undefined) localStorage.setItem('mms_save_data', nextData.data);
+            if (nextData.local !== undefined) localStorage.setItem('mms_save_local', nextData.local);
+            if (nextData.modal !== undefined) localStorage.setItem('mms_save_modal', nextData.modal);
+            if (nextData.observacao !== undefined) localStorage.setItem('mms_save_observacao', nextData.observacao);
+            if (nextData.preposto !== undefined) localStorage.setItem('mms_save_preposto', nextData.preposto);
+            if (nextData.info !== undefined) localStorage.setItem('mms_save_info', nextData.info);
+            if (nextData.pax1 !== undefined) localStorage.setItem('mms_save_pax1', nextData.pax1);
+            if (nextData.pax2 !== undefined) localStorage.setItem('mms_save_pax2', nextData.pax2);
+            if (nextData.h3 !== undefined) localStorage.setItem('mms_save_h3', nextData.h3);
+            if (nextData.m3 !== undefined) localStorage.setItem('mms_save_m3', nextData.m3);
+            if (nextData.h4 !== undefined) localStorage.setItem('mms_save_h4', nextData.h4);
+            if (nextData.m4 !== undefined) localStorage.setItem('mms_save_m4', nextData.m4);
+            if (nextData.h5 !== undefined) localStorage.setItem('mms_save_h5', nextData.h5);
+            if (nextData.m5 !== undefined) localStorage.setItem('mms_save_m5', nextData.m5);
+            if (nextData.h6 !== undefined) localStorage.setItem('mms_save_h6', nextData.h6);
+            if (nextData.m6 !== undefined) localStorage.setItem('mms_save_m6', nextData.m6);
+            if (nextData.listaSaidas !== undefined) localStorage.setItem('mms_saidas_hotel', JSON.stringify(nextData.listaSaidas));
+          }
+
+          localStorage.setItem('mms_active_tab', String(tabToUpdate));
+          try {
+            localStorage.setItem('mms_tab_' + tabToUpdate, JSON.stringify(nextData));
+          } catch (storageErr) {
+            // Se excedeu a cota do localStorage por imagens base64 grandes, salva omitindo fotos base64
+            console.warn('[LocalStorage] Cota excedida, salvando dados de campos sem fotos base64:', storageErr);
+            const safeData = {
+              ...nextData,
+              fotosAnexadas: (nextData.fotosAnexadas || []).map((f) => ({
+                id: f.id,
+                titulo: f.titulo,
+                uri: f.uri && f.uri.startsWith('http') ? f.uri : '',
+              })),
+            };
+            localStorage.setItem('mms_tab_' + tabToUpdate, JSON.stringify(safeData));
+          }
+        } catch (e) {
+          console.warn('[LocalStorage] Falha ao persistir:', e);
+        }
       }
 
       mostrarToastSalvo();
-      return { ...prev, [activeTab]: nextData };
+      return { ...prev, [tabToUpdate]: nextData };
     });
   };
 
@@ -4540,29 +4638,37 @@ export default function ReportGenerator() {
 
                   <View style={styles.paxToolbar}>
                     <TouchableOpacity
-                      style={styles.toolbarBtn}
+                      style={styles.paxToolbarBtn}
                       onPress={() => formatPaxField('field-pax1', currentData.pax1, 'bold', (val) => updateCurrentTab({ pax1: val }))}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.toolbarBtnText, { fontWeight: 'bold' }]}>B</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.toolbarBtn}
+                      style={styles.paxToolbarBtn}
                       onPress={() => formatPaxField('field-pax1', currentData.pax1, 'italic', (val) => updateCurrentTab({ pax1: val }))}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.toolbarBtnText, { fontStyle: 'italic' }]}>I</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.toolbarBtn}
+                      style={styles.paxToolbarBtn}
                       onPress={() => formatPaxField('field-pax1', currentData.pax1, 'strike', (val) => updateCurrentTab({ pax1: val }))}
                       activeOpacity={0.7}
+                      accessibilityLabel="Tachado"
                     >
-                      <Text style={[styles.toolbarBtnText, { textDecorationLine: 'line-through' }]}>Tachado</Text>
+                      {Platform.OS === 'web' ? (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.5 7c0-2.2-2-3.5-5.5-3.5-3.8 0-5.5 1.6-5.5 3.5 0 2.2 1.8 3 4.5 3.5 3.5.5 6.5 1.5 6.5 4.8 0 2.5-2.2 4.7-6 4.7-4.5 0-6.5-2.2-6.5-4.5" />
+                          <line x1="3" y1="12" x2="21" y2="12" />
+                        </svg>
+                      ) : (
+                        <Text style={[styles.toolbarBtnText, { fontWeight: '900', textDecorationLine: 'line-through', fontSize: 13 }]}>S</Text>
+                      )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.toolbarBtn}
+                      style={styles.paxToolbarBtn}
                       onPress={() => formatPaxField('field-pax1', currentData.pax1, 'underline', (val) => updateCurrentTab({ pax1: val }))}
                       activeOpacity={0.7}
                     >
@@ -4572,7 +4678,7 @@ export default function ReportGenerator() {
                     <View style={styles.toolbarDivider} />
 
                     <TouchableOpacity
-                      style={styles.toolbarBtn}
+                      style={styles.paxToolbarBtn}
                       onPress={() => formatPaxField('field-pax1', currentData.pax1, 'topic', (val) => updateCurrentTab({ pax1: val }))}
                       activeOpacity={0.7}
                     >
@@ -4583,8 +4689,8 @@ export default function ReportGenerator() {
 
                     <TouchableOpacity
                       style={[
-                        styles.toolbarBtn,
-                        currentData.pax1.trim() === 'N/A' && styles.toolbarBtnActive,
+                        styles.paxToolbarBtn,
+                        currentData.pax1.trim() === 'N/A' && styles.paxToolbarBtnActive,
                       ]}
                       onPress={() => updateCurrentTab({ pax1: currentData.pax1.trim() === 'N/A' ? '' : 'N/A' })}
                       activeOpacity={0.7}
@@ -4622,29 +4728,37 @@ export default function ReportGenerator() {
 
                   <View style={styles.paxToolbar}>
                     <TouchableOpacity
-                      style={styles.toolbarBtn}
+                      style={styles.paxToolbarBtn}
                       onPress={() => formatPaxField('field-pax2', currentData.pax2, 'bold', (val) => updateCurrentTab({ pax2: val }))}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.toolbarBtnText, { fontWeight: 'bold' }]}>B</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.toolbarBtn}
+                      style={styles.paxToolbarBtn}
                       onPress={() => formatPaxField('field-pax2', currentData.pax2, 'italic', (val) => updateCurrentTab({ pax2: val }))}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.toolbarBtnText, { fontStyle: 'italic' }]}>I</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.toolbarBtn}
+                      style={styles.paxToolbarBtn}
                       onPress={() => formatPaxField('field-pax2', currentData.pax2, 'strike', (val) => updateCurrentTab({ pax2: val }))}
                       activeOpacity={0.7}
+                      accessibilityLabel="Tachado"
                     >
-                      <Text style={[styles.toolbarBtnText, { textDecorationLine: 'line-through' }]}>Tachado</Text>
+                      {Platform.OS === 'web' ? (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.5 7c0-2.2-2-3.5-5.5-3.5-3.8 0-5.5 1.6-5.5 3.5 0 2.2 1.8 3 4.5 3.5 3.5.5 6.5 1.5 6.5 4.8 0 2.5-2.2 4.7-6 4.7-4.5 0-6.5-2.2-6.5-4.5" />
+                          <line x1="3" y1="12" x2="21" y2="12" />
+                        </svg>
+                      ) : (
+                        <Text style={[styles.toolbarBtnText, { fontWeight: '900', textDecorationLine: 'line-through', fontSize: 13 }]}>S</Text>
+                      )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.toolbarBtn}
+                      style={styles.paxToolbarBtn}
                       onPress={() => formatPaxField('field-pax2', currentData.pax2, 'underline', (val) => updateCurrentTab({ pax2: val }))}
                       activeOpacity={0.7}
                     >
@@ -4654,7 +4768,7 @@ export default function ReportGenerator() {
                     <View style={styles.toolbarDivider} />
 
                     <TouchableOpacity
-                      style={styles.toolbarBtn}
+                      style={styles.paxToolbarBtn}
                       onPress={() => formatPaxField('field-pax2', currentData.pax2, 'topic', (val) => updateCurrentTab({ pax2: val }))}
                       activeOpacity={0.7}
                     >
@@ -4665,8 +4779,8 @@ export default function ReportGenerator() {
 
                     <TouchableOpacity
                       style={[
-                        styles.toolbarBtn,
-                        currentData.pax2.trim() === 'N/A' && styles.toolbarBtnActive,
+                        styles.paxToolbarBtn,
+                        currentData.pax2.trim() === 'N/A' && styles.paxToolbarBtnActive,
                       ]}
                       onPress={() => updateCurrentTab({ pax2: currentData.pax2.trim() === 'N/A' ? '' : 'N/A' })}
                       activeOpacity={0.7}
@@ -4723,16 +4837,48 @@ export default function ReportGenerator() {
                     />
 
                     <View style={styles.fotoActionsRow}>
-                      {idx > 0 && (
-                        <TouchableOpacity style={styles.fotoOrderBtn} onPress={() => moveFoto(idx, 'up')}>
-                          <Text style={styles.fotoOrderBtnText}>▲ Subir</Text>
-                        </TouchableOpacity>
-                      )}
-                      {idx < currentData.fotosAnexadas.length - 1 && (
-                        <TouchableOpacity style={styles.fotoOrderBtn} onPress={() => moveFoto(idx, 'down')}>
-                          <Text style={styles.fotoOrderBtnText}>▼ Descer</Text>
-                        </TouchableOpacity>
-                      )}
+                      {/* Seta para Cima (Mover para Cima) idêntico ao _gerador_relatorio/index.php */}
+                      <TouchableOpacity
+                        style={[
+                          styles.fotoSquareOrderBtn,
+                          idx === 0 && styles.fotoSquareOrderBtnDisabled,
+                        ]}
+                        onPress={() => idx > 0 && moveFoto(idx, 'up')}
+                        disabled={idx === 0}
+                        activeOpacity={0.7}
+                        accessibilityLabel="Mover foto para cima"
+                      >
+                        {Platform.OS === 'web' ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke={idx === 0 ? '#cbd5e1' : '#475569'} strokeWidth="2.4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                          </svg>
+                        ) : (
+                          <Text style={[styles.fotoOrderBtnText, idx === 0 && { color: '#cbd5e1' }]}>▲</Text>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* Seta para Baixo (Mover para Baixo) idêntico ao _gerador_relatorio/index.php */}
+                      <TouchableOpacity
+                        style={[
+                          styles.fotoSquareOrderBtn,
+                          idx === currentData.fotosAnexadas.length - 1 && styles.fotoSquareOrderBtnDisabled,
+                        ]}
+                        onPress={() => idx < currentData.fotosAnexadas.length - 1 && moveFoto(idx, 'down')}
+                        disabled={idx === currentData.fotosAnexadas.length - 1}
+                        activeOpacity={0.7}
+                        accessibilityLabel="Mover foto para baixo"
+                      >
+                        {Platform.OS === 'web' ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke={idx === currentData.fotosAnexadas.length - 1 ? '#cbd5e1' : '#475569'} strokeWidth="2.4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        ) : (
+                          <Text style={[styles.fotoOrderBtnText, idx === currentData.fotosAnexadas.length - 1 && { color: '#cbd5e1' }]}>▼</Text>
+                        )}
+                      </TouchableOpacity>
+
+                      <View style={styles.fotoDivider} />
+
                       <TouchableOpacity style={styles.fotoRotateBtn} onPress={() => handleEditAttachedPhoto(foto)}>
                         <Text style={styles.fotoRotateBtnText}>🔄 Rotacionar</Text>
                       </TouchableOpacity>
@@ -4939,7 +5085,31 @@ export default function ReportGenerator() {
                     },
                   ]}
                 >
-                  <View style={styles.pageA4} className="mms-preview-page">
+                  {Platform.OS === 'web' ? (
+                    <div
+                      className="mms-exact-pdf-preview"
+                      style={{
+                        width: 794,
+                        minWidth: 794,
+                        maxWidth: 794,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                      }}
+                      dangerouslySetInnerHTML={{
+                        __html: (() => {
+                          const fullHtml = gerarHtmlPdfFidelidade(obterDadosRelatorioAtual());
+                          const styleMatch = fullHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+                          const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                          const css = styleMatch ? styleMatch[1] : '';
+                          const body = bodyMatch ? bodyMatch[1] : fullHtml;
+                          return `<style>${css}\n.mms-pdf-page{margin: 0 auto 24px auto !important; box-shadow: 0 4px 16px rgba(0,0,0,0.18) !important; border-radius: 4px !important;}</style>${body}`;
+                        })(),
+                      }}
+                    />
+                  ) : (
+                    <>
+                    <View style={styles.pageA4} className="mms-preview-page">
                     {/* Imagem de Fundo Geométrico / Marca D'água */}
                     <Image
                       source={require('../../assets/images/background.png')}
@@ -5139,6 +5309,8 @@ export default function ReportGenerator() {
                       </View>
                     </View>
                   ))}
+                    </>
+                  )}
                 </View>
               </View>
             </>
@@ -6962,6 +7134,42 @@ const styles = StyleSheet.create({
     height: 16,
     backgroundColor: colors.slate300,
     marginHorizontal: 2,
+  },
+    paxToolbarBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    minHeight: 28,
+    borderRadius: 4,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.slate200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paxToolbarBtnActive: {
+    backgroundColor: colors.blue50,
+    borderColor: colors.blue200,
+  },
+  fotoSquareOrderBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fotoSquareOrderBtnDisabled: {
+    opacity: 0.35,
+    cursor: 'not-allowed' as any,
+    backgroundColor: '#f1f5f9',
+  },
+  fotoDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#e2e8f0',
+    marginHorizontal: 4,
   },
   toolbarBtn: {
     paddingVertical: 4,
