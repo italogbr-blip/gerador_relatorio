@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import {
   obterEstatisticasApi,
+  obterRankingsApi,
   listarRelatoriosApi,
   excluirRelatorioApi,
   listarUsuariosApi,
@@ -328,6 +329,27 @@ export default function PainelCoordScreen() {
   const [filtroDataFim, setFiltroDataFim] = useState<string>('');
   const [paginaRelatorios, setPaginaRelatorios] = useState<number>(1);
   const porPagina = 15;
+
+  // Estados de Dados Reais de Rankings (MySQL Central)
+  const [rankingPrepostosDb, setRankingPrepostosDb] = useState<any[]>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const c = localStorage.getItem('mms_coord_cache_ranking_prepostos');
+        if (c) return JSON.parse(c);
+      } catch (_) {}
+    }
+    return [];
+  });
+  const [rankingEmpresasDb, setRankingEmpresasDb] = useState<any[]>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const c = localStorage.getItem('mms_coord_cache_ranking_empresas');
+        if (c) return JSON.parse(c);
+      } catch (_) {}
+    }
+    return [];
+  });
+  const [loadingRankings, setLoadingRankings] = useState<boolean>(false);
 
   // Sub-abas e Paginação de Rankings
   const [subTabRanking, setSubTabRanking] = useState<'prepostos' | 'empresas'>('prepostos');
@@ -651,6 +673,7 @@ export default function PainelCoordScreen() {
         carregarVersoes(),
         carregarSeguranca(),
         carregarDiagnostico(),
+        carregarRankings(),
         carregarConfiguracaoAprovacao(),
         carregarHistoricoAprovacoesState(),
       ]);
@@ -1104,6 +1127,35 @@ export default function PainelCoordScreen() {
   };
 
   // Carregamento Confiável e 100% Funcional dos Relatórios com select('*')
+  const carregarRankings = async () => {
+    setLoadingRankings(true);
+    try {
+      const res = await obterRankingsApi();
+      if (res.sucesso) {
+        if (res.ranking_prepostos) {
+          setRankingPrepostosDb(res.ranking_prepostos);
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem('mms_coord_cache_ranking_prepostos', JSON.stringify(res.ranking_prepostos));
+            } catch (_) {}
+          }
+        }
+        if (res.ranking_empresas) {
+          setRankingEmpresasDb(res.ranking_empresas);
+          if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem('mms_coord_cache_ranking_empresas', JSON.stringify(res.ranking_empresas));
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar rankings do banco:', e);
+    } finally {
+      setLoadingRankings(false);
+    }
+  };
+
   const carregarRelatorios = async () => {
     setLoading(true);
     try {
@@ -1793,6 +1845,10 @@ export default function PainelCoordScreen() {
 
   // Cálculo de Ranking: Prepostos (Todos os prepostos e usuários geradores)
   const rankingPrepostos = useMemo(() => {
+    if (rankingPrepostosDb && rankingPrepostosDb.length > 0) {
+      return rankingPrepostosDb;
+    }
+
     const mapa: { [key: string]: { nome: string; total: number; ultimaEmpresa: string } } = {};
 
     relatorios.forEach((r) => {
@@ -1819,13 +1875,17 @@ export default function PainelCoordScreen() {
     });
 
     return Object.values(mapa).sort((a, b) => b.total - a.total);
-  }, [relatorios, usuarios]);
+  }, [rankingPrepostosDb, relatorios, usuarios]);
 
   // Alias para compatibilidade
   const rankingGeradores = rankingPrepostos;
 
   // Cálculo de Ranking: Empresas (Volume por empresa/cliente)
   const rankingEmpresas = useMemo(() => {
+    if (rankingEmpresasDb && rankingEmpresasDb.length > 0) {
+      return rankingEmpresasDb;
+    }
+
     const mapa: { [key: string]: { empresa: string; total: number } } = {};
 
     relatorios.forEach((r) => {
@@ -1840,7 +1900,7 @@ export default function PainelCoordScreen() {
     });
 
     return Object.values(mapa).sort((a, b) => b.total - a.total);
-  }, [relatorios]);
+  }, [rankingEmpresasDb, relatorios]);
 
   // Paginação dos Prepostos (10 por página)
   const totalPaginasPrepostos = useMemo(() => {

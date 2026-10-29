@@ -29,6 +29,10 @@ switch ($action) {
         obterEstatisticas($pdo, $input);
         break;
 
+    case 'rankings':
+        obterRankings($pdo);
+        break;
+
     default:
         jsonResponse(['sucesso' => false, 'erro' => 'Ação de relatórios desconhecida.'], 400);
 }
@@ -326,6 +330,99 @@ function obterEstatisticas(PDO $pdo, array $input): void {
             'sucesso' => false,
             'erro' => 'Erro ao calcular estatísticas.',
             'detalhe' => $e->getMessage()
+        ], 500);
+    }
+}
+
+
+/**
+ * Retorna o Ranking Completo de Prepostos e Empresas com números reais de toda a base
+ */
+function obterRankings(PDO $pdo): void {
+    try {
+        // 1. Ranking de Empresas (Direto via SQL agrupado de todos os relatórios)
+        $stmtEmp = $pdo->query("
+            SELECT 
+                COALESCE(NULLIF(TRIM(empresa), ''), 'OUTROS') AS empresa, 
+                COUNT(*) AS total
+            FROM relatorios
+            GROUP BY COALESCE(NULLIF(TRIM(empresa), ''), 'OUTROS')
+            ORDER BY total DESC
+        ");
+        $empresas = $stmtEmp ? $stmtEmp->fetchAll() : [];
+
+        // 2. Ranking de Prepostos (Processa todos os relatórios para totalização fiel)
+        $stmtPrep = $pdo->query("
+            SELECT 
+                r.id, 
+                r.usuario_id, 
+                COALESCE(NULLIF(TRIM(r.empresa), ''), 'OUTROS') AS empresa, 
+                r.ip_origem, 
+                r.dados_json,
+                u.nome AS user_nome,
+                u.username AS user_username
+            FROM relatorios r
+            LEFT JOIN usuarios u ON u.id = r.usuario_id
+            ORDER BY r.id DESC
+        ");
+        $rows = $stmtPrep ? $stmtPrep->fetchAll() : [];
+
+        $mapaPrepostos = [];
+        foreach ($rows as $r) {
+            $nomePreposto = null;
+            if (!empty($r['dados_json'])) {
+                $parsed = json_decode($r['dados_json'], true);
+                if (is_array($parsed)) {
+                    $rawPrep = $parsed['preposto'] ?? ($parsed['nome_preposto'] ?? ($parsed['preposto_nome'] ?? ($parsed['responsavel'] ?? '')));
+                    if (is_string($rawPrep) && trim($rawPrep) !== '') {
+                        $cand = trim($rawPrep);
+                        $candUpper = strtoupper($cand);
+                        if ($candUpper !== 'N/A' && $candUpper !== 'NULL' && $candUpper !== 'UNDEFINED') {
+                            $nomePreposto = $cand;
+                        }
+                    }
+                }
+            }
+
+            if (!$nomePreposto) {
+                if (!empty($r['user_nome']) && trim($r['user_nome']) !== '') {
+                    $nomePreposto = trim($r['user_nome']);
+                } elseif (!empty($r['user_username']) && trim($r['user_username']) !== '') {
+                    $nomePreposto = trim($r['user_username']);
+                } elseif (!empty($r['ip_origem']) && $r['ip_origem'] !== 'N/A' && $r['ip_origem'] !== '127.0.0.1') {
+                    $nomePreposto = '🌐 IP: ' . $r['ip_origem'];
+                } else {
+                    $nomePreposto = 'Preposto não identificado';
+                }
+            }
+
+            $emp = $r['empresa'];
+            if (!isset($mapaPrepostos[$nomePreposto])) {
+                $mapaPrepostos[$nomePreposto] = [
+                    'nome' => $nomePreposto,
+                    'total' => 0,
+                    'ultimaEmpresa' => $emp
+                ];
+            }
+            $mapaPrepostos[$nomePreposto]['total'] += 1;
+            if ($emp !== 'OUTROS') {
+                $mapaPrepostos[$nomePreposto]['ultimaEmpresa'] = $emp;
+            }
+        }
+
+        $rankingPrepostos = array_values($mapaPrepostos);
+        usort($rankingPrepostos, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        jsonResponse([
+            'sucesso' => true,
+            'ranking_empresas' => $empresas,
+            'ranking_prepostos' => $rankingPrepostos,
+            'total_relatorios' => count($rows)
+        ]);
+    } catch (Exception $e) {
+        jsonResponse([
+            'sucesso' => false,
+            'erro' => 'Falha ao processar rankings: ' . $e->getMessage()
         ], 500);
     }
 }

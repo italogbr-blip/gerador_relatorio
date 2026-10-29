@@ -127,6 +127,30 @@ export async function obterEstatisticasApi(): Promise<{ sucesso: boolean; estati
   }
 }
 
+export async function obterRankingsApi(): Promise<{
+  sucesso: boolean;
+  ranking_empresas: Array<{ empresa: string; total: number }>;
+  ranking_prepostos: Array<{ nome: string; total: number; ultimaEmpresa: string }>;
+  total_relatorios?: number;
+}> {
+  try {
+    const res = await apiFetch('/api/relatorios.php?action=rankings');
+    return {
+      sucesso: true,
+      ranking_empresas: res.ranking_empresas || [],
+      ranking_prepostos: res.ranking_prepostos || [],
+      total_relatorios: res.total_relatorios || 0,
+    };
+  } catch (error) {
+    return {
+      sucesso: false,
+      ranking_empresas: [],
+      ranking_prepostos: [],
+      total_relatorios: 0,
+    };
+  }
+}
+
 // =============================================================================
 // AUTENTICAÇÃO E GESTÃO DE USUÁRIOS
 // =============================================================================
