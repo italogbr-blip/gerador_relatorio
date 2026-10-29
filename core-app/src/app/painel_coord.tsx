@@ -308,8 +308,11 @@ export default function PainelCoordScreen() {
     const ativas = empresasCadastradas
       .filter((e) => e.ativa === 1 || e.ativa === true)
       .map((e) => e.nome.trim())
-      .filter((nome) => nome.length > 0 && !FICTICIAS.includes(nome.toUpperCase()));
-    return ['TODAS', ...(ativas.length > 0 ? ativas : ['TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'])];
+      .filter((nome) => {
+        const u = nome.toUpperCase();
+        return nome.length > 0 && !FICTICIAS.includes(u) && !u.includes('ALPHA') && !u.includes('NEXUS') && !u.includes('OCEANIC') && !u.includes('SOLARIS') && !u.includes('VANGUARD');
+      });
+    return ['TODAS', ...ativas];
   }, [empresasCadastradas]);
   const [popups, setPopups] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);

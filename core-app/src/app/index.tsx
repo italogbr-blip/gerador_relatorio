@@ -1362,24 +1362,35 @@ export default function ReportGenerator() {
 
   // Lista Dinâmica de Empresas / Grupos Cadastrados
   const [empresasOptions, setEmpresasOptions] = useState<string[]>(() => {
+    const FICTICIAS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'NEXUS LOGISTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'VANGUARD MARITIMA'];
     if (typeof localStorage !== 'undefined') {
       try {
         const raw = localStorage.getItem('mms_empresas_cadastradas');
         if (raw) {
           const list = JSON.parse(raw);
-          if (Array.isArray(list) && list.length > 0) return list;
+          if (Array.isArray(list) && list.length > 0) {
+            const limpas = list.filter((n: string) => {
+              const u = String(n).trim().toUpperCase();
+              return !FICTICIAS.includes(u) && !u.includes('ALPHA') && !u.includes('NEXUS') && !u.includes('OCEANIC') && !u.includes('SOLARIS') && !u.includes('VANGUARD');
+            });
+            if (limpas.length > 0) return limpas;
+          }
         }
       } catch (_) {}
     }
-    return GRUPO_OPTIONS;
+    return ['TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'];
   });
 
   const carregarEmpresasDropdown = async () => {
     try {
       const res = await listarEmpresasApi();
-      if (res && res.sucesso && Array.isArray(res.empresas) && res.empresas.length > 0) {
+      const FICTICIAS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'NEXUS LOGISTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'VANGUARD MARITIMA'];
+      if (res && res.sucesso && Array.isArray(res.empresas)) {
         const ativas = res.empresas
-          .filter((e) => e.ativa === 1 || e.ativa === true)
+          .filter((e) => {
+            const n = String(e.nome || '').trim().toUpperCase();
+            return (e.ativa === 1 || e.ativa === true) && !FICTICIAS.includes(n) && !n.includes('ALPHA') && !n.includes('NEXUS') && !n.includes('OCEANIC') && !n.includes('SOLARIS') && !n.includes('VANGUARD');
+          })
           .map((e) => e.nome.trim())
           .filter((nome) => nome.length > 0);
         if (ativas.length > 0) {

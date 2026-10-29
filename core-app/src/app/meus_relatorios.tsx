@@ -73,6 +73,7 @@ export default function MeusRelatoriosScreen() {
 
   // Filtros
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('TODAS');
+  const [isEmpresaDropdownOpen, setIsEmpresaDropdownOpen] = useState<boolean>(false);
 
   // Empresas dinâmicas cadastradas no banco de dados
   const [empresasFiltroOptions, setEmpresasFiltroOptions] = useState<string[]>(() => {
@@ -95,9 +96,13 @@ export default function MeusRelatoriosScreen() {
   const carregarEmpresasFiltro = async () => {
     try {
       const res = await listarEmpresasApi();
-      if (res && res.sucesso && Array.isArray(res.empresas) && res.empresas.length > 0) {
+      const FICTICIAS = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'NEXUS LOGISTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'VANGUARD MARITIMA'];
+      if (res && res.sucesso && Array.isArray(res.empresas)) {
         const ativas = res.empresas
-          .filter((e) => e.ativa === 1 || e.ativa === true)
+          .filter((e) => {
+            const n = String(e.nome || '').trim().toUpperCase();
+            return (e.ativa === 1 || e.ativa === true) && !FICTICIAS.includes(n) && !n.includes('ALPHA') && !n.includes('NEXUS') && !n.includes('OCEANIC') && !n.includes('SOLARIS') && !n.includes('VANGUARD');
+          })
           .map((e) => e.nome.trim())
           .filter((nome) => nome.length > 0);
         if (ativas.length > 0) {
@@ -689,30 +694,42 @@ export default function MeusRelatoriosScreen() {
           {/* Filtros */}
           <View style={[styles.filterCard, !isDarkMode && { backgroundColor: '#f8fafc', borderColor: '#cbd5e1' }]}>
             <View style={styles.filterGrid}>
-              {/* Filtro Empresa */}
-              <View style={styles.filterGroup}>
-                <Text style={styles.filterLabel}>EMPRESA</Text>
-                <View style={styles.selectWrapper}>
-                  {empresasFiltroOptions.map((emp) => (
-                    <TouchableOpacity
-                      key={emp}
-                      style={[
-                        styles.empresaChip,
-                        filtroEmpresa === emp && styles.empresaChipActive,
-                      ]}
-                      onPress={() => setFiltroEmpresa(emp)}
-                    >
-                      <Text
-                        style={[
-                          styles.empresaChipText,
-                          filtroEmpresa === emp && styles.empresaChipTextActive,
-                        ]}
-                      >
-                        {emp}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+              {/* Filtro Empresa / Grupo (Select Dropdown idêntico ao index.tsx) */}
+              <View style={[styles.filterGroup, { zIndex: 100 }]}>
+                <Text style={styles.filterLabel}>EMPRESA / GRUPO:</Text>
+                <TouchableOpacity
+                  style={styles.selectBoxContainer}
+                  onPress={() => setIsEmpresaDropdownOpen(!isEmpresaDropdownOpen)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.selectBoxText}>
+                    {filtroEmpresa === 'TODAS' ? 'TODAS AS EMPRESAS' : filtroEmpresa}
+                  </Text>
+                  <Text style={styles.selectBoxChevron}>{isEmpresaDropdownOpen ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
+
+                {isEmpresaDropdownOpen && (
+                  <View style={styles.dropdownOptionsList}>
+                    {empresasFiltroOptions.map((opt) => {
+                      const isSelected = filtroEmpresa === opt;
+                      return (
+                        <TouchableOpacity
+                          key={opt}
+                          style={[styles.dropdownOptionItem, isSelected && styles.dropdownOptionItemActive]}
+                          onPress={() => {
+                            setFiltroEmpresa(opt);
+                            setIsEmpresaDropdownOpen(false);
+                          }}
+                        >
+                          <Text style={[styles.dropdownOptionText, isSelected && styles.dropdownOptionTextActive]}>
+                            {opt}
+                          </Text>
+                          {isSelected && <Text style={styles.dropdownOptionCheck}>✓</Text>}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
 
               {/* Filtro por Intervalo de Data */}
@@ -1993,5 +2010,71 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#ffffff',
     fontFamily: modernFont,
+  },
+  selectBoxContainer: {
+    width: '100%',
+    height: 46,
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    marginTop: 4,
+  },
+  selectBoxText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  selectBoxChevron: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#64748b',
+  },
+  dropdownOptionsList: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    marginTop: 4,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 9999,
+  },
+  dropdownOptionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dropdownOptionItemActive: {
+    backgroundColor: '#eff6ff',
+  },
+  dropdownOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  dropdownOptionTextActive: {
+    color: '#1d4ed8',
+    fontWeight: '900',
+  },
+  dropdownOptionCheck: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#2563eb',
   },
 });

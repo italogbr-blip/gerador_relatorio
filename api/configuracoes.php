@@ -318,16 +318,8 @@ function garantirTabelaEmpresas(PDO $pdo): void {
             data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-        // Remove empresas fictícias legadas se existirem e não possuírem relatórios reais associados
-        $ficticias = ['ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'NEXUS LOGISTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'VANGUARD MARITIMA'];
-        foreach ($ficticias as $fict) {
-            try {
-                $temRel = (int)$pdo->query("SELECT COUNT(*) FROM relatorios WHERE UPPER(TRIM(empresa)) = " . $pdo->quote(strtoupper($fict)))->fetchColumn();
-                if ($temRel === 0) {
-                    $pdo->exec("DELETE FROM empresas WHERE UPPER(TRIM(nome)) = " . $pdo->quote(strtoupper($fict)));
-                }
-            } catch (Exception $exFict) {}
-        }
+        // Remove permanentemente do banco quaisquer empresas fictícias legadas
+        $pdo->exec("DELETE FROM empresas WHERE UPPER(nome) LIKE '%ALPHA%' OR UPPER(nome) LIKE '%NEXUS%' OR UPPER(nome) LIKE '%OCEANIC%' OR UPPER(nome) LIKE '%SOLARIS%' OR UPPER(nome) LIKE '%VANGUARD%'");
 
         $count = (int)$pdo->query("SELECT COUNT(*) FROM empresas")->fetchColumn();
         if ($count === 0) {
@@ -348,6 +340,9 @@ function garantirTabelaEmpresas(PDO $pdo): void {
 function listarEmpresas(PDO $pdo): void {
     garantirTabelaEmpresas($pdo);
     try {
+        // Assegura limpeza de empresas fictícias
+        $pdo->exec("DELETE FROM empresas WHERE UPPER(nome) LIKE '%ALPHA%' OR UPPER(nome) LIKE '%NEXUS%' OR UPPER(nome) LIKE '%OCEANIC%' OR UPPER(nome) LIKE '%SOLARIS%' OR UPPER(nome) LIKE '%VANGUARD%'");
+
         $sql = "
             SELECT 
                 e.id, 
@@ -356,6 +351,11 @@ function listarEmpresas(PDO $pdo): void {
                 e.data_cadastro,
                 (SELECT COUNT(*) FROM relatorios r WHERE UPPER(TRIM(r.empresa)) = UPPER(TRIM(e.nome))) AS total_relatorios
             FROM empresas e 
+            WHERE UPPER(e.nome) NOT LIKE '%ALPHA%' 
+              AND UPPER(e.nome) NOT LIKE '%NEXUS%' 
+              AND UPPER(e.nome) NOT LIKE '%OCEANIC%' 
+              AND UPPER(e.nome) NOT LIKE '%SOLARIS%' 
+              AND UPPER(e.nome) NOT LIKE '%VANGUARD%'
             ORDER BY total_relatorios DESC, e.nome ASC
         ";
         $stmt = $pdo->query($sql);
@@ -368,7 +368,7 @@ function listarEmpresas(PDO $pdo): void {
         jsonResponse(['sucesso' => true, 'empresas' => $empresas]);
     } catch (Exception $e) {
         try {
-            $stmt = $pdo->query("SELECT id, nome, ativa, data_cadastro, 0 AS total_relatorios FROM empresas ORDER BY nome ASC");
+            $stmt = $pdo->query("SELECT id, nome, ativa, data_cadastro, 0 AS total_relatorios FROM empresas WHERE UPPER(nome) NOT LIKE '%ALPHA%' AND UPPER(nome) NOT LIKE '%NEXUS%' AND UPPER(nome) NOT LIKE '%OCEANIC%' AND UPPER(nome) NOT LIKE '%SOLARIS%' AND UPPER(nome) NOT LIKE '%VANGUARD%' ORDER BY nome ASC");
             $empresas = $stmt ? $stmt->fetchAll() : [];
             jsonResponse(['sucesso' => true, 'empresas' => $empresas]);
         } catch (Exception $e2) {
