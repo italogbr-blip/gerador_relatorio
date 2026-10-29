@@ -14,7 +14,6 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../lib/supabase';
 import {
   obterEstatisticasApi,
   obterRankingsApi,
@@ -60,7 +59,6 @@ import {
   getSavedSessionSync,
   AppUserSession,
   unlockCoordinatorPanel,
-  escapeOrValue,
   getExigirAprovacaoCadastro,
   setExigirAprovacaoCadastro,
   aprovarUsuario,
@@ -616,7 +614,7 @@ export default function PainelCoordScreen() {
           } catch (e) { }
         }
 
-        // Grava login bem-sucedido na auditoria de segurança (localStorage + Supabase + Telemetria Completa)
+        // Grava login bem-sucedido na auditoria de segurança (localStorage + MySQL + Telemetria Completa)
         const loginObj = {
           id: Date.now(),
           usuario_id: coordUser.id ? Number(coordUser.id) : 1,
@@ -1246,62 +1244,19 @@ export default function PainelCoordScreen() {
   const carregarRelatorios = async () => {
     setLoading(true);
     try {
-      try {
-        const apiRes = await listarRelatoriosApi({
-          usuario_id: filtroUsuarioId || 'all',
-          empresa: filtroEmpresa !== 'TODAS' ? filtroEmpresa : undefined,
-          busca: filtroBusca.trim() || undefined,
-          data_inicio: filtroDataInicio ? formatarDataFiltro(filtroDataInicio) : undefined,
-          data_fim: filtroDataFim ? formatarDataFiltro(filtroDataFim) : undefined,
-          pagina: paginaRelatorios,
-          limite: porPagina,
-        });
-        if (apiRes.sucesso) {
-          setRelatorios(apiRes.relatorios);
-          setTotalRelatoriosGeral(apiRes.total);
-          setLoading(false);
-          return;
-        }
-      } catch (_) {}
-
-      let query = supabase
-        .from('relatorios')
-        .select('*', { count: 'exact' });
-
-      if (filtroEmpresa && filtroEmpresa !== 'TODAS') {
-        query = query.eq('empresa', filtroEmpresa);
-      }
-
-      if (filtroUsuarioId) {
-        query = query.eq('usuario_id', filtroUsuarioId);
-      }
-
-      if (filtroBusca.trim()) {
-        const term = escapeOrValue(`%${filtroBusca.trim()}%`);
-        query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term}`);
-      }
-
-      const dtIni = formatarDataFiltro(filtroDataInicio);
-      if (dtIni) {
-        query = query.gte('data_criacao', `${dtIni}T00:00:00`);
-      }
-
-      const dtFim = formatarDataFiltro(filtroDataFim);
-      if (dtFim) {
-        query = query.lte('data_criacao', `${dtFim}T23:59:59`);
-      }
-
-      const from = (paginaRelatorios - 1) * porPagina;
-      const to = from + porPagina - 1;
-
-      query = query.order('data_criacao', { ascending: false }).range(from, to);
-
-      const { data, count, error } = await query;
-      if (error) {
-        console.warn('Erro ao carregar relatórios do painel:', error.message);
-      } else if (data) {
-        // Se houver busca por usuário por texto, filtra também localmente
-        let resultado = data;
+      const dtIni = filtroDataInicio ? formatarDataFiltro(filtroDataInicio) : undefined;
+      const dtFim = filtroDataFim ? formatarDataFiltro(filtroDataFim) : undefined;
+      const apiRes = await listarRelatoriosApi({
+        usuario_id: filtroUsuarioId || 'all',
+        empresa: filtroEmpresa !== 'TODAS' ? filtroEmpresa : undefined,
+        busca: filtroBusca.trim() || undefined,
+        data_inicio: dtIni || undefined,
+        data_fim: dtFim || undefined,
+        pagina: paginaRelatorios,
+        limite: porPagina,
+      });
+      if (apiRes.sucesso) {
+        let resultado = apiRes.relatorios || [];
         if (filtroBuscaUsuario.trim()) {
           const uTerm = filtroBuscaUsuario.toLowerCase().trim();
           resultado = resultado.filter((r) => {
@@ -1314,10 +1269,15 @@ export default function PainelCoordScreen() {
           });
         }
         setRelatorios(resultado);
-        if (count !== null && count !== undefined) setTotalRelatoriosGeral(count);
+        setTotalRelatoriosGeral(apiRes.total || 0);
+      } else {
+        setRelatorios([]);
+        setTotalRelatoriosGeral(0);
       }
     } catch (e) {
       console.warn('Erro ao carregar relatórios do painel:', e);
+      setRelatorios([]);
+      setTotalRelatoriosGeral(0);
     } finally {
       setLoading(false);
     }

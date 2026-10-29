@@ -18,7 +18,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { supabase } from '../lib/supabase';
 import { salvarRelatorioApi, obterRelatorioApi, listarNotificacoesApi, listarMensagensApi, verificarIpBloqueadoApi, listarEmpresasApi } from '../lib/api';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { formatReportPdfUrl } from '../lib/config';
@@ -1642,17 +1641,12 @@ export default function ReportGenerator() {
         setIsNotifDropdownOpen(false);
       }
 
-      // 1. Busca comunicados da coordenação (tabela notificacoes)
+      // 1. Busca comunicados da coordenação (tabela notificacoes no MySQL)
       let popupAtivo: any = null;
       let allNotifs: any[] = [];
       try {
-        const { data: pops } = await supabase
-          .from('notificacoes')
-          .select('*')
-          .order('id', { ascending: false })
-          .limit(20);
+        const pops = await listarNotificacoesApi(false);
         if (pops && pops.length > 0) {
-          // Filtra comunicados de acordo com o nível do usuário
           const filteredPops = pops.filter((p: any) => isNotificationForUser(p, currentSession));
           allNotifs = filteredPops;
           popupAtivo = filteredPops.find((p: any) => p.ativa === 1 || p.ativa === true) || null;
@@ -1688,15 +1682,11 @@ export default function ReportGenerator() {
         return;
       }
 
-      // 2. Busca mensagens diretas in-app (mms_mensagens)
+      // 2. Busca mensagens diretas in-app (mms_mensagens no MySQL)
       let msgs: any[] = [];
       try {
-        const { data: dbMsgs } = await supabase
-          .from('mms_mensagens')
-          .select('*')
-          .order('data_envio', { ascending: false })
-          .limit(20);
-        if (dbMsgs) msgs = dbMsgs;
+        const dbMsgs = await listarMensagensApi();
+        if (dbMsgs && Array.isArray(dbMsgs)) msgs = dbMsgs;
       } catch (e) { }
 
       // Fallback e sincronização com localStorage de mensagens
@@ -1970,7 +1960,7 @@ export default function ReportGenerator() {
     outputRange: ['0deg', '360deg'],
   });
 
-  // Supabase Auth State & User Level
+  // Auth State & User Level (MySQL)
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [userSession, setUserSession] = useState<AppUserSession | null>(() => getSavedSessionSync());
   const [isAuthModalVisible, setIsAuthModalVisible] = useState<boolean>(false);
@@ -2033,7 +2023,7 @@ export default function ReportGenerator() {
     }
   }, []);
 
-  // Listen to Supabase Session & Local Session
+  // Session Validation & Local Session
   useEffect(() => {
     // Valida com o banco de dados e atualiza a sessão ativa
     getValidatedUserSession().then((session) => {
@@ -2062,43 +2052,12 @@ export default function ReportGenerator() {
       carregarNotificacoesInApp();
     }, 10000);
 
-    // Canal Realtime do Supabase para atualizar notificações e comunicados no exato instante em que são criados
-    const realtimeChannel = supabase
-      .channel('notificacoes-app-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notificacoes' }, () => {
-        carregarNotificacoesInApp();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mms_mensagens' }, () => {
-        carregarNotificacoesInApp();
-      })
-      .subscribe();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const validated = await getValidatedUserSession();
-        setUserSession(validated);
-        if (validated?.user) {
-          const userName = validated.user.user_metadata?.name || validated.user.email?.split('@')[0] || '';
-          updateCurrentTab({ preposto: userName });
-        }
-      } else if (_event === 'SIGNED_OUT') {
-        await logoutUserSession();
-        setUserSession(null);
-        updateCurrentTab({ preposto: '' });
-      }
-      setIsAuthChecking(false);
-    });
-
     return () => {
       clearInterval(notifInterval);
       if (typeof window !== 'undefined') {
         window.removeEventListener('mms_mensagens_atualizadas', carregarNotificacoesInApp);
         window.removeEventListener('storage', carregarNotificacoesInApp);
       }
-      try {
-        supabase.removeChannel(realtimeChannel);
-      } catch (e) { }
-      subscription.unsubscribe();
     };
   }, []);
 
@@ -2173,14 +2132,8 @@ export default function ReportGenerator() {
         const apiR = await obterRelatorioApi(reportId);
         if (apiR.sucesso && apiR.relatorio) report = apiR.relatorio;
       } catch (_) {}
-      const { data: dbRep, error } = report ? { data: report, error: null } : await supabase
-        .from('relatorios')
-        .select('*')
-        .eq('id', reportId)
-        .single();
 
-      if (!report) { report = dbRep; }
-      if (error || !report) {
+      if (!report) {
         showCustomAlert('RELATÓRIO NÃO ENCONTRADO', 'Não foi possível carregar o relatório solicitado para edição.');
         return;
       }
@@ -2994,8 +2947,8 @@ export default function ReportGenerator() {
       } catch (err) {}
     }
 
-    // Salva automaticamente o relatório gerado na nuvem Supabase
-    salvarRelatorioNoSupabase();
+    // Salva automaticamente o relatório gerado no MySQL
+    salvarRelatorioNoServidor();
 
     if (Platform.OS === 'web') {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
@@ -3151,14 +3104,13 @@ export default function ReportGenerator() {
     handleBaixarPdf();
   };
 
-  const salvarRelatorioNoSupabase = async () => {
+  const salvarRelatorioNoServidor = async () => {
     const rawPreposto = currentData.preposto;
     const prepostoTratado =
       rawPreposto && rawPreposto !== 'undefined' && rawPreposto.trim() !== ''
         ? rawPreposto.trim()
         : (userSession?.user?.user_metadata?.name || '');
 
-    // Salva o preposto neste dispositivo para que seus acessos futuros sejam imediatamente identificados
     if (prepostoTratado) {
       if (typeof localStorage !== 'undefined') {
         try {
@@ -3168,7 +3120,6 @@ export default function ReportGenerator() {
       }
     }
 
-    // Upload assíncrono das fotos para a hospedagem segura (aliviando o banco Supabase)
     let fotosParaSalvar = currentData.fotosAnexadas;
     if (currentData.fotosAnexadas.length > 0) {
       try {
@@ -3202,7 +3153,6 @@ export default function ReportGenerator() {
 
     const isOffline = Platform.OS === 'web' && typeof navigator !== 'undefined' && !navigator.onLine;
 
-    // Se estiver explicitamente offline, salva localmente
     if (isOffline) {
       salvarOfflineLocal(jsonPayload);
       showCustomAlert(
@@ -3213,118 +3163,25 @@ export default function ReportGenerator() {
     }
 
     try {
-      let pdfUrlResult: string | null = null;
-      let clientIp: string | null = null;
-
-      try {
-        const ipRes = await fetch('https://api.ipify.org?format=json');
-        if (ipRes.ok) {
-          const ipJson = await ipRes.json();
-          clientIp = ipJson.ip || null;
-        }
-      } catch (_) {}
-
-      // Salvamento direto, seguro e sob demanda (sem gravação de arquivos estáticos no servidor PHP)
-
-      // 0. Salva diretamente na API MySQL da hospedagem
-      try {
-        const apiSaveRes = await salvarRelatorioApi({
-          id: editingReportId || undefined,
-          usuario_id: userSession?.user?.id,
-          empresa: currentData.grupo,
-          unidade: currentData.unidade,
-          local_atendimento: currentData.local,
-          dados_json: jsonPayload,
-          teve_anexo: currentData.fotosAnexadas.length > 0,
-          pdf_url: pdfUrlResult,
-        });
-        if (apiSaveRes.sucesso) {
-          return;
-        }
-      } catch (_) {}
-
-      // Se estiver em modo de edição, atualiza o registro existente
-      if (editingReportId) {
-        const { error: updErr } = await supabase
-          .from('relatorios')
-          .update({
-            empresa: currentData.grupo,
-            unidade: currentData.unidade,
-            local_atendimento: currentData.local,
-            dados_json: JSON.stringify(jsonPayload),
-            teve_anexo: currentData.fotosAnexadas.length > 0,
-            ...(pdfUrlResult ? { pdf_url: pdfUrlResult } : {}),
-            ...(clientIp ? { ip_origem: clientIp } : {}),
-          })
-          .eq('id', editingReportId);
-
-        if (updErr) {
-          console.warn('Falha ao atualizar relatório no Supabase:', updErr.message);
-          showCustomAlert('ERRO AO ATUALIZAR', 'Não foi possível atualizar o relatório na nuvem: ' + updErr.message);
-        }
-        return;
-      }
-
-      // 2. Registra novo relatório no banco Supabase
-      const numericUserId = typeof userSession?.user?.id === 'number'
-        ? userSession.user.id
-        : !isNaN(Number(userSession?.user?.id)) && Number(userSession?.user?.id) > 0
-          ? Number(userSession?.user?.id)
-          : null;
-
-      // Busca o maior ID para evitar conflito com sequences desalinhadas da migração
-      let nextCustomId: number | null = null;
-      try {
-        const { data: maxRows } = await supabase
-          .from('relatorios')
-          .select('id')
-          .order('id', { ascending: false })
-          .limit(1);
-        if (maxRows && maxRows[0]?.id) {
-          nextCustomId = Number(maxRows[0].id) + 1;
-        }
-      } catch (_) {}
-
-      const insertPayload: any = {
-        usuario_id: numericUserId,
+      const apiSaveRes = await salvarRelatorioApi({
+        id: editingReportId || undefined,
+        usuario_id: userSession?.user?.id,
         empresa: currentData.grupo,
         unidade: currentData.unidade,
         local_atendimento: currentData.local,
-        dados_json: JSON.stringify(jsonPayload),
+        dados_json: jsonPayload,
         teve_anexo: currentData.fotosAnexadas.length > 0,
-        pdf_url: pdfUrlResult,
-        ip_origem: clientIp,
-        data_criacao: new Date().toISOString(),
-      };
+      });
 
-      if (nextCustomId) {
-        insertPayload.id = nextCustomId;
+      if (apiSaveRes.sucesso) {
+        return;
       }
 
-      let { data, error } = await supabase.from('relatorios').insert([insertPayload]);
-
-      // Fallback em caso de colisão de ID ou chave única
-      if (error && error.code === '23505') {
-        try {
-          const { data: retryMax } = await supabase
-            .from('relatorios')
-            .select('id')
-            .order('id', { ascending: false })
-            .limit(1);
-          insertPayload.id = (retryMax && retryMax[0]?.id ? Number(retryMax[0].id) : (nextCustomId || 1433)) + 1;
-          const retryRes = await supabase.from('relatorios').insert([insertPayload]);
-          error = retryRes.error;
-        } catch (_) {}
-      }
-
-      if (error) {
-        console.warn('Falha na sincronização online. Armazenando cópia offline.', error.message);
-        salvarOfflineLocal(jsonPayload);
-        showCustomAlert(
-          'SALVO LOCALMENTE (OFFLINE)',
-          'Houve uma oscilação na conexão com a nuvem, mas seu relatório foi salvo com segurança na memória local do aparelho.'
-        );
-      }
+      salvarOfflineLocal(jsonPayload);
+      showCustomAlert(
+        'SALVO LOCALMENTE (OFFLINE)',
+        'Houve uma oscilação na conexão com a nuvem, mas seu relatório foi salvo com segurança na memória local do aparelho.'
+      );
     } catch (err: any) {
       salvarOfflineLocal(jsonPayload);
       showCustomAlert(

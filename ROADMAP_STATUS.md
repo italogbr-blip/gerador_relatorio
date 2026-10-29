@@ -1,12 +1,12 @@
-# 🗺️ ROADMAP DO PROJETO - GERADOR DE RELATÓRIOS SUPABASE
+# 🗺️ ROADMAP DO PROJETO - GERADOR DE RELATÓRIOS MYSQL
 
 > **Última Atualização:** 05/10/2026  
-> **Status Geral:** Sistema funcional, responsivo e integrado ao Supabase + Servidor PHP.
+> **Status Geral:** Sistema funcional, responsivo e integrado ao Servidor PHP + MySQL.
 
 ---
 
 ## 📌 PONTO DE PARADA ATUAL
-O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/UI e Validações Avançadas**. Todas as funcionalidades principais de criação, salvamento, sincronização com Supabase, edição em tempo real e visualização de históricos estão 100% operacionais.
+O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/UI e Validações Avançadas**. Todas as funcionalidades principais de criação, salvamento, sincronização com MySQL, edição em tempo real e visualização de históricos estão 100% operacionais.
 
 ---
 
@@ -51,7 +51,7 @@ O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/U
 - **Métricas e KPIs em Tempo Real:** Total geral de relatórios emitidos, atendimentos no mês atual, relatórios gerados hoje e total de usuários cadastrados.
 - **Gestão de Relatórios Globais:** Acesso a todos os relatórios da base com filtros por empresa, unidade/local, preposto e intervalo de datas. Modal de detalhes completo e exclusão definitiva.
 - **Top Geradores (Ranking):** Pódio visual (🥇, 🥈, 🥉) e lista ordenada de prepostos com mais relatórios gerados e percentual de participação.
-- **Gestão de Usuários & Nível de Autoridade:** Listagem de usuários do Supabase com promoção ou rebaixamento instantâneo entre Nível 1 (Básico) e Nível 2 (Coordenação).
+- **Gestão de Usuários & Nível de Autoridade:** Listagem de usuários do MySQL com promoção ou rebaixamento instantâneo entre Nível 1 (Básico) e Nível 2 (Coordenação).
 - **Comunicados Globais (Pop-ups In-App):** Criação e gerenciamento de avisos, notificações urgentes e feedback com status ativo/inativo.
 
 ### 7. 📱 Geração de PDF e Salvamento Offline no Mobile
@@ -61,7 +61,7 @@ O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/U
 
 ### 8. 📅 Filtros Avançados por Intervalo de Data (`meus_relatorios.tsx`)
 - **Seletores de Data Início (DE:) e Data Fim (ATÉ:):** Integrados à tela de histórico de relatórios com layout limpo e responsivo.
-- **Filtragem no Supabase:** Consultas com `.gte()` e `.lte()` na coluna `data_criacao`, combináveis com a busca textual e o seletor de empresas.
+- **Filtragem no MySQL:** Consultas com `.gte()` e `.lte()` na coluna `data_criacao`, combináveis com a busca textual e o seletor de empresas.
 - **Botões Filtrar e Limpar:** Atualização instantânea com restauração rápida de filtros.
 
 ### 9. 💬 Compartilhamento Rápido no WhatsApp
@@ -92,7 +92,7 @@ O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/U
 - [x] **Deploy de Produção & Domínio Próprio:** Online em `relatorios.atmai.com.br` com SSL.
 - [x] **Compartilhamento WhatsApp:** Resumo de atendimento e link direto para o WhatsApp.
 - [x] **Controle Estrito de Acesso Nível 2 & Refinamento de Auth:** Isolamento de menus e bloqueio da rota do painel.
-- [x] **Autenticação Segura via RPCs no Supabase:** Validação de senhas bcrypt no servidor via `pgcrypto` (`login_usuario` e `desbloquear_painel_coord`), remoção de senhas em hardcode e bloqueio de colunas sensíveis via permissões PostgREST.
+- [x] **Autenticação Segura via MySQL:** Validação de senhas bcrypt no servidor via `pgcrypto` (`login_usuario` e `desbloquear_painel_coord`), remoção de senhas em hardcode e bloqueio de colunas sensíveis via permissões PostgREST.
 
 ---
 
@@ -100,8 +100,7 @@ O desenvolvimento encontra-se na fase de **Polimento Visual, Correções de UX/U
 
 - 📄 `core-app/src/lib/auth.ts` - Helper centralizado de validação de sessão, verificação estrita de Nível 2 e logout seguro.
 - 📄 `core-app/src/app/index.tsx` - Gerador Principal, Formulário, Menus condicionais Visitante/Logado/Coordenação e Autenticação.
-- 📄 `core-app/src/app/meus_relatorios.tsx` - Histórico de Relatórios, Filtros Avançados por Data/Empresa, Modal de Detalhes e Integração Supabase.
+- 📄 `core-app/src/app/meus_relatorios.tsx` - Histórico de Relatórios, Filtros Avançados por Data/Empresa, Modal de Detalhes e Integração MySQL.
 - 📄 `core-app/src/app/painel_coord.tsx` - Painel de Coordenação Nível 2 com barreira de autorização estrita e tela de bloqueio.
 - 📄 `core-app/src/app/_layout.tsx` - Stack Navigation do Expo Router com suporte a todas as rotas.
-- 📄 `core-app/src/lib/supabase.ts` - Cliente Supabase Auth & Database.
 - 📄 `core-app/src/lib/config.ts` - Configurações de endpoints PHP e URLs de PDF.

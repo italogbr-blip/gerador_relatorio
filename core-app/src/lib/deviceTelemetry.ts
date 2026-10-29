@@ -286,7 +286,7 @@ export async function registerDeviceAccess(
     } catch (_) {}
   }
 
-  // 2. Grava no Supabase (coord_acessos_falhos) como telemetria centralizada
+  // 2. Telemetria centralizada de acessos
   // Guardamos os metadados do aparelho completos no campo user_agent
   try {
     const payload = {

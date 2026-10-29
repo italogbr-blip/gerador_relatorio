@@ -12,7 +12,6 @@ import {
   Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../lib/supabase';
 import { obterRelatorioApi } from '../lib/api';
 import { formatReportPdfUrl } from '../lib/config';
 import {

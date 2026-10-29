@@ -15,10 +15,9 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../lib/supabase';
 import { listarRelatoriosApi, excluirRelatorioApi, listarEmpresasApi } from '../lib/api';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
-import { getSavedSessionSync, getValidatedUserSession, authenticateUser, escapeOrValue, isUserCoordinator, AppUserSession } from '../lib/auth';
+import { getSavedSessionSync, getValidatedUserSession, authenticateUser, isUserCoordinator, AppUserSession } from '../lib/auth';
 import { gerarHtmlPdfFidelidade, ReportPdfData } from '../lib/pdfHtmlGenerator';
 import { baixarPdfRelatorio, visualizarRelatorioHtml } from '../lib/pdfManager';
 
@@ -187,75 +186,31 @@ export default function MeusRelatoriosScreen() {
     }
   };
 
-  // Carregar Relatórios do Supabase / MySQL
+  // Carregar Relatórios do MySQL
   const fetchRelatorios = async (sessionParam = userSession) => {
     setLoading(true);
     try {
-      // 0. Tenta carregar primeiro da API MySQL na hospedagem
-      try {
-        const apiRes = await listarRelatoriosApi({
-          usuario_id: sessionParam?.user?.id,
-          empresa: filtroEmpresa !== 'TODAS' ? filtroEmpresa : undefined,
-          busca: filtroBusca.trim() || undefined,
-          data_inicio: filtroDataInicio || undefined,
-          data_fim: filtroDataFim || undefined,
-          pagina,
-          limite: porPagina,
-        });
+      const apiRes = await listarRelatoriosApi({
+        usuario_id: sessionParam?.user?.id,
+        empresa: filtroEmpresa !== 'TODAS' ? filtroEmpresa : undefined,
+        busca: filtroBusca.trim() || undefined,
+        data_inicio: filtroDataInicio || undefined,
+        data_fim: filtroDataFim || undefined,
+        pagina,
+        limite: porPagina,
+      });
 
-        if (apiRes.sucesso && (apiRes.relatorios.length > 0 || apiRes.total > 0)) {
-          setRelatorios(apiRes.relatorios);
-          setTotalRegistros(apiRes.total);
-          setLoading(false);
-          return;
-        }
-      } catch (_) {}
-
-      let query = supabase
-        .from('relatorios')
-        .select('*', { count: 'exact' });
-
-      // Se houver usuário autenticado, filtra os dele; se for visitante em demonstração, exibe os disponíveis
-      if (sessionParam?.user?.id) {
-        query = query.eq('usuario_id', sessionParam.user.id);
-      }
-
-      // Se filtro de empresa selecionado (diferente de TODAS)
-      if (filtroEmpresa && filtroEmpresa !== 'TODAS') {
-        query = query.eq('empresa', filtroEmpresa);
-      }
-
-      // Se houver busca por texto (unidade ou local)
-      if (filtroBusca.trim()) {
-        const term = escapeOrValue(`%${filtroBusca.trim()}%`);
-        query = query.or(`unidade.ilike.${term},local_atendimento.ilike.${term}`);
-      }
-
-      // Filtro por Intervalo de Data (Início e Fim)
-      if (filtroDataInicio) {
-        query = query.gte('data_criacao', `${filtroDataInicio}T00:00:00`);
-      }
-
-      if (filtroDataFim) {
-        query = query.lte('data_criacao', `${filtroDataFim}T23:59:59`);
-      }
-
-      // Paginação
-      const from = (pagina - 1) * porPagina;
-      const to = from + porPagina - 1;
-
-      query = query.order('data_criacao', { ascending: false }).range(from, to);
-
-      const { data, count, error } = await query;
-
-      if (error) {
-        console.error('Erro ao buscar relatorios:', error.message);
+      if (apiRes.sucesso) {
+        setRelatorios(apiRes.relatorios || []);
+        setTotalRegistros(apiRes.total || 0);
       } else {
-        setRelatorios(data || []);
-        setTotalRegistros(count || 0);
+        setRelatorios([]);
+        setTotalRegistros(0);
       }
     } catch (err: any) {
       console.error('Exceção ao buscar relatorios:', err.message);
+      setRelatorios([]);
+      setTotalRegistros(0);
     } finally {
       setLoading(false);
     }
