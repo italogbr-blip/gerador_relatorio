@@ -303,6 +303,14 @@ export default function PainelCoordScreen() {
   const [nomeEmpresaInput, setNomeEmpresaInput] = useState<string>('');
   const [ativaEmpresaInput, setAtivaEmpresaInput] = useState<boolean>(true);
   const [salvandoEmpresa, setSalvandoEmpresa] = useState<boolean>(false);
+
+  const empresasFiltroOptions = useMemo(() => {
+    const ativas = empresasCadastradas
+      .filter((e) => e.ativa === 1 || e.ativa === true)
+      .map((e) => e.nome.trim())
+      .filter((nome) => nome.length > 0);
+    return ['TODAS', ...(ativas.length > 0 ? ativas : ['TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'OUTROS'])];
+  }, [empresasCadastradas]);
   const [popups, setPopups] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -2921,7 +2929,7 @@ export default function PainelCoordScreen() {
 
                 {isEmpresaDropdownOpen && (
                   <View style={styles.coordDropdownOptionsListLight}>
-                    {EMPRESAS.map((opt) => (
+                    {empresasFiltroOptions.map((opt) => (
                       <TouchableOpacity
                         key={opt}
                         style={[

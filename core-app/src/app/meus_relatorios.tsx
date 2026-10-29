@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { listarRelatoriosApi, excluirRelatorioApi } from '../lib/api';
+import { listarRelatoriosApi, excluirRelatorioApi, listarEmpresasApi } from '../lib/api';
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
 import { getSavedSessionSync, getValidatedUserSession, authenticateUser, escapeOrValue, isUserCoordinator, AppUserSession } from '../lib/auth';
 import { gerarHtmlPdfFidelidade, ReportPdfData } from '../lib/pdfHtmlGenerator';
@@ -73,6 +73,49 @@ export default function MeusRelatoriosScreen() {
 
   // Filtros
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('TODAS');
+
+  // Empresas dinâmicas cadastradas no banco de dados
+  const [empresasFiltroOptions, setEmpresasFiltroOptions] = useState<string[]>(() => {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('mms_empresas_cadastradas');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list) && list.length > 0) return ['TODAS', ...list];
+        }
+      } catch (_) {}
+    }
+    return ['TODAS', 'TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 'ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'];
+  });
+
+  const carregarEmpresasFiltro = async () => {
+    try {
+      const res = await listarEmpresasApi();
+      if (res && res.sucesso && Array.isArray(res.empresas) && res.empresas.length > 0) {
+        const ativas = res.empresas
+          .filter((e) => e.ativa === 1 || e.ativa === true)
+          .map((e) => e.nome.trim())
+          .filter((nome) => nome.length > 0);
+        if (ativas.length > 0) {
+          setEmpresasFiltroOptions(['TODAS', ...ativas]);
+          if (typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem('mms_empresas_cadastradas', JSON.stringify(ativas));
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    carregarEmpresasFiltro();
+    if (typeof window !== 'undefined') {
+      const handleAtualizacao = () => carregarEmpresasFiltro();
+      window.addEventListener('mms_empresas_atualizadas', handleAtualizacao);
+      return () => window.removeEventListener('mms_empresas_atualizadas', handleAtualizacao);
+    }
+  }, []);
   const [filtroBusca, setFiltroBusca] = useState<string>('');
   const [filtroDataInicio, setFiltroDataInicio] = useState<string>('');
   const [filtroDataFim, setFiltroDataFim] = useState<string>('');
@@ -646,7 +689,7 @@ export default function MeusRelatoriosScreen() {
               <View style={styles.filterGroup}>
                 <Text style={styles.filterLabel}>EMPRESA</Text>
                 <View style={styles.selectWrapper}>
-                  {EMPRESAS.map((emp) => (
+                  {empresasFiltroOptions.map((emp) => (
                     <TouchableOpacity
                       key={emp}
                       style={[
