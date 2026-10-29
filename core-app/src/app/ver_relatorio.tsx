@@ -1108,7 +1108,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     marginTop: 2,
     marginBottom: 10,
-    marginLeft: 20,
+    marginLeft: 0,
     zIndex: 2,
   },
   a4PaxTable: {

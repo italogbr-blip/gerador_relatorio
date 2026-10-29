@@ -379,7 +379,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
     .info-box { 
       margin-top: 2px; 
       margin-bottom: 10px; 
-      margin-left: 20px; 
+      margin-left: 0; 
       line-height: 1.4;
     }
     .pax-container {
