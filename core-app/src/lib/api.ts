@@ -129,25 +129,14 @@ export async function obterEstatisticasApi(): Promise<{ sucesso: boolean; estati
 
 export async function obterRankingsApi(): Promise<{
   sucesso: boolean;
-  ranking_empresas: Array<{ empresa: string; total: number }>;
-  ranking_prepostos: Array<{ nome: string; total: number; ultimaEmpresa: string }>;
-  total_relatorios?: number;
+  ranking_prepostos?: Array<{ nome: string; total: number; ultimaEmpresa: string }>;
+  ranking_empresas?: Array<{ empresa: string; total: number }>;
+  erro?: string;
 }> {
   try {
-    const res = await apiFetch('/api/relatorios.php?action=rankings');
-    return {
-      sucesso: true,
-      ranking_empresas: res.ranking_empresas || [],
-      ranking_prepostos: res.ranking_prepostos || [],
-      total_relatorios: res.total_relatorios || 0,
-    };
-  } catch (error) {
-    return {
-      sucesso: false,
-      ranking_empresas: [],
-      ranking_prepostos: [],
-      total_relatorios: 0,
-    };
+    return await apiFetch('/api/relatorios.php?action=rankings');
+  } catch (error: any) {
+    return { sucesso: false, erro: error.message };
   }
 }
 
@@ -205,15 +194,30 @@ export async function listarUsuariosApi(busca?: string): Promise<{ sucesso: bool
 
 export async function atualizarStatusUsuarioApi(dados: {
   usuario_id: number;
+  nome?: string;
+  username?: string;
+  email?: string;
+  nova_senha?: string;
   status_aprovacao?: string;
   nivel_autoridade?: number;
   acao?: string;
   detalhes?: string;
-}): Promise<{ sucesso: boolean; erro?: string }> {
+}): Promise<{ sucesso: boolean; erro?: string; mensagem?: string }> {
   try {
     return await apiFetch('/api/auth.php?action=atualizar_usuario', {
       method: 'POST',
       body: JSON.stringify(dados),
+    });
+  } catch (error: any) {
+    return { sucesso: false, erro: error.message };
+  }
+}
+
+export async function excluirUsuarioApi(usuarioId: number): Promise<{ sucesso: boolean; erro?: string; mensagem?: string }> {
+  try {
+    return await apiFetch('/api/auth.php?action=excluir_usuario', {
+      method: 'POST',
+      body: JSON.stringify({ usuario_id: usuarioId }),
     });
   } catch (error: any) {
     return { sucesso: false, erro: error.message };

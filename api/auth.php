@@ -30,6 +30,10 @@ switch ($action) {
         atualizarStatusUsuario($pdo, $input);
         break;
 
+    case 'excluir_usuario':
+        excluirUsuario($pdo, $input);
+        break;
+
     case 'historico_aprovacoes':
         carregarHistoricoAprovacoes($pdo);
         break;
@@ -155,6 +159,27 @@ function executarLogin(PDO $pdo, array $input): void {
                 break;
             }
         }
+    }
+
+    // Se ainda não validou e o usuário é coordenador (nível 2), permite a senha da tabela coord_senha
+    if (!$senhaValida && (int)($user['nivel_autoridade'] ?? 1) === 2) {
+        try {
+            $stmtC = $pdo->query("SELECT senha_hash FROM coord_senha WHERE id = 1 LIMIT 1");
+            $cRow = $stmtC ? $stmtC->fetch() : null;
+            if ($cRow && !empty($cRow['senha_hash'])) {
+                $cHash = trim($cRow['senha_hash']);
+                foreach ($candidatos as $cand) {
+                    if (password_verify($cand, $cHash) || $cand === $cHash || md5($cand) === $cHash) {
+                        $senhaValida = true;
+                        break;
+                    }
+                    if (str_starts_with($cHash, '$2y$') && password_verify($cand, str_replace('$2y$', '$2a$', $cHash))) {
+                        $senhaValida = true;
+                        break;
+                    }
+                }
+            }
+        } catch (Exception $e) {}
     }
 
     if (!$senhaValida) {
@@ -306,17 +331,28 @@ function validarSessao(PDO $pdo, array $input): void {
 function listarUsuarios(PDO $pdo, array $input): void {
     $busca = trim($_GET['busca'] ?? ($input['busca'] ?? ''));
 
-    $sql = "SELECT id, username, nome, email, nivel_autoridade, status_aprovacao, data_cadastro FROM usuarios";
+    $sql = "SELECT 
+                u.id, 
+                u.username, 
+                u.nome, 
+                u.email, 
+                u.nivel_autoridade, 
+                u.status_aprovacao, 
+                u.data_cadastro,
+                (SELECT MAX(r.data_login) FROM registro_logins r WHERE r.usuario_id = u.id) AS ultimo_login,
+                (SELECT r.ip FROM registro_logins r WHERE r.usuario_id = u.id ORDER BY r.data_login DESC, r.id DESC LIMIT 1) AS ultimo_ip,
+                (SELECT COUNT(*) FROM relatorios rel WHERE rel.usuario_id = u.id) AS total_relatorios
+            FROM usuarios u";
     $params = [];
 
     if (!empty($busca)) {
-        $sql .= " WHERE username LIKE :b1 OR nome LIKE :b2 OR email LIKE :b3";
+        $sql .= " WHERE u.username LIKE :b1 OR u.nome LIKE :b2 OR u.email LIKE :b3";
         $params[':b1'] = "%{$busca}%";
         $params[':b2'] = "%{$busca}%";
         $params[':b3'] = "%{$busca}%";
     }
 
-    $sql .= " ORDER BY data_cadastro DESC, id DESC";
+    $sql .= " ORDER BY u.data_cadastro DESC, u.id DESC";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -332,13 +368,43 @@ function listarUsuarios(PDO $pdo, array $input): void {
  * Atualiza status ou nível de autoridade de um usuário
  */
 function atualizarStatusUsuario(PDO $pdo, array $input): void {
-    $usuarioId = $input['usuario_id'] ?? null;
+    $usuarioId = $input['usuario_id'] ?? ($input['id'] ?? null);
     if (!$usuarioId) {
         jsonResponse(['sucesso' => false, 'erro' => 'ID do usuário obrigatório.'], 400);
     }
 
     $campos = [];
     $params = [':id' => $usuarioId];
+
+    if (isset($input['nome'])) {
+        $campos[] = "nome = :nome";
+        $params[':nome'] = trim((string)$input['nome']);
+    }
+
+    if (isset($input['username']) && trim((string)$input['username']) !== '') {
+        $newU = trim((string)$input['username']);
+        $stmtCheck = $pdo->prepare("SELECT id FROM usuarios WHERE username = :u AND id != :id LIMIT 1");
+        $stmtCheck->execute([':u' => $newU, ':id' => $usuarioId]);
+        if ($stmtCheck->fetchColumn()) {
+            jsonResponse(['sucesso' => false, 'erro' => 'Este nome de usuário já está sendo utilizado por outro cadastro.'], 400);
+        }
+        $campos[] = "username = :username";
+        $params[':username'] = $newU;
+    }
+
+    if (isset($input['email'])) {
+        $campos[] = "email = :email";
+        $params[':email'] = trim((string)$input['email']);
+    }
+
+    if (!empty($input['nova_senha'])) {
+        $senhaLimpa = (string)$input['nova_senha'];
+        if (strlen($senhaLimpa) < 4) {
+            jsonResponse(['sucesso' => false, 'erro' => 'A senha deve conter no mínimo 4 caracteres.'], 400);
+        }
+        $campos[] = "senha = :senha";
+        $params[':senha'] = password_hash($senhaLimpa, PASSWORD_DEFAULT);
+    }
 
     if (isset($input['status_aprovacao'])) {
         $campos[] = "status_aprovacao = :st";
@@ -354,23 +420,48 @@ function atualizarStatusUsuario(PDO $pdo, array $input): void {
         jsonResponse(['sucesso' => false, 'erro' => 'Nenhum campo para atualizar.'], 400);
     }
 
-    $sql = "UPDATE usuarios SET " . implode(', ', $campos) . " WHERE id = :id";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    try {
+        $sql = "UPDATE usuarios SET " . implode(', ', $campos) . " WHERE id = :id";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
 
-    // Registra no histórico se houver ação
-    if (!empty($input['acao'])) {
-        try {
-            $stmtHist = $pdo->prepare("INSERT INTO historico_aprovacoes_usuarios (usuario_id, acao, detalhes) VALUES (:uid, :ac, :dt)");
-            $stmtHist->execute([
-                ':uid' => $usuarioId,
-                ':ac' => $input['acao'],
-                ':dt' => $input['detalhes'] ?? null
-            ]);
-        } catch (Exception $e) {}
+        if (!empty($input['acao'])) {
+            try {
+                $stmtHist = $pdo->prepare("INSERT INTO historico_aprovacoes_usuarios (usuario_id, acao, detalhes) VALUES (:uid, :ac, :dt)");
+                $stmtHist->execute([
+                    ':uid' => $usuarioId,
+                    ':ac' => $input['acao'],
+                    ':dt' => $input['detalhes'] ?? null
+                ]);
+            } catch (Exception $e) {}
+        }
+
+        jsonResponse(['sucesso' => true, 'mensagem' => 'Cadastro atualizado com sucesso!']);
+    } catch (Exception $e) {
+        jsonResponse(['sucesso' => false, 'erro' => 'Erro ao salvar alterações: ' . $e->getMessage()], 500);
+    }
+}
+
+/**
+ * Exclui um usuário do sistema
+ */
+function excluirUsuario(PDO $pdo, array $input): void {
+    $usuarioId = !empty($input['usuario_id']) ? (int)$input['usuario_id'] : (!empty($input['id']) ? (int)$input['id'] : null);
+    if (!$usuarioId) {
+        jsonResponse(['sucesso' => false, 'erro' => 'ID do usuário não informado.'], 400);
     }
 
-    jsonResponse(['sucesso' => true, 'mensagem' => 'Usuário atualizado com sucesso.']);
+    if ($usuarioId === 1) {
+        jsonResponse(['sucesso' => false, 'erro' => 'A conta de coordenador principal (#1) não pode ser excluída.'], 403);
+    }
+
+    try {
+        $stmt = $pdo->prepare("DELETE FROM usuarios WHERE id = :id");
+        $stmt->execute([':id' => $usuarioId]);
+        jsonResponse(['sucesso' => true, 'mensagem' => 'Usuário excluído com sucesso.']);
+    } catch (Exception $e) {
+        jsonResponse(['sucesso' => false, 'erro' => 'Erro ao excluir usuário: ' . $e->getMessage()], 500);
+    }
 }
 
 /**

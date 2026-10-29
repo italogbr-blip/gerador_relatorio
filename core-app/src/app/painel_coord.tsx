@@ -22,6 +22,7 @@ import {
   excluirRelatorioApi,
   listarUsuariosApi,
   atualizarStatusUsuarioApi,
+  excluirUsuarioApi,
   verificarSenhaCoordApi,
   alterarSenhaCoordApi,
   listarAcessosFalhosApi,
@@ -253,6 +254,17 @@ export default function PainelCoordScreen() {
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [popups, setPopups] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Modal de Visualização e Edição de Cadastro de Usuário
+  const [selectedUserEdit, setSelectedUserEdit] = useState<any | null>(null);
+  const [editNome, setEditNome] = useState<string>('');
+  const [editUsername, setEditUsername] = useState<string>('');
+  const [editEmail, setEditEmail] = useState<string>('');
+  const [editNovaSenha, setEditNovaSenha] = useState<string>('');
+  const [editNivel, setEditNivel] = useState<number>(1);
+  const [editStatus, setEditStatus] = useState<string>('aprovado');
+  const [salvandoEdicaoUsuario, setSalvandoEdicaoUsuario] = useState<boolean>(false);
+  const [excluindoUsuario, setExcluindoUsuario] = useState<boolean>(false);
 
   // Estados de Autorização / Aprovação de Novos Cadastros
   const [exigirAprovacaoCadastro, setExigirAprovacaoCadastroState] = useState<boolean>(false);
@@ -1337,6 +1349,92 @@ export default function PainelCoordScreen() {
     }
   };
 
+  const formatarDataHora = (dataStr?: string | null) => {
+    if (!dataStr) return 'Nunca acessou';
+    try {
+      const d = new Date(dataStr.replace(' ', 'T'));
+      if (isNaN(d.getTime())) return dataStr;
+      return d.toLocaleString('pt-BR');
+    } catch (_) {
+      return dataStr;
+    }
+  };
+
+  const abrirModalEdicaoUsuario = (u: any) => {
+    setSelectedUserEdit(u);
+    setEditNome(u.nome || '');
+    setEditUsername(u.username || '');
+    setEditEmail(u.email || '');
+    setEditNovaSenha('');
+    setEditNivel(Number(u.nivel_autoridade) || 1);
+    setEditStatus(u.status_aprovacao || 'aprovado');
+  };
+
+  const handleSalvarEdicaoUsuario = async () => {
+    if (!selectedUserEdit) return;
+    if (!editUsername.trim()) {
+      showCustomAlert('Atenção', 'O nome de usuário não pode ficar vazio.');
+      return;
+    }
+    setSalvandoEdicaoUsuario(true);
+    try {
+      const res = await atualizarStatusUsuarioApi({
+        usuario_id: selectedUserEdit.id,
+        nome: editNome.trim(),
+        username: editUsername.trim(),
+        email: editEmail.trim(),
+        nova_senha: editNovaSenha.trim() || undefined,
+        nivel_autoridade: editNivel,
+        status_aprovacao: editStatus,
+        acao: 'Edição de Cadastro',
+        detalhes: `Editado pela coordenação (${userSession?.user?.user_metadata?.username || userSession?.user?.email || 'Coordenador'})`,
+      });
+
+      if (res.sucesso) {
+        showCustomAlert('Sucesso', 'Cadastro do usuário atualizado com sucesso!');
+        setSelectedUserEdit(null);
+        carregarUsuarios();
+      } else {
+        showCustomAlert('Erro ao Atualizar', res.erro || 'Falha ao salvar alterações.');
+      }
+    } catch (e: any) {
+      showCustomAlert('Erro', e.message || 'Falha ao atualizar usuário.');
+    } finally {
+      setSalvandoEdicaoUsuario(false);
+    }
+  };
+
+  const handleExcluirUsuario = async () => {
+    if (!selectedUserEdit) return;
+    if (selectedUserEdit.id === 1) {
+      showCustomAlert('Operação Bloqueada', 'A conta de coordenador principal (#1) não pode ser excluída.');
+      return;
+    }
+
+    showCustomAlert(
+      'EXCLUIR USUÁRIO',
+      `Deseja realmente excluir permanentemente a conta de "${selectedUserEdit.nome || selectedUserEdit.username}"? Esta ação não pode ser desfeita.`,
+      async () => {
+        setExcluindoUsuario(true);
+        try {
+          const res = await excluirUsuarioApi(selectedUserEdit.id);
+          if (res.sucesso) {
+            showCustomAlert('Usuário Excluído', 'A conta foi removida com sucesso do sistema.');
+            setSelectedUserEdit(null);
+            carregarUsuarios();
+          } else {
+            showCustomAlert('Erro ao Excluir', res.erro || 'Falha ao excluir usuário.');
+          }
+        } catch (e: any) {
+          showCustomAlert('Erro', e.message || 'Falha ao excluir usuário.');
+        } finally {
+          setExcluindoUsuario(false);
+        }
+      },
+      true
+    );
+  };
+
   const carregarUsuarios = async () => {
     try {
       try {
@@ -2343,11 +2441,19 @@ export default function PainelCoordScreen() {
             <Text style={styles.kpiMetricFootnote}>Relatórios emitidos</Text>
           </View>
 
-          {/* Card 4: Usuários */}
-          <View style={[styles.kpiMetricCard, styles.kpiMetricCardUsuarios, isMobile && { minWidth: '100%', width: '100%', padding: 14 }]} className="coord-interactive-card">
+          {/* Card 4: Usuários (Interativo com Seta) */}
+          <TouchableOpacity 
+            activeOpacity={0.7}
+            onPress={() => setActiveTab('usuarios')}
+            style={[styles.kpiMetricCard, styles.kpiMetricCardUsuarios, isMobile && { minWidth: '100%', width: '100%', padding: 14 }, { cursor: 'pointer' } as any]} 
+            className="coord-interactive-card"
+          >
             <View style={styles.kpiMetricTopRow}>
               <Text style={[styles.kpiMetricLabel, { color: '#7c3aed' }]}>USUÁRIOS</Text>
-              <Text style={{ fontSize: 14 }}>👥</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 14 }}>👥</Text>
+                <Text style={{ fontSize: 15, color: '#7c3aed', fontWeight: 'bold' }}>➔</Text>
+              </View>
             </View>
             <View style={styles.kpiMetricValueContainer}>
               {loading && usuarios.length === 0 ? (
@@ -2360,8 +2466,11 @@ export default function PainelCoordScreen() {
                 </Text>
               )}
             </View>
-            <Text style={styles.kpiMetricFootnote}>Contas registradas</Text>
-          </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+              <Text style={styles.kpiMetricFootnote}>Contas registradas</Text>
+              <Text style={{ fontSize: 11, color: '#7c3aed', fontWeight: '700' }}>Ver cadastros ➔</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Abas de Navegação (Scroll horizontal suave e responsivo em qualquer tela) */}
@@ -3393,7 +3502,11 @@ export default function PainelCoordScreen() {
                         isMobile && { flexDirection: 'column', alignItems: 'stretch', gap: 10, padding: 12 }
                       ]}
                     >
-                      <View style={[styles.userCardInfo, { flex: 1, minWidth: 0, width: '100%' }]}>
+                      <TouchableOpacity 
+                        activeOpacity={0.75}
+                        onPress={() => abrirModalEdicaoUsuario(u)}
+                        style={[styles.userCardInfo, { flex: 1, minWidth: 0, width: '100%', cursor: 'pointer' } as any]}
+                      >
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <Text style={[styles.userNameText, !isDarkMode && { color: '#0f172a' }, { flexShrink: 1, flexWrap: 'wrap' }]}>
                             {u.nome || u.username || 'Sem Nome'}
@@ -3435,12 +3548,59 @@ export default function PainelCoordScreen() {
                             </Text>
                           </View>
                         </View>
-                        <Text style={[styles.userMetaText, { flexWrap: 'wrap', ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}) }]}>
+                        <Text style={[styles.userMetaText, { flexWrap: 'wrap', marginTop: 4, ...(Platform.OS === 'web' ? { wordBreak: 'break-word', overflowWrap: 'break-word' } : {}) }]}>
                           Username: <Text style={{ color: isDarkMode ? '#94a3b8' : '#334155', fontWeight: '700' }}>@{u.username}</Text> | E-mail: <Text style={{ color: isDarkMode ? '#94a3b8' : '#334155', fontWeight: '700' }}>{u.email || 'N/A'}</Text>
                         </Text>
-                      </View>
+
+                        {/* Telemetria do Usuário: Último Login, IP, Relatórios */}
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 6, alignItems: 'center' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Text style={{ fontSize: 11, color: isDarkMode ? '#94a3b8' : '#64748b' }}>🕒 Último Acesso:</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: u.ultimo_login ? (isDarkMode ? '#38bdf8' : '#0284c7') : '#94a3b8' }}>
+                              {u.ultimo_login ? formatarDataHora(u.ultimo_login) : 'Nunca acessou'}
+                            </Text>
+                          </View>
+
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Text style={{ fontSize: 11, color: isDarkMode ? '#94a3b8' : '#64748b' }}>🌐 IP:</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: isDarkMode ? '#cbd5e1' : '#334155' }}>
+                              {u.ultimo_ip || 'N/A'}
+                            </Text>
+                          </View>
+
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Text style={{ fontSize: 11, color: isDarkMode ? '#94a3b8' : '#64748b' }}>📄 Relatórios:</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: isDarkMode ? '#34d399' : '#059669' }}>
+                              {u.total_relatorios || 0}
+                            </Text>
+                          </View>
+
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Text style={{ fontSize: 11, color: isDarkMode ? '#94a3b8' : '#64748b' }}>📅 Cadastro:</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: isDarkMode ? '#94a3b8' : '#64748b' }}>
+                              {u.data_cadastro ? formatarDataHora(u.data_cadastro) : 'N/A'}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
 
                       <View style={[styles.userCardActions, { flexDirection: 'row', gap: 8, flexWrap: 'wrap' }, isMobile && { width: '100%', justifyContent: 'flex-end', marginTop: 4 }]}>
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: '#4f46e5',
+                            paddingHorizontal: 11,
+                            paddingVertical: 7,
+                            borderRadius: 6,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 5,
+                            cursor: 'pointer' as any,
+                          }}
+                          onPress={() => abrirModalEdicaoUsuario(u)}
+                        >
+                          <Text style={{ fontSize: 12 }}>✏️</Text>
+                          <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>Visualizar / Editar</Text>
+                        </TouchableOpacity>
                         {isPendente ? (
                           <>
                             <TouchableOpacity
@@ -5651,6 +5811,301 @@ export default function PainelCoordScreen() {
                   <Text style={styles.publishBtnText}>PUBLICAR AGORA</Text>
                 )}
               </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL DE VISUALIZAÇÃO E EDIÇÃO DE CADASTRO DE USUÁRIO */}
+      <Modal
+        visible={!!selectedUserEdit}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedUserEdit(null)}
+      >
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.novoPopupContent, { maxWidth: 620, maxHeight: '92%' }, !isDarkMode && { backgroundColor: '#ffffff' }]}>
+            {/* Header */}
+            <View style={[styles.modalHeader, { borderBottomColor: isDarkMode ? '#334155' : '#e2e8f0', paddingBottom: 14 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: '#ede9fe', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 20 }}>👤</Text>
+                </View>
+                <View>
+                  <Text style={[styles.modalTitle, !isDarkMode && { color: '#0f172a' }]}>
+                    CADASTRO DE USUÁRIO #{selectedUserEdit?.id}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: isDarkMode ? '#94a3b8' : '#64748b' }}>
+                    Visualização completa e edição de credenciais e permissões
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSelectedUserEdit(null)}
+                style={{ padding: 4 }}
+              >
+                <Text style={styles.modalCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 1, marginVertical: 8 }}>
+              <View style={{ gap: 14, paddingVertical: 6 }}>
+                
+                {/* Resumo de Atividades / Telemetria do Usuário */}
+                <View style={{ backgroundColor: isDarkMode ? '#1e293b' : '#f8fafc', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: isDarkMode ? '#334155' : '#e2e8f0' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: isDarkMode ? '#94a3b8' : '#475569', marginBottom: 8, letterSpacing: 0.5 }}>
+                    📊 TELEMETRIA & HISTÓRICO DE ACESSO
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                    <View style={{ minWidth: 140, flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: '#94a3b8' }}>Último Acesso:</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: selectedUserEdit?.ultimo_login ? (isDarkMode ? '#38bdf8' : '#0284c7') : '#94a3b8' }}>
+                        {selectedUserEdit?.ultimo_login ? formatarDataHora(selectedUserEdit.ultimo_login) : 'Nunca acessou'}
+                      </Text>
+                    </View>
+                    <View style={{ minWidth: 110, flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: '#94a3b8' }}>Último IP Registrado:</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: isDarkMode ? '#cbd5e1' : '#334155' }}>
+                        {selectedUserEdit?.ultimo_ip || 'N/A'}
+                      </Text>
+                    </View>
+                    <View style={{ minWidth: 110, flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: '#94a3b8' }}>Relatórios Emitidos:</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: isDarkMode ? '#34d399' : '#059669' }}>
+                        {selectedUserEdit?.total_relatorios || 0} relatórios
+                      </Text>
+                    </View>
+                    <View style={{ minWidth: 120, flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: '#94a3b8' }}>Data de Cadastro:</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: isDarkMode ? '#cbd5e1' : '#334155' }}>
+                        {selectedUserEdit?.data_cadastro ? formatarDataHora(selectedUserEdit.data_cadastro) : 'N/A'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Campo: Nome Completo */}
+                <View>
+                  <Text style={styles.inputFieldLabel}>NOME COMPLETO</Text>
+                  <TextInput
+                    style={[styles.modalTextInput, !isDarkMode && { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }]}
+                    value={editNome}
+                    onChangeText={setEditNome}
+                    placeholder="Nome do colaborador"
+                    placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                  />
+                </View>
+
+                {/* Linha dupla: Username e E-mail */}
+                <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputFieldLabel}>NOME DE USUÁRIO (LOGIN)</Text>
+                    <TextInput
+                      style={[styles.modalTextInput, !isDarkMode && { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }]}
+                      value={editUsername}
+                      onChangeText={setEditUsername}
+                      placeholder="ex: preposto.nome"
+                      autoCapitalize="none"
+                      placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputFieldLabel}>E-MAIL</Text>
+                    <TextInput
+                      style={[styles.modalTextInput, !isDarkMode && { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }]}
+                      value={editEmail}
+                      onChangeText={setEditEmail}
+                      placeholder="email@empresa.com"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                    />
+                  </View>
+                </View>
+
+                {/* Redefinição de Senha */}
+                <View>
+                  <Text style={styles.inputFieldLabel}>REDEFINIR SENHA (OPCIONAL)</Text>
+                  <TextInput
+                    style={[styles.modalTextInput, !isDarkMode && { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }]}
+                    value={editNovaSenha}
+                    onChangeText={setEditNovaSenha}
+                    placeholder="Deixe em branco para manter a senha atual"
+                    placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                    secureTextEntry
+                  />
+                  <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>
+                    Preencha este campo apenas se desejar redefinir a senha de acesso do usuário.
+                  </Text>
+                </View>
+
+                {/* Nível de Autoridade */}
+                <View>
+                  <Text style={styles.inputFieldLabel}>NÍVEL DE AUTORIDADE</Text>
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        padding: 10,
+                        borderRadius: 8,
+                        borderWidth: 1.5,
+                        borderColor: editNivel === 1 ? '#0284c7' : (isDarkMode ? '#334155' : '#e2e8f0'),
+                        backgroundColor: editNivel === 1 ? (isDarkMode ? '#0369a122' : '#f0f9ff') : 'transparent',
+                        alignItems: 'center',
+                      }}
+                      onPress={() => setEditNivel(1)}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: editNivel === 1 ? '#0284c7' : (isDarkMode ? '#cbd5e1' : '#475569') }}>
+                        👤 Nível 1 - Básico (Preposto)
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        padding: 10,
+                        borderRadius: 8,
+                        borderWidth: 1.5,
+                        borderColor: editNivel === 2 ? '#f59e0b' : (isDarkMode ? '#334155' : '#e2e8f0'),
+                        backgroundColor: editNivel === 2 ? (isDarkMode ? '#f59e0b22' : '#fffbeb') : 'transparent',
+                        alignItems: 'center',
+                      }}
+                      onPress={() => setEditNivel(2)}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: editNivel === 2 ? '#d97706' : (isDarkMode ? '#cbd5e1' : '#475569') }}>
+                        🛡️ Nível 2 - Coordenação
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Status da Conta */}
+                <View>
+                  <Text style={styles.inputFieldLabel}>STATUS DA CONTA</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        padding: 10,
+                        borderRadius: 8,
+                        borderWidth: 1.5,
+                        borderColor: editStatus === 'aprovado' ? '#059669' : (isDarkMode ? '#334155' : '#e2e8f0'),
+                        backgroundColor: editStatus === 'aprovado' ? (isDarkMode ? '#05966922' : '#ecfdf5') : 'transparent',
+                        alignItems: 'center',
+                      }}
+                      onPress={() => setEditStatus('aprovado')}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: editStatus === 'aprovado' ? '#059669' : (isDarkMode ? '#cbd5e1' : '#475569') }}>
+                        ✅ Liberado
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        padding: 10,
+                        borderRadius: 8,
+                        borderWidth: 1.5,
+                        borderColor: editStatus === 'pendente' ? '#d97706' : (isDarkMode ? '#334155' : '#e2e8f0'),
+                        backgroundColor: editStatus === 'pendente' ? (isDarkMode ? '#d9770622' : '#fef3c7') : 'transparent',
+                        alignItems: 'center',
+                      }}
+                      onPress={() => setEditStatus('pendente')}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: editStatus === 'pendente' ? '#d97706' : (isDarkMode ? '#cbd5e1' : '#475569') }}>
+                        ⏳ Pendente
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        padding: 10,
+                        borderRadius: 8,
+                        borderWidth: 1.5,
+                        borderColor: editStatus === 'recusado' ? '#dc2626' : (isDarkMode ? '#334155' : '#e2e8f0'),
+                        backgroundColor: editStatus === 'recusado' ? (isDarkMode ? '#dc262622' : '#fef2f2') : 'transparent',
+                        alignItems: 'center',
+                      }}
+                      onPress={() => setEditStatus('recusado')}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: editStatus === 'recusado' ? '#dc2626' : (isDarkMode ? '#cbd5e1' : '#475569') }}>
+                        ❌ Recusado
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+              </View>
+            </ScrollView>
+
+            {/* Ações do Modal */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14, borderTopWidth: 1, borderTopColor: isDarkMode ? '#334155' : '#e2e8f0', gap: 10, flexWrap: 'wrap' }}>
+              {selectedUserEdit?.id !== 1 ? (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#fee2e2',
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: '#fca5a5',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                  onPress={handleExcluirUsuario}
+                  disabled={excluindoUsuario || salvandoEdicaoUsuario}
+                >
+                  {excluindoUsuario ? (
+                    <ActivityIndicator size="small" color="#dc2626" />
+                  ) : (
+                    <>
+                      <Text style={{ fontSize: 13 }}>🗑️</Text>
+                      <Text style={{ color: '#dc2626', fontWeight: '800', fontSize: 12 }}>Excluir Conta</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View />
+              )}
+
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={[styles.dialogCancelBtn, { paddingHorizontal: 14, paddingVertical: 10 }]}
+                  onPress={() => setSelectedUserEdit(null)}
+                  disabled={salvandoEdicaoUsuario || excluindoUsuario}
+                >
+                  <Text style={styles.dialogCancelBtnText}>CANCELAR</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#059669',
+                    paddingHorizontal: 18,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                  onPress={handleSalvarEdicaoUsuario}
+                  disabled={salvandoEdicaoUsuario || excluindoUsuario}
+                >
+                  {salvandoEdicaoUsuario ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <Text style={{ fontSize: 13 }}>💾</Text>
+                      <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 12 }}>SALVAR ALTERAÇÕES</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
