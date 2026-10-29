@@ -16,26 +16,38 @@ async function apiFetch<T = any>(endpoint: string, options: RequestInit = {}): P
     defaultHeaders['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...defaultHeaders,
-      ...(options.headers as Record<string, string> || {}),
-    },
-  });
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutMs = endpoint.includes('validar_sessao') ? 3500 : 8000;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
-  if (!response.ok) {
-    let errorMsg = `Erro na requisição HTTP ${response.status}: ${response.statusText}`;
-    try {
-      const errJson = await response.json();
-      if (errJson && errJson.erro) {
-        errorMsg = errJson.erro;
-      }
-    } catch (_) {}
-    throw new Error(errorMsg);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: options.signal || (controller ? controller.signal : undefined),
+      headers: {
+        ...defaultHeaders,
+        ...(options.headers as Record<string, string> || {}),
+      },
+    });
+
+    if (timeoutId) clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      let errorMsg = `Erro na requisição HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errJson = await response.json();
+        if (errJson && errJson.erro) {
+          errorMsg = errJson.erro;
+        }
+      } catch (_) {}
+      throw new Error(errorMsg);
+    }
+
+    return response.json();
+  } catch (err) {
+    if (timeoutId) clearTimeout(timeoutId);
+    throw err;
   }
-
-  return response.json();
 }
 
 // =============================================================================

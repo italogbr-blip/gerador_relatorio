@@ -291,26 +291,42 @@ function executarCadastro(PDO $pdo, array $input): void {
  * Valida a sessão via token ou ID
  */
 function validarSessao(PDO $pdo, array $input): void {
-    $token = trim($input['token'] ?? ($_SERVER['HTTP_AUTHORIZATION'] ?? ''));
+    $token = trim((string)($input['token'] ?? ($_SERVER['HTTP_AUTHORIZATION'] ?? '')));
     $token = str_ireplace('Bearer ', '', $token);
-    $userId = $input['usuario_id'] ?? ($input['user_id'] ?? null);
+    $userId = !empty($input['usuario_id']) ? (int)$input['usuario_id'] : (!empty($input['user_id']) ? (int)$input['user_id'] : null);
 
     if (empty($token) && empty($userId)) {
         jsonResponse(['sucesso' => false, 'erro' => 'Token ou identificador não fornecido.'], 401);
     }
 
+    $user = null;
+
+    // 1. Tenta validar por token se existir
     if (!empty($token)) {
         $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE remember_token = :t LIMIT 1");
         $stmt->execute([':t' => $token]);
-    } else {
-        $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE id = :id LIMIT 1");
-        $stmt->execute([':id' => $userId]);
+        $user = $stmt->fetch();
     }
 
-    $user = $stmt->fetch();
+    // 2. Se não encontrou por token mas tem ID, valida por ID
+    if (!$user && !empty($userId)) {
+        $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $userId]);
+        $user = $stmt->fetch();
+    }
+
     if (!$user) {
         jsonResponse(['sucesso' => false, 'erro' => 'Sessão inválida ou expirada.'], 401);
     }
+
+    if (isset($user['status_aprovacao']) && $user['status_aprovacao'] === 'recusado') {
+        jsonResponse(['sucesso' => false, 'erro' => 'Conta com acesso suspenso pela coordenação.'], 403);
+    }
+
+    // Atualiza last_activity no MySQL
+    try {
+        $pdo->prepare("UPDATE usuarios SET last_activity = NOW() WHERE id = :id")->execute([':id' => $user['id']]);
+    } catch (Exception $e) {}
 
     jsonResponse([
         'sucesso' => true,

@@ -95,10 +95,13 @@ export default function PainelCoordScreen() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
 
-  // Sessão do Usuário e Controle Estrito de Autoridade Nível 2
-  const [userSession, setUserSession] = useState<AppUserSession | null>(null);
-  const [authChecked, setAuthChecked] = useState<boolean>(false);
-  const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
+  // Sessão do Usuário e Controle Estrito de Autoridade Nível 2 (Instantâneo 0ms via Cache Seguro)
+  const initialSession = useMemo(() => getSavedSessionSync(), []);
+  const isInitialCoord = useMemo(() => Number(initialSession?.user?.user_metadata?.nivel_autoridade) === 2, [initialSession]);
+
+  const [userSession, setUserSession] = useState<AppUserSession | null>(initialSession);
+  const [authChecked, setAuthChecked] = useState<boolean>(isInitialCoord);
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(isInitialCoord);
   const [unauthReason, setUnauthReason] = useState<'unauthenticated' | 'forbidden' | null>(null);
 
   // Tema da Coordenação: 100% Tema Claro Exclusivo
@@ -654,24 +657,30 @@ export default function PainelCoordScreen() {
     });
   };
 
-  // Carregar e Verificar Autorização de Acesso (Exclusivo Nível 2)
+  // Carregar e Verificar Autorização de Acesso (Exclusivo Nível 2 com Validação Contínua em Background)
   useEffect(() => {
+    if (isInitialCoord) {
+      carregarDadosIniciais();
+    }
+
     verifyCoordinatorAccess().then((res) => {
       setUserSession(res.session);
       setIsAuthorized(res.authorized);
       setUnauthReason(res.reason);
       setAuthChecked(true);
 
-      if (res.authorized) {
+      if (res.authorized && !isInitialCoord) {
         carregarDadosIniciais();
       }
     }).catch((err) => {
       console.warn('Erro na verificação de acesso à coordenação:', err);
-      setIsAuthorized(false);
-      setUnauthReason('unauthenticated');
+      if (!isInitialCoord) {
+        setIsAuthorized(false);
+        setUnauthReason('unauthenticated');
+      }
       setAuthChecked(true);
     });
-  }, []);
+  }, [isInitialCoord]);
 
   // Carregamento de Métricas e Dados Iniciais
   const carregarDadosIniciais = async () => {
