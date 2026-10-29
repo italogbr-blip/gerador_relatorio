@@ -60,6 +60,18 @@ switch ($action) {
         salvarConfigFooter($pdo, $input);
         break;
 
+    case 'listar_empresas':
+        listarEmpresas($pdo);
+        break;
+
+    case 'salvar_empresa':
+        salvarEmpresa($pdo, $input);
+        break;
+
+    case 'excluir_empresa':
+        excluirEmpresa($pdo, $input);
+        break;
+
     default:
         jsonResponse(['sucesso' => false, 'erro' => 'Ação de configuração desconhecida.'], 400);
 }
@@ -291,5 +303,98 @@ function salvarConfigFooter(PDO $pdo, array $input): void {
         jsonResponse(['sucesso' => true, 'mensagem' => 'Configuração do rodapé salva no MySQL com sucesso!']);
     } catch (Exception $e) {
         jsonResponse(['sucesso' => false, 'erro' => $e->getMessage()], 500);
+    }
+}
+
+/**
+ * Garante que a tabela empresas exista e tenha as empresas padrão
+ */
+function garantirTabelaEmpresas(PDO $pdo): void {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS empresas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nome VARCHAR(150) NOT NULL UNIQUE,
+            ativa TINYINT(1) DEFAULT 1,
+            data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $count = (int)$pdo->query("SELECT COUNT(*) FROM empresas")->fetchColumn();
+        if ($count === 0) {
+            $defaultEmpresas = [
+                'TECHNIP', 'DOF', 'TECHNIP/DOF', 'CONSTELLATION', 'ZONDA', 
+                'ALPHA OFFSHORE', 'NEXUS LOGÍSTICA', 'OCEANIC ENERGY', 
+                'SOLARIS SHIPPING', 'VANGUARD MARÍTIMA', 'OUTROS'
+            ];
+            $stmt = $pdo->prepare("INSERT IGNORE INTO empresas (nome, ativa) VALUES (:nome, 1)");
+            foreach ($defaultEmpresas as $emp) {
+                $stmt->execute([':nome' => $emp]);
+            }
+        }
+    } catch (Exception $e) {}
+}
+
+/**
+ * Lista todas as empresas cadastradas
+ */
+function listarEmpresas(PDO $pdo): void {
+    garantirTabelaEmpresas($pdo);
+    try {
+        $stmt = $pdo->query("SELECT id, nome, ativa, data_cadastro FROM empresas ORDER BY nome ASC");
+        $empresas = $stmt ? $stmt->fetchAll() : [];
+        jsonResponse(['sucesso' => true, 'empresas' => $empresas]);
+    } catch (Exception $e) {
+        jsonResponse(['sucesso' => false, 'empresas' => [], 'erro' => $e->getMessage()]);
+    }
+}
+
+/**
+ * Salva ou atualiza uma empresa
+ */
+function salvarEmpresa(PDO $pdo, array $input): void {
+    garantirTabelaEmpresas($pdo);
+    $id = !empty($input['id']) ? (int)$input['id'] : null;
+    $nome = trim((string)($input['nome'] ?? ''));
+    $ativa = isset($input['ativa']) ? (int)$input['ativa'] : 1;
+
+    if (empty($nome)) {
+        jsonResponse(['sucesso' => false, 'erro' => 'O nome da empresa não pode ser vazio.'], 400);
+    }
+
+    try {
+        if ($id) {
+            $stmt = $pdo->prepare("UPDATE empresas SET nome = :nome, ativa = :ativa WHERE id = :id");
+            $stmt->execute([':nome' => $nome, ':ativa' => $ativa, ':id' => $id]);
+            jsonResponse(['sucesso' => true, 'mensagem' => 'Empresa atualizada com sucesso!']);
+        } else {
+            $stmtCheck = $pdo->prepare("SELECT id FROM empresas WHERE UPPER(TRIM(nome)) = UPPER(TRIM(:nome)) LIMIT 1");
+            $stmtCheck->execute([':nome' => $nome]);
+            if ($stmtCheck->fetchColumn()) {
+                jsonResponse(['sucesso' => false, 'erro' => 'Já existe uma empresa cadastrada com este nome.'], 400);
+            }
+            $stmt = $pdo->prepare("INSERT INTO empresas (nome, ativa) VALUES (:nome, :ativa)");
+            $stmt->execute([':nome' => $nome, ':ativa' => $ativa]);
+            jsonResponse(['sucesso' => true, 'id' => (int)$pdo->lastInsertId(), 'mensagem' => 'Empresa cadastrada com sucesso!']);
+        }
+    } catch (Exception $e) {
+        jsonResponse(['sucesso' => false, 'erro' => 'Erro ao salvar empresa: ' . $e->getMessage()], 500);
+    }
+}
+
+/**
+ * Exclui uma empresa
+ */
+function excluirEmpresa(PDO $pdo, array $input): void {
+    garantirTabelaEmpresas($pdo);
+    $id = !empty($input['id']) ? (int)$input['id'] : null;
+    if (!$id) {
+        jsonResponse(['sucesso' => false, 'erro' => 'ID da empresa não informado.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("DELETE FROM empresas WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        jsonResponse(['sucesso' => true, 'mensagem' => 'Empresa excluída com sucesso!']);
+    } catch (Exception $e) {
+        jsonResponse(['sucesso' => false, 'erro' => 'Erro ao excluir empresa: ' . $e->getMessage()], 500);
     }
 }

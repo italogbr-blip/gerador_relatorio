@@ -344,40 +344,90 @@ function validarSessao(PDO $pdo, array $input): void {
 /**
  * Lista todos os usuários cadastrados (para gestão do Coordenador)
  */
-function listarUsuarios(PDO $pdo, array $input): void {
-    $busca = trim($_GET['busca'] ?? ($input['busca'] ?? ''));
+function garantirTabelasAuditoria(PDO $pdo): void {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS registro_logins (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            usuario_id INT NULL,
+            ip VARCHAR(45) NULL,
+            user_agent VARCHAR(500) NULL,
+            data_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    } catch (Exception $e) {}
+}
 
-    $sql = "SELECT 
-                u.id, 
-                u.username, 
-                u.nome, 
-                u.email, 
-                u.nivel_autoridade, 
-                u.status_aprovacao, 
-                u.data_cadastro,
-                (SELECT MAX(r.data_login) FROM registro_logins r WHERE r.usuario_id = u.id) AS ultimo_login,
-                (SELECT r.ip FROM registro_logins r WHERE r.usuario_id = u.id ORDER BY r.data_login DESC, r.id DESC LIMIT 1) AS ultimo_ip,
-                (SELECT COUNT(*) FROM relatorios rel WHERE rel.usuario_id = u.id) AS total_relatorios
-            FROM usuarios u";
+function listarUsuarios(PDO $pdo, array $input): void {
+    garantirTabelasAuditoria($pdo);
+    $busca = trim($_GET['busca'] ?? ($input['busca'] ?? ''));
     $params = [];
 
-    if (!empty($busca)) {
-        $sql .= " WHERE u.username LIKE :b1 OR u.nome LIKE :b2 OR u.email LIKE :b3";
-        $params[':b1'] = "%{$busca}%";
-        $params[':b2'] = "%{$busca}%";
-        $params[':b3'] = "%{$busca}%";
+    // 1. Tenta consulta rica com subconsultas de login e relatórios
+    try {
+        $sql = "SELECT 
+                    u.id, 
+                    u.username, 
+                    u.nome, 
+                    u.email, 
+                    u.nivel_autoridade, 
+                    u.status_aprovacao, 
+                    u.data_cadastro,
+                    (SELECT MAX(r.data_login) FROM registro_logins r WHERE r.usuario_id = u.id) AS ultimo_login,
+                    (SELECT r.ip FROM registro_logins r WHERE r.usuario_id = u.id ORDER BY r.id DESC LIMIT 1) AS ultimo_ip,
+                    (SELECT COUNT(*) FROM relatorios rel WHERE rel.usuario_id = u.id) AS total_relatorios
+                FROM usuarios u";
+
+        if (!empty($busca)) {
+            $sql .= " WHERE u.username LIKE :b1 OR u.nome LIKE :b2 OR u.email LIKE :b3";
+            $params[':b1'] = "%{$busca}%";
+            $params[':b2'] = "%{$busca}%";
+            $params[':b3'] = "%{$busca}%";
+        }
+
+        $sql .= " ORDER BY u.id DESC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $usuarios = $stmt->fetchAll();
+
+        jsonResponse([
+            'sucesso' => true,
+            'usuarios' => $usuarios
+        ]);
+        return;
+    } catch (Exception $e) {
+        // 2. Fallback seguro e resiliente caso subconsultas ou colunas opcionais falhem
+        try {
+            $sql = "SELECT u.id, u.username, u.nome, u.email, u.nivel_autoridade, u.status_aprovacao FROM usuarios u";
+            if (!empty($busca)) {
+                $sql .= " WHERE u.username LIKE :b1 OR u.nome LIKE :b2 OR u.email LIKE :b3";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([':b1' => "%{$busca}%", ':b2' => "%{$busca}%", ':b3' => "%{$busca}%"]);
+            } else {
+                $sql .= " ORDER BY u.id DESC";
+                $stmt = $pdo->query($sql);
+            }
+            $usuarios = $stmt ? $stmt->fetchAll() : [];
+
+            foreach ($usuarios as &$u) {
+                $u['ultimo_login'] = null;
+                $u['ultimo_ip'] = null;
+                $u['total_relatorios'] = 0;
+                $u['data_cadastro'] = null;
+            }
+
+            jsonResponse([
+                'sucesso' => true,
+                'usuarios' => $usuarios
+            ]);
+            return;
+        } catch (Exception $e2) {
+            jsonResponse([
+                'sucesso' => false,
+                'usuarios' => [],
+                'erro' => $e2->getMessage()
+            ]);
+        }
     }
-
-    $sql .= " ORDER BY u.data_cadastro DESC, u.id DESC";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $usuarios = $stmt->fetchAll();
-
-    jsonResponse([
-        'sucesso' => true,
-        'usuarios' => $usuarios
-    ]);
 }
 
 /**

@@ -381,6 +381,55 @@ export async function excluirNotificacaoApi(id: number): Promise<{ sucesso: bool
 }
 
 // =============================================================================
+// GESTÃO DE EMPRESAS / GRUPOS OFFSHORE
+// =============================================================================
+
+export interface EmpresaRecord {
+  id: number;
+  nome: string;
+  ativa: number | boolean;
+  data_cadastro?: string;
+}
+
+export async function listarEmpresasApi(): Promise<{ sucesso: boolean; empresas: EmpresaRecord[] }> {
+  try {
+    const res = await apiFetch('/api/configuracoes.php?action=listar_empresas');
+    return { sucesso: true, empresas: res.empresas || [] };
+  } catch (error) {
+    return { sucesso: false, empresas: [] };
+  }
+}
+
+export async function salvarEmpresaApi(dados: {
+  id?: number;
+  nome: string;
+  ativa?: number | boolean;
+}): Promise<{ sucesso: boolean; erro?: string; mensagem?: string; id?: number }> {
+  try {
+    return await apiFetch('/api/configuracoes.php?action=salvar_empresa', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...dados,
+        ativa: dados.ativa === false || dados.ativa === 0 ? 0 : 1,
+      }),
+    });
+  } catch (error: any) {
+    return { sucesso: false, erro: error.message };
+  }
+}
+
+export async function excluirEmpresaApi(id: number): Promise<{ sucesso: boolean; erro?: string; mensagem?: string }> {
+  try {
+    return await apiFetch('/api/configuracoes.php?action=excluir_empresa', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    });
+  } catch (error: any) {
+    return { sucesso: false, erro: error.message };
+  }
+}
+
+// =============================================================================
 // FIREWALL & IPS BLOQUEADOS
 // =============================================================================
 

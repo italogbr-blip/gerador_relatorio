@@ -23,6 +23,10 @@ import {
   listarUsuariosApi,
   atualizarStatusUsuarioApi,
   excluirUsuarioApi,
+  listarEmpresasApi,
+  salvarEmpresaApi,
+  excluirEmpresaApi,
+  EmpresaRecord,
   verificarSenhaCoordApi,
   alterarSenhaCoordApi,
   listarAcessosFalhosApi,
@@ -115,7 +119,7 @@ export default function PainelCoordScreen() {
   }, []);
 
   // Abas do Painel: 'relatorios' | 'ranking' | 'popups' | 'mensagens' | 'usuarios' | 'seguranca' | 'sistema' | 'version'
-  const [activeTab, setActiveTab] = useState<'relatorios' | 'ranking' | 'popups' | 'mensagens' | 'usuarios' | 'seguranca' | 'sistema' | 'version'>('relatorios');
+  const [activeTab, setActiveTab] = useState<'relatorios' | 'ranking' | 'empresas' | 'popups' | 'mensagens' | 'usuarios' | 'seguranca' | 'sistema' | 'version'>('relatorios');
 
   // Estados de Controle de Versões (Central mms_versao_app)
   const [versoesList, setVersoesList] = useState<AppVersionRecord[]>([]);
@@ -254,7 +258,51 @@ export default function PainelCoordScreen() {
 
   // Estados de Dados & Métricas com Cache Instantâneo
   const [relatorios, setRelatorios] = useState<any[]>([]);
-  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [usuarios, setUsuarios] = useState<any[]>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('mms_coord_cache_usuarios');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (_) {}
+    }
+    return [];
+  });
+
+  // Estados de Gestão de Empresas / Grupos Cadastrados
+  const [empresasCadastradas, setEmpresasCadastradas] = useState<EmpresaRecord[]>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('mms_coord_cache_empresas_list');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (_) {}
+    }
+    return [
+      { id: 1, nome: 'TECHNIP', ativa: 1 },
+      { id: 2, nome: 'DOF', ativa: 1 },
+      { id: 3, nome: 'TECHNIP/DOF', ativa: 1 },
+      { id: 4, nome: 'CONSTELLATION', ativa: 1 },
+      { id: 5, nome: 'ZONDA', ativa: 1 },
+      { id: 6, nome: 'ALPHA OFFSHORE', ativa: 1 },
+      { id: 7, nome: 'NEXUS LOGÍSTICA', ativa: 1 },
+      { id: 8, nome: 'OCEANIC ENERGY', ativa: 1 },
+      { id: 9, nome: 'SOLARIS SHIPPING', ativa: 1 },
+      { id: 10, nome: 'VANGUARD MARÍTIMA', ativa: 1 },
+      { id: 11, nome: 'OUTROS', ativa: 1 },
+    ];
+  });
+  const [loadingEmpresas, setLoadingEmpresas] = useState<boolean>(false);
+  const [filtroBuscaEmpresa, setFiltroBuscaEmpresa] = useState<string>('');
+  const [isModalEmpresaOpen, setIsModalEmpresaOpen] = useState<boolean>(false);
+  const [empresaEmEdicao, setEmpresaEmEdicao] = useState<EmpresaRecord | null>(null);
+  const [nomeEmpresaInput, setNomeEmpresaInput] = useState<string>('');
+  const [ativaEmpresaInput, setAtivaEmpresaInput] = useState<boolean>(true);
+  const [salvandoEmpresa, setSalvandoEmpresa] = useState<boolean>(false);
   const [popups, setPopups] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -690,6 +738,7 @@ export default function PainelCoordScreen() {
         carregarMetricas(),
         carregarRelatorios(),
         carregarUsuarios(),
+        carregarEmpresasCadastradas(),
         carregarPopups(),
         carregarVersoes(),
         carregarSeguranca(),
@@ -1444,23 +1493,134 @@ export default function PainelCoordScreen() {
     );
   };
 
+  // ── GESTÃO DE EMPRESAS / GRUPOS OFFSHORE ──
+  const carregarEmpresasCadastradas = async () => {
+    setLoadingEmpresas(true);
+    try {
+      const res = await listarEmpresasApi();
+      if (res && res.sucesso && Array.isArray(res.empresas) && res.empresas.length > 0) {
+        setEmpresasCadastradas(res.empresas);
+        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+          try {
+            localStorage.setItem('mms_coord_cache_empresas_list', JSON.stringify(res.empresas));
+            const ativas = res.empresas.filter((e) => e.ativa === 1 || e.ativa === true).map((e) => e.nome.trim());
+            localStorage.setItem('mms_empresas_cadastradas', JSON.stringify(ativas));
+          } catch (_) {}
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar empresas:', e);
+    } finally {
+      setLoadingEmpresas(false);
+    }
+  };
+
+  const handleAbrirNovaEmpresa = () => {
+    setEmpresaEmEdicao(null);
+    setNomeEmpresaInput('');
+    setAtivaEmpresaInput(true);
+    setIsModalEmpresaOpen(true);
+  };
+
+  const handleEditarEmpresa = (emp: EmpresaRecord) => {
+    setEmpresaEmEdicao(emp);
+    setNomeEmpresaInput(emp.nome);
+    setAtivaEmpresaInput(emp.ativa === 1 || emp.ativa === true);
+    setIsModalEmpresaOpen(true);
+  };
+
+  const handleSalvarEmpresa = async () => {
+    const nomeLimpo = nomeEmpresaInput.trim().toUpperCase();
+    if (!nomeLimpo) {
+      showCustomAlert('Atenção', 'Informe o nome da empresa ou grupo.');
+      return;
+    }
+
+    setSalvandoEmpresa(true);
+    try {
+      const res = await salvarEmpresaApi({
+        id: empresaEmEdicao ? empresaEmEdicao.id : undefined,
+        nome: nomeLimpo,
+        ativa: ativaEmpresaInput ? 1 : 0,
+      });
+
+      if (res && res.sucesso) {
+        showCustomAlert('Sucesso', res.mensagem || 'Empresa salva com sucesso!');
+        setIsModalEmpresaOpen(false);
+        carregarEmpresasCadastradas();
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mms_empresas_atualizadas'));
+        }
+      } else {
+        showCustomAlert('Erro ao Salvar', res.erro || 'Falha ao salvar empresa.');
+      }
+    } catch (e: any) {
+      showCustomAlert('Erro', e.message || 'Falha ao processar solicitação.');
+    } finally {
+      setSalvandoEmpresa(false);
+    }
+  };
+
+  const handleToggleStatusEmpresa = async (emp: EmpresaRecord) => {
+    const novoStatus = !(emp.ativa === 1 || emp.ativa === true);
+    try {
+      const res = await salvarEmpresaApi({
+        id: emp.id,
+        nome: emp.nome,
+        ativa: novoStatus ? 1 : 0,
+      });
+
+      if (res && res.sucesso) {
+        setEmpresasCadastradas((prev) =>
+          prev.map((item) => (item.id === emp.id ? { ...item, ativa: novoStatus ? 1 : 0 } : item))
+        );
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('mms_empresas_atualizadas'));
+        }
+      } else {
+        showCustomAlert('Erro', res.erro || 'Falha ao atualizar status.');
+      }
+    } catch (e: any) {
+      showCustomAlert('Erro', e.message || 'Falha ao atualizar status.');
+    }
+  };
+
+  const handleExcluirEmpresa = (emp: EmpresaRecord) => {
+    showCustomAlert(
+      'EXCLUIR EMPRESA',
+      `Deseja realmente remover a empresa "${emp.nome}" do sistema? Ela deixará de aparecer no formulário de novos relatórios.`,
+      async () => {
+        try {
+          const res = await excluirEmpresaApi(emp.id);
+          if (res && res.sucesso) {
+            showCustomAlert('Sucesso', 'Empresa excluída com sucesso!');
+            carregarEmpresasCadastradas();
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('mms_empresas_atualizadas'));
+            }
+          } else {
+            showCustomAlert('Erro ao Excluir', res.erro || 'Falha ao remover empresa.');
+          }
+        } catch (e: any) {
+          showCustomAlert('Erro', e.message || 'Falha ao excluir empresa.');
+        }
+      },
+      true
+    );
+  };
+
   const carregarUsuarios = async () => {
     try {
-      try {
-        const apiUsers = await listarUsuariosApi();
-        if (apiUsers.sucesso) {
-          setUsuarios(apiUsers.usuarios);
-          return;
+      const apiUsers = await listarUsuariosApi();
+      if (apiUsers && apiUsers.sucesso && Array.isArray(apiUsers.usuarios)) {
+        setUsuarios(apiUsers.usuarios);
+        if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+          try {
+            localStorage.setItem('mms_coord_cache_usuarios', JSON.stringify(apiUsers.usuarios));
+          } catch (_) {}
         }
-      } catch (_) {}
-
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select('id, nome, username, email, nivel_autoridade, data_cadastro, last_activity, status_aprovacao, aprovado_por, data_aprovacao')
-        .order('id', { ascending: false });
-
-      if (!error && data) {
-        setUsuarios(data);
+        return;
       }
     } catch (e) {
       console.warn('Erro ao carregar usuários:', e);
@@ -2527,6 +2687,17 @@ export default function PainelCoordScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'empresas' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+              onPress={() => setActiveTab('empresas')}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontSize: 13, marginRight: 6 }}>🏢</Text>
+              <Text style={[styles.tabNavButtonText, activeTab === 'empresas' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+                EMPRESAS
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
               onPress={() => setActiveTab('popups')}
               activeOpacity={0.85}
@@ -3494,7 +3665,32 @@ export default function PainelCoordScreen() {
 
               {/* Tabela de Usuários */}
               <View style={styles.userList}>
-                {usuariosFiltrados.map((u) => {
+                {usuariosFiltrados.length === 0 ? (
+                  <View style={{ padding: 36, alignItems: 'center' }}>
+                    {loading && usuarios.length === 0 ? (
+                      <>
+                        <ActivityIndicator size="small" color="#0284c7" />
+                        <Text style={{ color: '#64748b', fontSize: 13, marginTop: 8 }}>
+                          Carregando lista de usuários do MySQL...
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={{ fontSize: 32, marginBottom: 8 }}>👥</Text>
+                        <Text style={{ color: '#64748b', fontSize: 13, fontWeight: '600' }}>
+                          {filtroBuscaUsuario ? 'Nenhum usuário encontrado para esta busca.' : 'Nenhum usuário cadastrado no momento.'}
+                        </Text>
+                        <TouchableOpacity
+                          style={{ marginTop: 12, backgroundColor: '#0284c7', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 6 }}
+                          onPress={carregarUsuarios}
+                        >
+                          <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: 'bold' }}>🔄 Recarregar Usuários</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
+                ) : (
+                  usuariosFiltrados.map((u) => {
                   const nivelNum = Number(u.nivel_autoridade) || 1;
                   const isCoord = nivelNum === 2;
                   const statusAprovacao = u.status_aprovacao || 'aprovado';
@@ -3655,7 +3851,8 @@ export default function PainelCoordScreen() {
                       </View>
                     </View>
                   );
-                })}
+                })
+              )}
               </View>
             </View>
 
@@ -3771,6 +3968,221 @@ export default function PainelCoordScreen() {
                     );
                   })
                 )}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ════════════════ ABA: GESTÃO DE EMPRESAS / GRUPOS OFFSHORE ════════════════ */}
+        {activeTab === 'empresas' && (
+          <View style={styles.tabContent}>
+            <View style={[styles.sectionCard, !isDarkMode && { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+              {/* Header */}
+              <View style={[styles.sectionHeader, { justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 260 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 24 }}>🏢</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.sectionTitle, !isDarkMode && { color: '#0f172a' }]}>
+                      EMPRESAS & GRUPOS OFFSHORE
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Gerencie as empresas e grupos que aparecem no campo EMPRESA / GRUPO do Gerador de Relatórios
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#0284c7',
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                  onPress={handleAbrirNovaEmpresa}
+                  activeOpacity={0.85}
+                >
+                  <Text style={{ fontSize: 13 }}>➕</Text>
+                  <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 }}>
+                    NOVA EMPRESA
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Barra de Filtro e Métricas */}
+              <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, marginTop: 16, alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={[
+                  styles.searchBox,
+                  { flex: 1, width: isMobile ? '100%' : 'auto', marginVertical: 0 },
+                  isDarkMode ? { backgroundColor: '#0f172a', borderColor: '#334155' } : { backgroundColor: '#ffffff', borderColor: '#cbd5e1' }
+                ]}>
+                  <Text style={styles.searchIcon}>🔍</Text>
+                  <TextInput
+                    style={[
+                      styles.searchInput,
+                      isDarkMode ? { color: '#ffffff' } : { color: '#0f172a' }
+                    ]}
+                    placeholder="Filtrar empresa cadastrada..."
+                    placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
+                    value={filtroBuscaEmpresa}
+                    onChangeText={setFiltroBuscaEmpresa}
+                  />
+                  {filtroBuscaEmpresa ? (
+                    <TouchableOpacity
+                      onPress={() => setFiltroBuscaEmpresa('')}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={{ padding: 4 }}
+                    >
+                      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: 'bold' }}>✕</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  <View style={{ backgroundColor: '#f0fdf4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#bbf7d0' }}>
+                    <Text style={{ color: '#166534', fontSize: 11, fontWeight: '800' }}>
+                      {empresasCadastradas.filter(e => e.ativa === 1 || e.ativa === true).length} ATIVAS NO GERADOR
+                    </Text>
+                  </View>
+                  <View style={{ backgroundColor: '#f8fafc', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                    <Text style={{ color: '#475569', fontSize: 11, fontWeight: '800' }}>
+                      TOTAL: {empresasCadastradas.length}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Lista de Empresas */}
+              <View style={{ marginTop: 16 }}>
+                {(() => {
+                  const termo = filtroBuscaEmpresa.toLowerCase().trim();
+                  const listaFiltrada = empresasCadastradas.filter(e => !termo || e.nome.toLowerCase().includes(termo));
+
+                  if (listaFiltrada.length === 0) {
+                    return (
+                      <View style={{ padding: 32, alignItems: 'center' }}>
+                        <Text style={{ fontSize: 28, marginBottom: 8 }}>🏢</Text>
+                        <Text style={{ color: '#64748b', fontSize: 13, fontWeight: '600' }}>
+                          {filtroBuscaEmpresa ? 'Nenhuma empresa encontrada para esta busca.' : 'Nenhuma empresa cadastrada no momento.'}
+                        </Text>
+                      </View>
+                    );
+                  }
+
+                  return (
+                    <View style={{ gap: 10 }}>
+                      {listaFiltrada.map((emp) => {
+                        const isAtiva = emp.ativa === 1 || emp.ativa === true;
+                        return (
+                          <View
+                            key={emp.id}
+                            style={{
+                              backgroundColor: isAtiva ? '#ffffff' : '#f8fafc',
+                              borderWidth: 1,
+                              borderColor: isAtiva ? '#e2e8f0' : '#cbd5e1',
+                              borderRadius: 10,
+                              padding: 14,
+                              flexDirection: isMobile ? 'column' : 'row',
+                              alignItems: isMobile ? 'stretch' : 'center',
+                              justifyContent: 'space-between',
+                              gap: 12,
+                            }}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                              <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: isAtiva ? '#e0f2fe' : '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ fontSize: 18 }}>🏢</Text>
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <Text style={{ fontSize: 14, fontWeight: '800', color: isAtiva ? '#0f172a' : '#64748b' }}>
+                                    {emp.nome}
+                                  </Text>
+                                  <View style={{
+                                    backgroundColor: isAtiva ? '#ecfdf5' : '#f1f5f9',
+                                    borderWidth: 1,
+                                    borderColor: isAtiva ? '#a7f3d0' : '#cbd5e1',
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 2,
+                                    borderRadius: 4,
+                                  }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: isAtiva ? '#059669' : '#64748b' }}>
+                                      {isAtiva ? '● ATIVA NO FORMULÁRIO' : '○ INATIVA'}
+                                    </Text>
+                                  </View>
+                                </View>
+                                <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                                  ID #{emp.id} • Disponível para seleção em EMPRESA / GRUPO
+                                </Text>
+                              </View>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
+                              <TouchableOpacity
+                                style={{
+                                  backgroundColor: '#f1f5f9',
+                                  borderWidth: 1,
+                                  borderColor: '#cbd5e1',
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 7,
+                                  borderRadius: 6,
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                }}
+                                onPress={() => handleEditarEmpresa(emp)}
+                              >
+                                <Text style={{ fontSize: 12 }}>✏️</Text>
+                                <Text style={{ color: '#334155', fontSize: 11, fontWeight: '700' }}>Editar</Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={{
+                                  backgroundColor: isAtiva ? '#fef3c7' : '#ecfdf5',
+                                  borderWidth: 1,
+                                  borderColor: isAtiva ? '#fcd34d' : '#a7f3d0',
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 7,
+                                  borderRadius: 6,
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                }}
+                                onPress={() => handleToggleStatusEmpresa(emp)}
+                              >
+                                <Text style={{ fontSize: 12 }}>{isAtiva ? '🔒' : '🔓'}</Text>
+                                <Text style={{ color: isAtiva ? '#b45309' : '#059669', fontSize: 11, fontWeight: '700' }}>
+                                  {isAtiva ? 'Desativar' : 'Ativar'}
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={{
+                                  backgroundColor: '#fee2e2',
+                                  borderWidth: 1,
+                                  borderColor: '#fca5a5',
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 7,
+                                  borderRadius: 6,
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                }}
+                                onPress={() => handleExcluirEmpresa(emp)}
+                              >
+                                <Text style={{ fontSize: 12 }}>🗑️</Text>
+                                <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '700' }}>Excluir</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  );
+                })()}
               </View>
             </View>
           </View>
@@ -4192,45 +4604,43 @@ export default function PainelCoordScreen() {
                   )}
                 </View>
               ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ minWidth: 700 }}>
-                  <View style={[styles.versionTableContainer, { marginTop: 14, minWidth: 700 }]}>
-                    <View style={styles.versionTableHeaderRow}>
-                      <Text style={[styles.versionHeaderColText, { width: 180 }]}>TÍTULO</Text>
-                      <Text style={[styles.versionHeaderColText, { flex: 1 }]}>MENSAGEM</Text>
-                      <Text style={[styles.versionHeaderColText, { width: 120 }]}>TIPO</Text>
-                      <Text style={[styles.versionHeaderColText, { width: 140 }]}>DATA</Text>
-                    </View>
+                <View style={[styles.versionTableContainer, { marginTop: 14, width: '100%' }]}>
+                  <View style={[styles.versionTableHeaderRow, { width: '100%' }]}>
+                    <Text style={[styles.versionHeaderColText, { width: '22%' }]}>TÍTULO</Text>
+                    <Text style={[styles.versionHeaderColText, { flex: 1 }]}>MENSAGEM</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 110 }]}>TIPO</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 110, textAlign: 'right' }]}>DATA</Text>
+                  </View>
 
-                    {popups.length === 0 ? (
-                      <View style={{ padding: 28, alignItems: 'center' }}>
-                        <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma mensagem cadastrada.</Text>
-                      </View>
-                    ) : (
-                      popups.map((p, idx) => (
-                        <View key={p.id || idx} style={[styles.versionTableRow, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
-                          <View style={{ width: 180 }}>
-                            <Text style={{ fontWeight: '800', color: '#0f172a', fontSize: 12 }}>{p.titulo}</Text>
-                          </View>
-                          <View style={{ flex: 1, paddingRight: 8 }}>
-                            <Text style={{ color: '#475569', fontSize: 12 }} numberOfLines={2}>{p.mensagem}</Text>
-                          </View>
-                          <View style={{ width: 120 }}>
-                            <View style={{ backgroundColor: p.tipo === 'urgente' ? '#fee2e2' : '#e0f2fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' }}>
-                              <Text style={{ fontSize: 10, fontWeight: '800', color: p.tipo === 'urgente' ? '#dc2626' : '#0284c7', textTransform: 'uppercase' }}>
-                                {p.tipo || 'aviso'}
-                              </Text>
-                            </View>
-                          </View>
-                          <View style={{ width: 140 }}>
-                            <Text style={{ color: '#64748b', fontSize: 11 }}>
-                              {p.data_criacao ? new Date(p.data_criacao).toLocaleDateString('pt-BR') : 'N/A'}
+                  {popups.length === 0 ? (
+                    <View style={{ padding: 28, alignItems: 'center' }}>
+                      <Text style={{ color: '#94a3b8', fontSize: 13 }}>Nenhuma mensagem cadastrada.</Text>
+                    </View>
+                  ) : (
+                    popups.map((p, idx) => (
+                      <View key={p.id || idx} style={[styles.versionTableRow, { width: '100%' }, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
+                        <View style={{ width: '22%', paddingRight: 8 }}>
+                          <Text style={{ fontWeight: '800', color: '#0f172a', fontSize: 12 }}>{p.titulo}</Text>
+                        </View>
+                        <View style={{ flex: 1, paddingRight: 12 }}>
+                          <Text style={{ color: '#475569', fontSize: 12 }} numberOfLines={2}>{p.mensagem}</Text>
+                        </View>
+                        <View style={{ width: 110 }}>
+                          <View style={{ backgroundColor: p.tipo === 'urgente' ? '#fee2e2' : '#e0f2fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: p.tipo === 'urgente' ? '#dc2626' : '#0284c7', textTransform: 'uppercase' }}>
+                              {p.tipo || 'aviso'}
                             </Text>
                           </View>
                         </View>
-                      ))
-                    )}
-                  </View>
-                </ScrollView>
+                        <View style={{ width: 110, alignItems: 'flex-end' }}>
+                          <Text style={{ color: '#64748b', fontSize: 11 }}>
+                            {p.data_criacao ? new Date(p.data_criacao).toLocaleDateString('pt-BR') : 'N/A'}
+                          </Text>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
               )}
             </View>
           </View>
@@ -6160,6 +6570,127 @@ export default function PainelCoordScreen() {
                 }}
               >
                 <Text style={styles.dialogConfirmBtnText}>{customDialog.confirmText || 'OK'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL CADASTRO / EDIÇÃO DE EMPRESA */}
+      <Modal
+        visible={isModalEmpresaOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsModalEmpresaOpen(false)}
+      >
+        <View
+          // @ts-ignore
+          dataSet={{ modalOverlay: 'true' }}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.novoPopupContent, { maxWidth: 500 }, !isDarkMode && { backgroundColor: '#ffffff' }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: '#e2e8f0', paddingBottom: 12 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 20 }}>🏢</Text>
+                </View>
+                <View>
+                  <Text style={[styles.modalTitle, !isDarkMode && { color: '#0f172a' }]}>
+                    {empresaEmEdicao ? 'EDITAR EMPRESA / GRUPO' : 'NOVA EMPRESA / GRUPO'}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#64748b' }}>
+                    Esta empresa aparecerá na seleção do formulário de novos relatórios
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setIsModalEmpresaOpen(false)} style={{ padding: 4 }}>
+                <Text style={styles.modalCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ gap: 14, marginVertical: 14 }}>
+              <View>
+                <Text style={styles.inputFieldLabel}>NOME DA EMPRESA OU GRUPO</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { textTransform: 'uppercase' }, !isDarkMode && { backgroundColor: '#ffffff', color: '#0f172a', borderColor: '#cbd5e1' }]}
+                  value={nomeEmpresaInput}
+                  onChangeText={(val) => setNomeEmpresaInput(val.toUpperCase())}
+                  placeholder="EX: PETROBRAS, SUBSEA7, TOTAL"
+                  placeholderTextColor="#94a3b8"
+                  autoFocus
+                />
+              </View>
+
+              <View>
+                <Text style={styles.inputFieldLabel}>STATUS NO FORMULÁRIO</Text>
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      padding: 10,
+                      borderRadius: 8,
+                      borderWidth: 1.5,
+                      borderColor: ativaEmpresaInput ? '#059669' : '#cbd5e1',
+                      backgroundColor: ativaEmpresaInput ? '#ecfdf5' : 'transparent',
+                      alignItems: 'center',
+                    }}
+                    onPress={() => setAtivaEmpresaInput(true)}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: ativaEmpresaInput ? '#059669' : '#475569' }}>
+                      ✅ Ativa (Exibir no formulário)
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      padding: 10,
+                      borderRadius: 8,
+                      borderWidth: 1.5,
+                      borderColor: !ativaEmpresaInput ? '#d97706' : '#cbd5e1',
+                      backgroundColor: !ativaEmpresaInput ? '#fef3c7' : 'transparent',
+                      alignItems: 'center',
+                    }}
+                    onPress={() => setAtivaEmpresaInput(false)}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: !ativaEmpresaInput ? '#b45309' : '#475569' }}>
+                      ○ Inativa (Ocultar)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#e2e8f0' }}>
+              <TouchableOpacity
+                style={[styles.dialogCancelBtn, { paddingHorizontal: 14, paddingVertical: 10 }]}
+                onPress={() => setIsModalEmpresaOpen(false)}
+                disabled={salvandoEmpresa}
+              >
+                <Text style={styles.dialogCancelBtnText}>CANCELAR</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#0284c7',
+                  paddingHorizontal: 18,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                onPress={handleSalvarEmpresa}
+                disabled={salvandoEmpresa}
+              >
+                {salvandoEmpresa ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Text style={{ fontSize: 13 }}>💾</Text>
+                    <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 12 }}>SALVAR EMPRESA</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>

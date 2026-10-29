@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../lib/supabase';
-import { salvarRelatorioApi, obterRelatorioApi, listarNotificacoesApi, verificarIpBloqueadoApi } from '../lib/api';
+import { salvarRelatorioApi, obterRelatorioApi, listarNotificacoesApi, verificarIpBloqueadoApi, listarEmpresasApi } from '../lib/api';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { formatReportPdfUrl } from '../lib/config';
 import { processarUploadFotos } from '../lib/anexosService';
@@ -1360,6 +1360,49 @@ export default function ReportGenerator() {
     }
   }, [isDarkMode]);
 
+  // Lista Dinâmica de Empresas / Grupos Cadastrados
+  const [empresasOptions, setEmpresasOptions] = useState<string[]>(() => {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('mms_empresas_cadastradas');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list) && list.length > 0) return list;
+        }
+      } catch (_) {}
+    }
+    return GRUPO_OPTIONS;
+  });
+
+  const carregarEmpresasDropdown = async () => {
+    try {
+      const res = await listarEmpresasApi();
+      if (res && res.sucesso && Array.isArray(res.empresas) && res.empresas.length > 0) {
+        const ativas = res.empresas
+          .filter((e) => e.ativa === 1 || e.ativa === true)
+          .map((e) => e.nome.trim())
+          .filter((nome) => nome.length > 0);
+        if (ativas.length > 0) {
+          setEmpresasOptions(ativas);
+          if (typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem('mms_empresas_cadastradas', JSON.stringify(ativas));
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    carregarEmpresasDropdown();
+    if (typeof window !== 'undefined') {
+      const handleAtualizacao = () => carregarEmpresasDropdown();
+      window.addEventListener('mms_empresas_atualizadas', handleAtualizacao);
+      return () => window.removeEventListener('mms_empresas_atualizadas', handleAtualizacao);
+    }
+  }, []);
+
   const [isGrupoDropdownOpen, setIsGrupoDropdownOpen] = useState<boolean>(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<string>('meus_relatorios');
   const [isPax1Focused, setIsPax1Focused] = useState<boolean>(false);
@@ -4031,7 +4074,7 @@ export default function ReportGenerator() {
 
               {isGrupoDropdownOpen && (
                 <View style={styles.dropdownOptionsList}>
-                  {GRUPO_OPTIONS.map((opt) => {
+                  {empresasOptions.map((opt) => {
                     const isSelected = currentData.grupo === opt;
                     return (
                       <TouchableOpacity
