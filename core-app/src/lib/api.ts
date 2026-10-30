@@ -201,7 +201,8 @@ export async function listarUsuariosApi(busca?: string): Promise<{ sucesso: bool
   try {
     const q = busca ? `&busca=${encodeURIComponent(busca)}` : '';
     const res = await apiFetch(`/api/auth.php?action=listar_usuarios${q}`);
-    return { sucesso: true, usuarios: res.usuarios || [] };
+    const usuarios = Array.isArray(res) ? res : (res?.usuarios || []);
+    return { sucesso: res?.sucesso !== false, usuarios };
   } catch (error: any) {
     return { sucesso: false, usuarios: [] };
   }

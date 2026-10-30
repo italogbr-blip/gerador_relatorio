@@ -361,26 +361,55 @@ function listarUsuarios(PDO $pdo, array $input): void {
     $busca = trim($_GET['busca'] ?? ($input['busca'] ?? ''));
     $params = [];
 
-    // 1. Tenta consulta rica com subconsultas de login e relatórios
+    // 1. Detecta colunas existentes na tabela usuarios para consulta adaptativa
+    $cols = [];
+    try {
+        $colsStmt = $pdo->query("SHOW COLUMNS FROM usuarios");
+        if ($colsStmt) {
+            $cols = $colsStmt->fetchAll(PDO::FETCH_COLUMN);
+        }
+    } catch (Exception $e) {}
+
+    // Garante coluna status_aprovacao caso ainda não exista no banco
+    if (!empty($cols) && !in_array('status_aprovacao', $cols)) {
+        try {
+            $pdo->exec("ALTER TABLE usuarios ADD COLUMN status_aprovacao VARCHAR(20) DEFAULT 'aprovado'");
+            $cols[] = 'status_aprovacao';
+        } catch (Exception $e) {}
+    }
+
+    $colStatus = in_array('status_aprovacao', $cols) ? "u.status_aprovacao" : "'aprovado' AS status_aprovacao";
+    $colData = in_array('data_cadastro', $cols) ? "u.data_cadastro" : "NULL AS data_cadastro";
+    $colNome = in_array('nome', $cols) ? "u.nome" : "u.username AS nome";
+    $colEmail = in_array('email', $cols) ? "u.email" : "'' AS email";
+    $colNivel = in_array('nivel_autoridade', $cols) ? "u.nivel_autoridade" : "1 AS nivel_autoridade";
+
     try {
         $sql = "SELECT 
                     u.id, 
                     u.username, 
-                    u.nome, 
-                    u.email, 
-                    u.nivel_autoridade, 
-                    u.status_aprovacao, 
-                    u.data_cadastro,
+                    {$colNome}, 
+                    {$colEmail}, 
+                    {$colNivel}, 
+                    {$colStatus}, 
+                    {$colData},
                     (SELECT MAX(r.data_login) FROM registro_logins r WHERE r.usuario_id = u.id) AS ultimo_login,
                     (SELECT r.ip FROM registro_logins r WHERE r.usuario_id = u.id ORDER BY r.id DESC LIMIT 1) AS ultimo_ip,
                     (SELECT COUNT(*) FROM relatorios rel WHERE rel.usuario_id = u.id) AS total_relatorios
                 FROM usuarios u";
 
         if (!empty($busca)) {
-            $sql .= " WHERE u.username LIKE :b1 OR u.nome LIKE :b2 OR u.email LIKE :b3";
+            $whereParts = ["u.username LIKE :b1"];
             $params[':b1'] = "%{$busca}%";
-            $params[':b2'] = "%{$busca}%";
-            $params[':b3'] = "%{$busca}%";
+            if (in_array('nome', $cols)) {
+                $whereParts[] = "u.nome LIKE :b2";
+                $params[':b2'] = "%{$busca}%";
+            }
+            if (in_array('email', $cols)) {
+                $whereParts[] = "u.email LIKE :b3";
+                $params[':b3'] = "%{$busca}%";
+            }
+            $sql .= " WHERE (" . implode(" OR ", $whereParts) . ")";
         }
 
         $sql .= " ORDER BY u.id DESC";
@@ -389,35 +418,47 @@ function listarUsuarios(PDO $pdo, array $input): void {
         $stmt->execute($params);
         $usuarios = $stmt->fetchAll();
 
+        foreach ($usuarios as &$u) {
+            $u['id'] = (int)$u['id'];
+            $u['nome'] = $u['nome'] ?? $u['username'];
+            $u['email'] = $u['email'] ?? '';
+            $u['nivel_autoridade'] = (int)($u['nivel_autoridade'] ?? 1);
+            $u['status_aprovacao'] = $u['status_aprovacao'] ?? 'aprovado';
+            $u['total_relatorios'] = (int)($u['total_relatorios'] ?? 0);
+        }
+
         jsonResponse([
             'sucesso' => true,
             'usuarios' => $usuarios
         ]);
         return;
     } catch (Exception $e) {
-        // 2. Fallback seguro e resiliente caso subconsultas ou colunas opcionais falhem
+        // Fallback ultra-resiliente compatível com qualquer esquema
         try {
-            $sql = "SELECT u.id, u.username, u.nome, u.email, u.nivel_autoridade, u.status_aprovacao FROM usuarios u";
+            $sqlFallback = "SELECT u.id, u.username" . (in_array('nome', $cols) ? ", u.nome" : "") . (in_array('email', $cols) ? ", u.email" : "") . (in_array('nivel_autoridade', $cols) ? ", u.nivel_autoridade" : "") . " FROM usuarios u";
             if (!empty($busca)) {
-                $sql .= " WHERE u.username LIKE :b1 OR u.nome LIKE :b2 OR u.email LIKE :b3";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([':b1' => "%{$busca}%", ':b2' => "%{$busca}%", ':b3' => "%{$busca}%"]);
+                $sqlFallback .= " WHERE u.username LIKE :b";
+                $stmtFallback = $pdo->prepare($sqlFallback);
+                $stmtFallback->execute([':b' => "%{$busca}%"]);
             } else {
-                $sql .= " ORDER BY u.id DESC";
-                $stmt = $pdo->query($sql);
+                $sqlFallback .= " ORDER BY u.id DESC";
+                $stmtFallback = $pdo->query($sqlFallback);
             }
-            $usuarios = $stmt ? $stmt->fetchAll() : [];
-
-            foreach ($usuarios as &$u) {
+            $usuariosFallback = $stmtFallback ? $stmtFallback->fetchAll() : [];
+            foreach ($usuariosFallback as &$u) {
+                $u['id'] = (int)$u['id'];
+                $u['nome'] = $u['nome'] ?? $u['username'];
+                $u['email'] = $u['email'] ?? '';
+                $u['nivel_autoridade'] = (int)($u['nivel_autoridade'] ?? 1);
+                $u['status_aprovacao'] = 'aprovado';
                 $u['ultimo_login'] = null;
                 $u['ultimo_ip'] = null;
                 $u['total_relatorios'] = 0;
                 $u['data_cadastro'] = null;
             }
-
             jsonResponse([
                 'sucesso' => true,
-                'usuarios' => $usuarios
+                'usuarios' => $usuariosFallback
             ]);
             return;
         } catch (Exception $e2) {
@@ -425,7 +466,7 @@ function listarUsuarios(PDO $pdo, array $input): void {
                 'sucesso' => false,
                 'usuarios' => [],
                 'erro' => $e2->getMessage()
-            ]);
+            ], 500);
         }
     }
 }

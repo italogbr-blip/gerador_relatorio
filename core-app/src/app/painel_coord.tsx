@@ -1565,7 +1565,7 @@ export default function PainelCoordScreen() {
   const carregarUsuarios = async () => {
     try {
       const apiUsers = await listarUsuariosApi();
-      if (apiUsers && apiUsers.sucesso && Array.isArray(apiUsers.usuarios)) {
+      if (apiUsers && Array.isArray(apiUsers.usuarios)) {
         setUsuarios(apiUsers.usuarios);
         if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
           try {
@@ -1650,6 +1650,13 @@ export default function PainelCoordScreen() {
       carregarRelatorios();
     }
   }, [filtroEmpresa, paginaRelatorios, filtroDataInicio, filtroDataFim]);
+
+  useEffect(() => {
+    if (authChecked && isAuthorized && activeTab === 'usuarios') {
+      carregarUsuarios();
+      carregarHistoricoAprovacoesState();
+    }
+  }, [activeTab, authChecked, isAuthorized]);
 
   // Alterar Nível de Acesso de Usuário (Promover/Rebaixar)
   const handleAlterarNivelUsuario = async (userId: number, nivelAtual: number) => {

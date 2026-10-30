@@ -170,6 +170,41 @@ function inicializarTabelasSeNecessario(PDO $pdo): void {
             data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        // Migração automática para garantir colunas na tabela usuarios
+        try {
+            $colsStmt = $pdo->query("SHOW COLUMNS FROM usuarios");
+            if ($colsStmt) {
+                $cols = $colsStmt->fetchAll(PDO::FETCH_COLUMN);
+                if (!in_array('status_aprovacao', $cols)) {
+                    $pdo->exec("ALTER TABLE usuarios ADD COLUMN status_aprovacao VARCHAR(20) DEFAULT 'aprovado'");
+                }
+                if (!in_array('data_cadastro', $cols)) {
+                    $pdo->exec("ALTER TABLE usuarios ADD COLUMN data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+                }
+                if (!in_array('remember_token', $cols)) {
+                    $pdo->exec("ALTER TABLE usuarios ADD COLUMN remember_token VARCHAR(100) NULL");
+                }
+                if (!in_array('nome', $cols)) {
+                    $pdo->exec("ALTER TABLE usuarios ADD COLUMN nome VARCHAR(100) NULL");
+                }
+                if (!in_array('email', $cols)) {
+                    $pdo->exec("ALTER TABLE usuarios ADD COLUMN email VARCHAR(150) NULL");
+                }
+                if (!in_array('nivel_autoridade', $cols)) {
+                    $pdo->exec("ALTER TABLE usuarios ADD COLUMN nivel_autoridade INT DEFAULT 1");
+                }
+                if (!in_array('last_activity', $cols)) {
+                    $pdo->exec("ALTER TABLE usuarios ADD COLUMN last_activity DATETIME NULL");
+                }
+                if (!in_array('aprovado_por', $cols)) {
+                    $pdo->exec("ALTER TABLE usuarios ADD COLUMN aprovado_por VARCHAR(100) NULL");
+                }
+                if (!in_array('data_aprovacao', $cols)) {
+                    $pdo->exec("ALTER TABLE usuarios ADD COLUMN data_aprovacao DATETIME NULL");
+                }
+            }
+        } catch (Exception $eCol) {}
+
         // 2. Tabela de relatórios
         $pdo->exec("CREATE TABLE IF NOT EXISTS relatorios (
             id INT AUTO_INCREMENT PRIMARY KEY,
