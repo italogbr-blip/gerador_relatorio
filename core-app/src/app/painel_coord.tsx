@@ -12,6 +12,7 @@ import {
   SafeAreaView,
   useWindowDimensions,
   Linking,
+  ViewStyle,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -97,6 +98,26 @@ export default function PainelCoordScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
+
+  // Estilo responsivo dos botões das abas para visualização completa no mobile
+  const tabBtnResponsiveStyle = useMemo<ViewStyle>(() => {
+    if (isMobile) {
+      const isVerySmall = width < 380;
+      return {
+        flexGrow: 1,
+        flexShrink: 1,
+        minWidth: isVerySmall ? '47%' : '30%',
+        paddingVertical: 9,
+        paddingHorizontal: 4,
+      };
+    }
+    return {
+      flex: 1,
+      minWidth: width >= 1024 ? 0 : 105,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+    };
+  }, [isMobile, width]);
 
   // Sessão do Usuário e Controle Estrito de Autoridade Nível 2 (Instantâneo 0ms via Cache Seguro)
   const initialSession = useMemo(() => getSavedSessionSync(), []);
@@ -2567,148 +2588,133 @@ export default function PainelCoordScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Abas de Navegação (Scroll horizontal suave e responsivo em qualquer tela) */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ width: '100%', marginBottom: 16 }}
-          contentContainerStyle={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: isMobile ? 2 : 0,
-            flexGrow: isMobile ? 0 : 1,
-          }}
-          className="coord-tabs-scroll"
+        {/* Abas de Navegação (Em Desktop: linha única elegante; Em Mobile: grid/wrap fluido responsivo exibindo 100% das opções) */}
+        <View
+          style={[
+            styles.tabsBarRow,
+            isMobile && styles.tabsBarRowMobile
+          ]}
+          className="coord-tabs-bar"
         >
-          <View
-            style={[
-              styles.tabsBarRow,
-              isMobile
-                ? { width: 'auto', minWidth: 'auto', flexWrap: 'nowrap', marginBottom: 4 }
-                : { width: '100%', minWidth: '100%' }
-            ]}
-            className="coord-tabs-bar"
+          <TouchableOpacity
+            style={[styles.tabNavButton, tabBtnResponsiveStyle, activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+            onPress={() => setActiveTab('relatorios')}
+            activeOpacity={0.85}
           >
-            <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'relatorios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => setActiveTab('relatorios')}
-              activeOpacity={0.85}
-            >
-              <Text style={{ fontSize: 13, marginRight: 6 }}>📊</Text>
-              <Text style={[styles.tabNavButtonText, activeTab === 'relatorios' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-                RELATÓRIOS
-              </Text>
-            </TouchableOpacity>
+            <Text style={{ fontSize: isMobile ? 12 : 13, marginRight: isMobile ? 4 : 6 }}>📊</Text>
+            <Text style={[styles.tabNavButtonText, isMobile && styles.tabNavButtonTextMobile, activeTab === 'relatorios' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+              RELATÓRIOS
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => {
-                setActiveTab('ranking');
-                carregarRankings();
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={{ fontSize: 13, marginRight: 6 }}>🏆</Text>
-              <Text style={[styles.tabNavButtonText, activeTab === 'ranking' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-                RANKINGS
-              </Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabNavButton, tabBtnResponsiveStyle, activeTab === 'ranking' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+            onPress={() => {
+              setActiveTab('ranking');
+              carregarRankings();
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: isMobile ? 12 : 13, marginRight: isMobile ? 4 : 6 }}>🏆</Text>
+            <Text style={[styles.tabNavButtonText, isMobile && styles.tabNavButtonTextMobile, activeTab === 'ranking' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+              RANKINGS
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'empresas' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => {
-                setActiveTab('empresas');
-                carregarEmpresasCadastradas();
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={{ fontSize: 13, marginRight: 6 }}>🏢</Text>
-              <Text style={[styles.tabNavButtonText, activeTab === 'empresas' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-                EMPRESAS
-              </Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabNavButton, tabBtnResponsiveStyle, activeTab === 'empresas' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+            onPress={() => {
+              setActiveTab('empresas');
+              carregarEmpresasCadastradas();
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: isMobile ? 12 : 13, marginRight: isMobile ? 4 : 6 }}>🏢</Text>
+            <Text style={[styles.tabNavButtonText, isMobile && styles.tabNavButtonTextMobile, activeTab === 'empresas' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+              EMPRESAS
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => setActiveTab('popups')}
-              activeOpacity={0.85}
-            >
-              <Text style={{ fontSize: 13, marginRight: 6 }}>📢</Text>
-              <Text style={[styles.tabNavButtonText, activeTab === 'popups' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-                POP-UPS
-              </Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabNavButton, tabBtnResponsiveStyle, activeTab === 'popups' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+            onPress={() => setActiveTab('popups')}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: isMobile ? 12 : 13, marginRight: isMobile ? 4 : 6 }}>📢</Text>
+            <Text style={[styles.tabNavButtonText, isMobile && styles.tabNavButtonTextMobile, activeTab === 'popups' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+              POP-UPS
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => setActiveTab('mensagens')}
-              activeOpacity={0.85}
-            >
-              <Text style={{ fontSize: 13, marginRight: 6 }}>💬</Text>
-              <Text style={[styles.tabNavButtonText, activeTab === 'mensagens' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-                MENSAGENS
-              </Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabNavButton, tabBtnResponsiveStyle, activeTab === 'mensagens' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+            onPress={() => setActiveTab('mensagens')}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: isMobile ? 12 : 13, marginRight: isMobile ? 4 : 6 }}>💬</Text>
+            <Text style={[styles.tabNavButtonText, isMobile && styles.tabNavButtonTextMobile, activeTab === 'mensagens' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+              MENSAGENS
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'usuarios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => setActiveTab('usuarios')}
-              activeOpacity={0.85}
-            >
-              <Text style={{ fontSize: 13, marginRight: 6 }}>👥</Text>
-              <Text style={[styles.tabNavButtonText, activeTab === 'usuarios' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-                USUÁRIOS
-              </Text>
-              {usuariosPendentes.length > 0 && (
-                <View style={[styles.tabNavBadge, { backgroundColor: '#dc2626' }]}>
-                  <Text style={styles.tabNavBadgeText}>
-                    {usuariosPendentes.length > 9 ? '9+' : usuariosPendentes.length}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabNavButton, tabBtnResponsiveStyle, activeTab === 'usuarios' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+            onPress={() => setActiveTab('usuarios')}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: isMobile ? 12 : 13, marginRight: isMobile ? 4 : 6 }}>👥</Text>
+            <Text style={[styles.tabNavButtonText, isMobile && styles.tabNavButtonTextMobile, activeTab === 'usuarios' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+              USUÁRIOS
+            </Text>
+            {usuariosPendentes.length > 0 && (
+              <View style={[styles.tabNavBadge, { backgroundColor: '#dc2626' }]}>
+                <Text style={styles.tabNavBadgeText}>
+                  {usuariosPendentes.length > 9 ? '9+' : usuariosPendentes.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={handleIrParaSeguranca}
-              activeOpacity={0.85}
-            >
-              <Text style={{ fontSize: 13, marginRight: 6 }}>🛡️</Text>
-              <Text style={[styles.tabNavButtonText, activeTab === 'seguranca' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-                SEGURANÇA
-              </Text>
-              {acessosFalhosNaoVistosCount > 0 && (
-                <View style={styles.tabNavBadge}>
-                  <Text style={styles.tabNavBadgeText}>
-                    {acessosFalhosNaoVistosCount > 9 ? '9+' : acessosFalhosNaoVistosCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabNavButton, tabBtnResponsiveStyle, activeTab === 'seguranca' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+            onPress={handleIrParaSeguranca}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: isMobile ? 12 : 13, marginRight: isMobile ? 4 : 6 }}>🛡️</Text>
+            <Text style={[styles.tabNavButtonText, isMobile && styles.tabNavButtonTextMobile, activeTab === 'seguranca' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+              SEGURANÇA
+            </Text>
+            {acessosFalhosNaoVistosCount > 0 && (
+              <View style={styles.tabNavBadge}>
+                <Text style={styles.tabNavBadgeText}>
+                  {acessosFalhosNaoVistosCount > 9 ? '9+' : acessosFalhosNaoVistosCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => setActiveTab('sistema')}
-              activeOpacity={0.85}
-            >
-              <Text style={{ fontSize: 13, marginRight: 6 }}>⚙️</Text>
-              <Text style={[styles.tabNavButtonText, activeTab === 'sistema' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-                SISTEMA
-              </Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabNavButton, tabBtnResponsiveStyle, activeTab === 'sistema' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+            onPress={() => setActiveTab('sistema')}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: isMobile ? 12 : 13, marginRight: isMobile ? 4 : 6 }}>⚙️</Text>
+            <Text style={[styles.tabNavButtonText, isMobile && styles.tabNavButtonTextMobile, activeTab === 'sistema' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+              SISTEMA
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.tabNavButton, { minWidth: isMobile ? 120 : (width >= 1024 ? 0 : 115), flex: isMobile ? 0 : 1 }, activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
-              onPress={() => setActiveTab('version')}
-              activeOpacity={0.85}
-            >
-              <Text style={{ fontSize: 13, marginRight: 6 }}>🏷️</Text>
-              <Text style={[styles.tabNavButtonText, activeTab === 'version' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
-                VERSION
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+          <TouchableOpacity
+            style={[styles.tabNavButton, tabBtnResponsiveStyle, activeTab === 'version' ? styles.tabNavButtonActive : styles.tabNavButtonInactive]}
+            onPress={() => setActiveTab('version')}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: isMobile ? 12 : 13, marginRight: isMobile ? 4 : 6 }}>🏷️</Text>
+            <Text style={[styles.tabNavButtonText, isMobile && styles.tabNavButtonTextMobile, activeTab === 'version' ? styles.tabNavButtonTextActive : styles.tabNavButtonTextInactive]}>
+              VERSION
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* ════════════════ ABA 1: RELATÓRIOS GERAIS (CARD UNIFICADO) ════════════════ */}
         {activeTab === 'relatorios' && (
@@ -9392,6 +9398,13 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
+  tabsBarRowMobile: {
+    flexWrap: 'wrap',
+    gap: 6,
+    padding: 6,
+    marginBottom: 16,
+    borderRadius: 12,
+  },
   tabNavButton: {
     flex: 1,
     flexDirection: 'row',
@@ -9418,6 +9431,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     fontFamily: modernFont,
+  },
+  tabNavButtonTextMobile: {
+    fontSize: 10,
+    letterSpacing: 0.3,
   },
   tabNavButtonTextActive: {
     color: '#ffffff',

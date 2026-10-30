@@ -215,21 +215,7 @@
   background: #94a3b8;
 }
 
-/* ─── ABAS DE NAVEGAÇÃO HORIZONTAL E RESPONSIVA PROPORCIONAL AO LAYOUT ─── */
-.coord-tabs-scroll {
-  width: 100% !important;
-  max-width: 100% !important;
-  display: flex !important;
-  flex-direction: row !important;
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  scrollbar-width: none !important;
-}
-
-.coord-tabs-scroll::-webkit-scrollbar {
-  display: none !important;
-}
-
+/* ─── ABAS DE NAVEGAÇÃO RESPONSIVAS PROPORCIONAIS AO LAYOUT ─── */
 .coord-tabs-bar {
   width: 100% !important;
   min-width: 100% !important;
@@ -237,6 +223,14 @@
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   box-sizing: border-box !important;
+}
+
+@media (max-width: 768px) {
+  .coord-tabs-bar {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    padding: 6px !important;
+  }
 }
 
 /* ─── CARD DE LOGIN / BLOQUEIO ─── */
