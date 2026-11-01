@@ -443,20 +443,24 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     doc.addPage();
     drawBackgroundAndLogo();
 
-    const fotoTitulo = foto.titulo || 'ANEXO FOTOGRÁFICO';
+    const fotoTitulo = (foto.titulo || 'ANEXO FOTOGRÁFICO').toUpperCase();
     doc.setFont('times', 'bold');
     doc.setFontSize(14);
-    doc.text(fotoTitulo, 105.0, 25.0, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+    const titleY = 25.0;
+    doc.text(fotoTitulo, 105.0, titleY, { align: 'center' });
     const ftW = doc.getTextWidth(fotoTitulo);
     doc.setLineWidth(0.35);
     doc.setDrawColor(0, 0, 0);
-    doc.line(105.0 - ftW / 2, 26.5, 105.0 + ftW / 2, 26.5);
+    const underlineY = titleY + 1.2;
+    doc.line(105.0 - ftW / 2, underlineY, 105.0 + ftW / 2, underlineY);
 
     try {
       const { dataUrl: optSrc, format } = await optimizeImageForPdf(imgSrc);
       const dims = await getImageDimensions(optSrc);
-      const maxW = 180;
-      const maxH = 220;
+      const maxW = 180.0;
+      // Altura máxima aproveitando o espaço da página até a margem de segurança do rodapé (~280mm)
+      const maxH = 244.0;
       let w = maxW;
       let h = (dims.height / dims.width) * maxW;
 
@@ -466,7 +470,8 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
       }
 
       const imgX = 15.0 + (maxW - w) / 2;
-      const imgY = 35.0 + (maxH - h) / 2;
+      // Espaçamento fiel ao index.php e salvar_relatorio.php (margin-bottom: 10px ≈ 3.0mm a 3.5mm abaixo do sublinhado)
+      const imgY = underlineY + 3.2;
 
       doc.addImage(optSrc, format, imgX, imgY, w, h, undefined, 'MEDIUM');
     } catch (err) {

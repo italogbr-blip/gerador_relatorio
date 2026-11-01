@@ -262,7 +262,7 @@ export function gerarHtmlPdfFidelidade(data: ReportPdfData): string {
               <div style="padding-top: 10px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 10px; text-decoration: underline; text-underline-offset: 4px; font-family: 'Times New Roman', Times, serif; text-transform: uppercase;">
                 ${titulo}
               </div>
-              <div style="text-align: center; width: 100%; margin-top: 8px; margin-bottom: 10px;">
+              <div style="text-align: center; width: 100%; margin-top: 0; margin-bottom: 10px;">
                 <img src="${src}" style="max-width: 100%; max-height: 650px; object-fit: contain; border-radius: 4px; display: block; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.08);" />
               </div>
             </div>

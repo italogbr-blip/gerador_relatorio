@@ -769,7 +769,7 @@ export default function VerRelatorioScreen() {
                     />
                   </View>
                   <View style={styles.a4PageContent}>
-                    <Text style={styles.a4DocumentTitle}>
+                    <Text style={styles.a4PhotoTitle}>
                       {(foto.titulo || `ANEXO FOTOGRÁFICO ${idx + 1}`).toUpperCase()}
                     </Text>
                     <View style={styles.a4PhotoContainer}>
@@ -1126,11 +1126,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
   },
+  a4PhotoTitle: {
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 16,
+    textDecorationLine: 'underline',
+    textTransform: 'uppercase',
+    paddingTop: 10,
+    marginBottom: 10,
+    color: '#000000',
+    fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
+    zIndex: 2,
+  },
   a4PhotoContainer: {
     width: '100%',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 12,
+    marginTop: 0,
+    marginBottom: 10,
     zIndex: 2,
   },
   a4PhotoImage: {

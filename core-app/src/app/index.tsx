@@ -5210,7 +5210,7 @@ export default function ReportGenerator() {
                         />
                       </View>
                       <View style={styles.a4PageContent}>
-                        <Text style={styles.a4DocumentTitle}>{foto.titulo || 'ANEXO FOTOGRÁFICO'}</Text>
+                        <Text style={styles.a4PhotoTitle}>{foto.titulo || 'ANEXO FOTOGRÁFICO'}</Text>
 
                         <View style={styles.a4PhotoContainer}>
                           <Image source={{ uri: foto.uri }} style={styles.a4PhotoImage} resizeMode="contain" />
@@ -7974,11 +7974,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
   },
+  a4PhotoTitle: {
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 16,
+    textDecorationLine: 'underline',
+    textTransform: 'uppercase',
+    paddingTop: 10,
+    marginBottom: 10,
+    color: colors.black,
+    fontFamily: Platform.OS === 'web' ? '"Times New Roman", Times, serif' : undefined,
+    zIndex: 2,
+  },
   a4PhotoContainer: {
     width: '100%',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 12,
+    marginTop: 0,
+    marginBottom: 10,
     zIndex: 2,
   },
   a4PhotoImage: {
