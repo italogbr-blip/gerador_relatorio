@@ -234,6 +234,59 @@ export default function VerRelatorioScreen() {
   }, [reportId]);
 
   // Renderizador de texto formatado (negrito, itálico, tachado, sublinhado e bullets) idêntico ao index.tsx
+  const stripHtmlToPlainText = (html?: string): string => {
+    if (!html) return '';
+    return html
+      .replace(/<div><br><\/div>/gi, '\n')
+      .replace(/<div>/gi, '\n')
+      .replace(/<\/div>/gi, '')
+      .replace(/<p>/gi, '')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/&bull;/gi, '▪')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/<[^>]+>/g, '')
+      .replace(/\r/g, '');
+  };
+
+  const renderPlainText = (text?: string, alignment: 'left' | 'justify' = 'left') => {
+    if (!text || text.trim() === '' || text === '<br>' || text === '<div><br></div>') {
+      return <Text style={styles.a4Value}>N/A</Text>;
+    }
+    const cleanText = stripHtmlToPlainText(text);
+    if (!cleanText.trim()) {
+      return <Text style={styles.a4Value}>N/A</Text>;
+    }
+    const lines = cleanText.split('\n');
+    return (
+      <View style={{ width: '100%' }}>
+        {lines.map((line, lIdx) => {
+          if (line.trim() === '' && lines.length > 1) {
+            return <View key={lIdx} style={{ height: 6 }} />;
+          }
+          return (
+            <Text
+              key={lIdx}
+              style={[
+                styles.a4Value,
+                {
+                  lineHeight: 18,
+                  textAlign: alignment === 'justify' ? 'justify' : 'left',
+                  fontWeight: 'normal',
+                },
+              ]}
+            >
+              {line}
+            </Text>
+          );
+        })}
+      </View>
+    );
+  };
+
   const renderFormattedText = (text?: string, alignment: 'left' | 'justify' = 'left') => {
     if (!text || text.trim() === '' || text === '<br>' || text === '<div><br></div>') {
       return <Text style={styles.a4Value}>N/A</Text>;
@@ -687,7 +740,7 @@ export default function VerRelatorioScreen() {
                   <Text style={styles.a4Label}>Informações sobre a troca de turma:</Text>
                 </View>
                 <View style={styles.a4InfoBox}>
-                  {renderFormattedText(pdfData.info_troca, pdfData.alinhamentoInfo)}
+                  {renderPlainText(pdfData.info_troca, pdfData.alinhamentoInfo)}
                 </View>
 
                 {/* Tabela de Passageiros */}

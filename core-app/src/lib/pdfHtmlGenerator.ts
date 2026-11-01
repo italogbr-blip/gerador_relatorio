@@ -58,6 +58,7 @@ function formatarTextoInfo(text: string): string {
     return 'N/A';
   }
 
+  // Campo INFORMAÇÕES SOBRE A TROCA: sem qualquer formatação (texto puro)
   let clean = text
     .replace(/&amp;/gi, '&')
     .replace(/&nbsp;/gi, ' ')
@@ -66,9 +67,8 @@ function formatarTextoInfo(text: string): string {
     .replace(/<\/div>/gi, '')
     .replace(/<p>/gi, '')
     .replace(/<\/p>/gi, '<br>')
-    .replace(/\*(.*?)\*/g, '<b>$1</b>')
-    .replace(/_(.*?)_/g, '<i>$1</i>')
-    .replace(/\[(.*?)\]/g, '<u>$1</u>')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '') // Remove tags HTML para garantir texto puro
     .replace(/▪/g, '&bull;')
     .replace(/\n/g, '<br>');
 

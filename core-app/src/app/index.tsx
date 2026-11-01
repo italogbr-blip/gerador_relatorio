@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -104,11 +104,11 @@ const colors = {
 };
 
 const corporateFont = Platform.OS === 'web'
-  ? '"Times New Roman", Times, serif'
+  ? 'Tahoma, Verdana, Segoe UI, sans-serif'
   : undefined;
 
 const modernFont = Platform.OS === 'web'
-  ? "'Inter', system-ui, -apple-system, sans-serif"
+  ? 'Tahoma, Verdana, Segoe UI, sans-serif'
   : undefined;
 
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -563,6 +563,24 @@ const getRotatedBase64 = (imageUri: string, angle: number): Promise<string> => {
   return compressAndRotateImage(imageUri, angle, 1200, 0.72);
 };
 
+const stripHtmlToPlainText = (html?: string): string => {
+  if (!html) return '';
+  return html
+    .replace(/<div><br><\/div>/gi, '\n')
+    .replace(/<div>/gi, '\n')
+    .replace(/<\/div>/gi, '')
+    .replace(/<p>/gi, '')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/&bull;/gi, '▪')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\r/g, '');
+};
+
 const InfoBoxEditor = ({
   info,
   alignment,
@@ -576,107 +594,68 @@ const InfoBoxEditor = ({
   onUpdateAlignment: (align: 'left' | 'justify') => void;
   hasError?: boolean;
 }) => {
-  const webEditorRef = useRef<HTMLDivElement | null>(null);
+  const webTextAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const [mobileSelection, setMobileSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
 
-  useEffect(() => {
-    if (Platform.OS === 'web' && webEditorRef.current) {
-      const currentHtml = webEditorRef.current.innerHTML;
-      if (currentHtml !== info && webEditorRef.current.innerText !== info) {
-        webEditorRef.current.innerHTML = info || '';
-      }
-    }
+  // Normaliza o conteúdo para texto estritamente sem formatação
+  const cleanPlainText = useMemo(() => {
+    return stripHtmlToPlainText(info || '');
   }, [info]);
 
-  const handleFormat = (command: 'bold' | 'italic' | 'underline') => {
-    if (Platform.OS === 'web') {
-      if (webEditorRef.current) {
-        webEditorRef.current.focus();
-        document.execCommand(command, false);
-        onUpdateInfo(webEditorRef.current.innerHTML);
-      }
-    } else {
-      const currentText = info || '';
-      const { start, end } = mobileSelection;
-      let newText = '';
-      let newPos = start;
-
-      if (start !== end && start >= 0 && end <= currentText.length) {
-        const selected = currentText.substring(start, end);
-        let wrapped = '';
-        if (command === 'bold') wrapped = `*${selected}*`;
-        else if (command === 'italic') wrapped = `_${selected}_`;
-        else if (command === 'underline') wrapped = `[${selected}]`;
-        newText = currentText.substring(0, start) + wrapped + currentText.substring(end);
-        newPos = start + wrapped.length;
-      } else {
-        const pos = (start >= 0 && start <= currentText.length) ? start : currentText.length;
-        let snippet = command === 'bold' ? '*negrito*' : command === 'italic' ? '_italico_' : '[sublinhado]';
-        newText = currentText.substring(0, pos) + snippet + currentText.substring(pos);
-        newPos = pos + snippet.length;
-      }
-
-      onUpdateInfo(newText);
-      setMobileSelection({ start: newPos, end: newPos });
-    }
-  };
-
   const handleInsertTopic = () => {
-    if (Platform.OS === 'web') {
-      if (webEditorRef.current) {
-        webEditorRef.current.focus();
-        document.execCommand('insertHTML', false, '▪ ');
-        onUpdateInfo(webEditorRef.current.innerHTML);
-      }
+    if (Platform.OS === 'web' && webTextAreaRef.current) {
+      const textarea = webTextAreaRef.current;
+      const start = textarea.selectionStart ?? 0;
+      const end = textarea.selectionEnd ?? 0;
+      const current = textarea.value || '';
+      const snippet = (start > 0 && current[start - 1] !== '\n' ? '\n▪ ' : '▪ ');
+      const newText = current.substring(0, start) + snippet + current.substring(end);
+      onUpdateInfo(newText);
+      setTimeout(() => {
+        textarea.focus();
+        const newPos = start + snippet.length;
+        textarea.setSelectionRange(newPos, newPos);
+      }, 0);
     } else {
-      const pos = (mobileSelection.start >= 0 && mobileSelection.start <= (info || '').length)
+      const current = cleanPlainText;
+      const pos = (mobileSelection.start >= 0 && mobileSelection.start <= current.length)
         ? mobileSelection.start
-        : (info || '').length;
-      const snippet = (pos > 0 && info[pos - 1] !== '\n' ? '\n▪ ' : '▪ ');
-      const newText = (info || '').substring(0, pos) + snippet + (info || '').substring(pos);
+        : current.length;
+      const snippet = (pos > 0 && current[pos - 1] !== '\n' ? '\n▪ ' : '▪ ');
+      const newText = current.substring(0, pos) + snippet + current.substring(pos);
       onUpdateInfo(newText);
     }
   };
 
-  const handleWebInput = () => {
-    if (Platform.OS === 'web' && webEditorRef.current) {
-      let html = webEditorRef.current.innerHTML;
-      const autoFormattedHtml = html.replace(/(^|>|\s)\*([^\*\s<]+)\*(\s|<|$)/g, '$1<b>$2</b>$3');
-      if (autoFormattedHtml !== html) {
-        webEditorRef.current.innerHTML = autoFormattedHtml;
-        html = autoFormattedHtml;
-      }
-      onUpdateInfo(html);
+  const handleWebChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // Garante que todo texto digitado fique sem qualquer formatação
+    const plain = stripHtmlToPlainText(e.target.value);
+    onUpdateInfo(plain);
+  };
+
+  const handleWebPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text/plain');
+    const textarea = webTextAreaRef.current;
+    if (!textarea) {
+      onUpdateInfo(cleanPlainText + pastedText);
+      return;
     }
+    const start = textarea.selectionStart ?? 0;
+    const end = textarea.selectionEnd ?? 0;
+    const current = textarea.value || '';
+    const newText = current.substring(0, start) + pastedText + current.substring(end);
+    onUpdateInfo(newText);
+    setTimeout(() => {
+      const newPos = start + pastedText.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
   };
 
   return (
     <View style={[styles.textAreaContainer, hasError && styles.inputError]}>
       <View style={styles.textAreaToolbar}>
-        <TouchableOpacity
-          style={styles.toolbarBtn}
-          onPress={() => handleFormat('bold')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.toolbarBtnText, { fontWeight: 'bold' }]}>B</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.toolbarBtn}
-          onPress={() => handleFormat('italic')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.toolbarBtnText, { fontStyle: 'italic' }]}>I</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.toolbarBtn}
-          onPress={() => handleFormat('underline')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.toolbarBtnText, { textDecorationLine: 'underline' }]}>U</Text>
-        </TouchableOpacity>
-
-        <View style={styles.toolbarDivider} />
-
+        {/* Alinhamento de Texto */}
         <TouchableOpacity
           style={[
             styles.toolbarBtn,
@@ -725,28 +704,31 @@ const InfoBoxEditor = ({
       </View>
 
       {Platform.OS === 'web' ? (
-        <div
-          id="field-info" data-field="info"
-          ref={webEditorRef}
-          contentEditable
-          onInput={handleWebInput}
-          onBlur={handleWebInput}
-          onKeyUp={handleWebInput}
+        <textarea
+          id="field-info"
+          data-field="info"
+          ref={webTextAreaRef}
+          value={cleanPlainText}
+          onChange={handleWebChange}
+          onPaste={handleWebPaste}
+          placeholder="Houve embarque de material..."
           className="mms-info-editor-web"
           style={{
             minHeight: '280px',
+            width: '100%',
             padding: '14px',
             fontSize: '14px',
             color: '#1e293b',
             backgroundColor: '#ffffff',
-            fontFamily: 'Tahoma, sans-serif',
+            fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif',
             outline: 'none',
             textAlign: alignment === 'justify' ? 'justify' : 'left',
             lineHeight: '1.5',
             boxSizing: 'border-box',
             overflowY: 'auto',
+            border: 'none',
+            resize: 'vertical',
           }}
-          data-placeholder="Houve embarque de material..."
         />
       ) : (
         <TextInput
@@ -757,8 +739,8 @@ const InfoBoxEditor = ({
           multiline
           placeholder="Houve embarque de material..."
           placeholderTextColor={colors.slate400}
-          value={info}
-          onChangeText={onUpdateInfo}
+          value={cleanPlainText}
+          onChangeText={(val) => onUpdateInfo(stripHtmlToPlainText(val))}
           onSelectionChange={(e) => setMobileSelection(e.nativeEvent.selection)}
         />
       )}
@@ -3283,6 +3265,41 @@ export default function ReportGenerator() {
     return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : val;
   };
 
+  const renderPlainText = (text: string, alignment: 'left' | 'justify' = 'left') => {
+    if (!text || text.trim() === '' || text === '<br>' || text === '<div><br></div>') {
+      return <Text style={styles.a4Value}>N/A</Text>;
+    }
+    const cleanText = stripHtmlToPlainText(text);
+    if (!cleanText.trim()) {
+      return <Text style={styles.a4Value}>N/A</Text>;
+    }
+    const lines = cleanText.split('\n');
+    return (
+      <View style={{ width: '100%' }}>
+        {lines.map((line, lIdx) => {
+          if (line.trim() === '' && lines.length > 1) {
+            return <View key={lIdx} style={{ height: 6 }} />;
+          }
+          return (
+            <Text
+              key={lIdx}
+              style={[
+                styles.a4Value,
+                {
+                  lineHeight: 18,
+                  textAlign: alignment === 'justify' ? 'justify' : 'left',
+                  fontWeight: 'normal',
+                },
+              ]}
+            >
+              {line}
+            </Text>
+          );
+        })}
+      </View>
+    );
+  };
+
   const renderFormattedText = (text: string, alignment: 'left' | 'justify' = 'left') => {
     if (!text || text.trim() === '' || text === '<br>' || text === '<div><br></div>') {
       return <Text style={styles.a4Value}>N/A</Text>;
@@ -5132,7 +5149,7 @@ export default function ReportGenerator() {
                       <View style={[styles.a4Row, { marginBottom: 0, marginTop: 4 }]}>
                         <Text style={styles.a4Label}>Informações sobre a troca de turma:</Text>
                       </View>
-                      <View style={styles.a4InfoBox}>{renderFormattedText(currentData.info, currentData.alinhamentoInfo)}</View>
+                      <View style={styles.a4InfoBox}>{renderPlainText(currentData.info, currentData.alinhamentoInfo)}</View>
 
                       {/* Tabela de Passageiros */}
                       <View style={styles.a4PaxTable}>
