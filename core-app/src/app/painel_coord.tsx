@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
   Linking,
   ViewStyle,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -85,8 +86,26 @@ import {
 } from '../lib/deviceTelemetry';
 
 const modernFont = Platform.OS === 'web'
-  ? "'Inter', system-ui, -apple-system, sans-serif"
+  ? 'Tahoma, Verdana, Segoe UI, sans-serif'
   : undefined;
+
+const stripHtmlToPlainText = (html?: string): string => {
+  if (!html) return '';
+  return html
+    .replace(/<div><br><\/div>/gi, '\n')
+    .replace(/<div>/gi, '\n')
+    .replace(/<\/div>/gi, '')
+    .replace(/<p>/gi, '')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/&bull;/gi, '▪')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\r/g, '');
+};
 
 const corporateFont = Platform.OS === 'web'
   ? '"Times New Roman", Times, serif'
@@ -6143,6 +6162,38 @@ export default function PainelCoordScreen() {
                     )}
                   </View>
 
+                  {/* Informações sobre a troca */}
+                  {Boolean(data.info_troca || data.info) && (
+                    <View style={styles.detailSectionLight}>
+                      <Text style={styles.detailSectionTitle}>INFORMAÇÕES SOBRE A TROCA DE TURMA</Text>
+                      <Text style={[styles.detailValue, { marginTop: 6, lineHeight: 20 }]}>
+                        {stripHtmlToPlainText(data.info_troca || data.info)}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Anexos Fotográficos com o espaçamento fiel ao index.php */}
+                  {Array.isArray(data.fotos || data.fotosAnexadas) && (data.fotos || data.fotosAnexadas).length > 0 && (
+                    <View style={styles.detailSectionLight}>
+                      <Text style={styles.detailSectionTitle}>
+                        ANEXOS FOTOGRÁFICOS ({(data.fotos || data.fotosAnexadas).length})
+                      </Text>
+                      {(data.fotos || data.fotosAnexadas).map((foto: any, fIdx: number) => {
+                        const src = foto.uri || foto.url || foto.base64 || '';
+                        if (!src) return null;
+                        const titulo = (foto.titulo || `ANEXO FOTOGRÁFICO ${fIdx + 1}`).toUpperCase();
+                        return (
+                          <View key={fIdx} style={styles.coordPhotoCard}>
+                            <Text style={styles.coordPhotoTitle}>{titulo}</Text>
+                            <View style={styles.coordPhotoContainer}>
+                              <Image source={{ uri: src }} style={styles.coordPhotoImage} resizeMode="contain" />
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+
                   {/* Ações do Modal */}
                   <View style={styles.modalBottomActions}>
                     <TouchableOpacity
@@ -7883,6 +7934,39 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontWeight: '700',
     fontFamily: modernFont,
+  },
+  coordPhotoCard: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    width: '100%',
+  },
+  coordPhotoTitle: {
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 16,
+    textDecorationLine: 'underline',
+    textTransform: 'uppercase',
+    paddingTop: 10,
+    marginBottom: 10,
+    color: '#0f172a',
+    fontFamily: modernFont,
+  },
+  coordPhotoContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 0,
+    marginBottom: 10,
+  },
+  coordPhotoImage: {
+    width: '100%',
+    height: 380,
+    maxHeight: 550,
+    borderRadius: 6,
   },
   passengerDocLight: {
     fontSize: 11,
