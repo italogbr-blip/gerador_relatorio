@@ -4715,10 +4715,27 @@ export default function PainelCoordScreen() {
                         <View style={styles.mobileCardBody}>
                           <Text style={{ color: '#475569', fontSize: 13, lineHeight: 18 }}>{p.mensagem}</Text>
                         </View>
-                        <View style={styles.mobileCardFooter}>
+                        <View style={[styles.mobileCardFooter, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
                           <Text style={{ color: '#94a3b8', fontSize: 11 }}>
                             🕒 {p.data_criacao ? new Date(p.data_criacao).toLocaleDateString('pt-BR') : 'N/A'}
                           </Text>
+                          <TouchableOpacity
+                            style={{
+                              backgroundColor: '#fee2e2',
+                              borderWidth: 1,
+                              borderColor: '#fca5a5',
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                              borderRadius: 6,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                            onPress={() => handleExcluirPopup(p.id)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={{ color: '#dc2626', fontSize: 11, fontWeight: '800' }}>🗑️ Excluir</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                     ))
@@ -4727,10 +4744,11 @@ export default function PainelCoordScreen() {
               ) : (
                 <View style={[styles.versionTableContainer, { marginTop: 14, width: '100%', overflowX: 'hidden' as any }]}>
                   <View style={[styles.versionTableHeaderRow, { width: '100%' }]}>
-                    <Text style={[styles.versionHeaderColText, { width: '22%' }]}>TÍTULO</Text>
+                    <Text style={[styles.versionHeaderColText, { width: '20%' }]}>TÍTULO</Text>
                     <Text style={[styles.versionHeaderColText, { flex: 1 }]}>MENSAGEM</Text>
-                    <Text style={[styles.versionHeaderColText, { width: 110 }]}>TIPO</Text>
-                    <Text style={[styles.versionHeaderColText, { width: 110, textAlign: 'right' }]}>DATA</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 100 }]}>TIPO</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 100, textAlign: 'center' }]}>DATA</Text>
+                    <Text style={[styles.versionHeaderColText, { width: 95, textAlign: 'right' }]}>AÇÕES</Text>
                   </View>
 
                   {popups.length === 0 ? (
@@ -4740,23 +4758,42 @@ export default function PainelCoordScreen() {
                   ) : (
                     popups.map((p, idx) => (
                       <View key={p.id || idx} style={[styles.versionTableRow, { width: '100%' }, idx % 2 === 1 && { backgroundColor: '#f8fafc' }]}>
-                        <View style={{ width: '22%', paddingRight: 8 }}>
+                        <View style={{ width: '20%', paddingRight: 8 }}>
                           <Text style={{ fontWeight: '800', color: '#0f172a', fontSize: 12 }}>{p.titulo}</Text>
                         </View>
                         <View style={{ flex: 1, paddingRight: 12 }}>
                           <Text style={{ color: '#475569', fontSize: 12 }} numberOfLines={2}>{p.mensagem}</Text>
                         </View>
-                        <View style={{ width: 110 }}>
-                          <View style={{ backgroundColor: p.tipo === 'urgente' ? '#fee2e2' : '#e0f2fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' }}>
-                            <Text style={{ fontSize: 10, fontWeight: '800', color: p.tipo === 'urgente' ? '#dc2626' : '#0284c7', textTransform: 'uppercase' }}>
+                        <View style={{ width: 100 }}>
+                          <View style={{ backgroundColor: p.tipo === 'urgente' ? '#fee2e2' : p.tipo === 'feedback' ? '#e0e7ff' : '#e0f2fe', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start' }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: p.tipo === 'urgente' ? '#dc2626' : p.tipo === 'feedback' ? '#4f46e5' : '#0284c7', textTransform: 'uppercase' }}>
                               {p.tipo || 'aviso'}
                             </Text>
                           </View>
                         </View>
-                        <View style={{ width: 110, alignItems: 'flex-end' }}>
+                        <View style={{ width: 100, alignItems: 'center' }}>
                           <Text style={{ color: '#64748b', fontSize: 11 }}>
                             {p.data_criacao ? new Date(p.data_criacao).toLocaleDateString('pt-BR') : 'N/A'}
                           </Text>
+                        </View>
+                        <View style={{ width: 95, alignItems: 'flex-end' }}>
+                          <TouchableOpacity
+                            style={{
+                              backgroundColor: '#fee2e2',
+                              borderWidth: 1,
+                              borderColor: '#fca5a5',
+                              paddingHorizontal: 10,
+                              paddingVertical: 5,
+                              borderRadius: 6,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                            onPress={() => handleExcluirPopup(p.id)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={{ color: '#dc2626', fontSize: 11, fontWeight: '800' }}>🗑️ Excluir</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                     ))
