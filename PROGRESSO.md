@@ -46,8 +46,8 @@ O ecossistema foi completamente unificado e desacoplado de serviços legados ext
     - Painel da Coordenação `painel_coord.tsx` (cartões `coordPhotoTitle` e `coordPhotoContainer`).
 - [x] **Campo "INFORMAÇÕES SOBRE A TROCA" sem Formatação:**
   - Todo texto inserido ou colado neste campo é sanitizado para texto puro (`stripHtmlToPlainText`), evitando tags HTML indesejadas, fontes discrepantes ou quebras de formatação no PDF e na tela.
-- [x] **Padronização Tipográfica Tahoma:**
-  - Toda a tela de Preenchimento de Relatório e o Painel de Coordenação foram padronizados com a fonte **Tahoma** (`Tahoma, Verdana, Segoe UI, sans-serif`), mantendo conformidade estética com o layout corporativo original.
+- [x] **Esquema Tipográfico Original (`Inter` + `Times New Roman`):**
+  - Interface de preenchimento e painéis utilizando a família tipográfica moderna `Inter` (`'Inter', system-ui, -apple-system, sans-serif`) e documento A4 / prévia corporativa utilizando `Times New Roman`.
 
 ---
 
@@ -125,7 +125,7 @@ Abaixo estão listadas as ações práticas pendentes para alcançar **100% de p
 ### 4. 🧪 Teste de Homologação Ponta a Ponta (E2E)
 - **Roteiro de Validação:**
   - [ ] **Criar Conta & Login**: Realizar cadastro de preposto, login e validação do nome no campo preposto.
-  - [ ] **Emissão de Relatório com Anexos**: Preencher dados em fonte Tahoma, anexar 2 fotos, gerar PDF e verificar tamanho (~1.1MB).
+  - [ ] **Emissão de Relatório com Anexos**: Preencher dados, anexar 2 fotos, gerar PDF e verificar tamanho (~1.1MB).
   - [ ] **Compartilhamento**: Clicar em "Compartilhar" no histórico e testar envio.
   - [ ] **Edição de Relatório**: Editar um relatório gerado e confirmar que a alteração foi persistida no banco.
   - [ ] **Coordenação**: Acessar `painel_coord`, visualizar lista de usuários, excluir mensagem teste e conferir responsividade no mobile.
@@ -136,7 +136,7 @@ Abaixo estão listadas as ações práticas pendentes para alcançar **100% de p
 
 | Módulo / Recurso | Status de Código | Status em Produção | Observação |
 | :--- | :---: | :---: | :--- |
-| **Gerador Principal (`index.tsx`)** | 🟢 100% Concluído | 🟢 Pronto | Fonte Tahoma, texto plano na troca, preview idêntico. |
+| **Gerador Principal (`index.tsx`)** | 🟢 100% Concluído | 🟢 Pronto | Texto plano na troca, preview idêntico, abas e fotos. |
 | **Geração de PDF (Vetorial e HTML)** | 🟢 100% Concluído | 🟢 Pronto | Arquivos leves (~1.1MB com fotos), espaçamento exato 10px. |
 | **Histórico (`meus_relatorios.tsx`)** | 🟢 100% Concluído | 🟢 Pronto | Botão Compartilhar, edição efetiva, filtros MySQL. |
 | **Painel Coordenação (`painel_coord.tsx`)** | 🟢 100% Concluído | 🟢 Pronto | Menu mobile responsivo, listagem de usuários, exclusão de msgs. |

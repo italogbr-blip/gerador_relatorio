@@ -35,7 +35,7 @@
   --mms-purple-light: #f3e8ff;
 
   /* Tipografia */
-  --mms-font-sans: Tahoma, Verdana, Segoe UI, sans-serif;
+  --mms-font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --mms-font-serif: 'Times New Roman', Times, Georgia, serif;
   --mms-font-mono: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
 
@@ -270,7 +270,6 @@ html, body {
 /* Esse é o elemento destacado pelo usuário no DevTools */
 .mms-card,
 .mms-form-card {
-  font-family: Tahoma, Verdana, Segoe UI, sans-serif !important;
   background-color: var(--mms-white) !important;
   border-radius: var(--mms-radius-xl) !important;
   border: 1px solid var(--mms-slate-200) !important;
@@ -888,18 +887,4 @@ input[type="date"]::-webkit-calendar-picker-indicator,
     font-size: 11px !important;
     padding: 0 10px !important;
   }
-}
-
-/* ─── FONTE TAHOMA OBRIGATÓRIA PARA TODO O PREENCHIMENTO DE RELATÓRIO ─── */
-.mms-card *,
-.mms-form-card *,
-.mms-form-card input,
-.mms-form-card textarea,
-.mms-form-card select,
-.mms-form-card button,
-.mms-form-card label,
-.mms-form-card span,
-.mms-form-card p,
-.mms-form-card div {
-  font-family: Tahoma, Verdana, Segoe UI, sans-serif !important;
 }

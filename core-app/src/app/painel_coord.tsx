@@ -86,7 +86,7 @@ import {
 } from '../lib/deviceTelemetry';
 
 const modernFont = Platform.OS === 'web'
-  ? 'Tahoma, Verdana, Segoe UI, sans-serif'
+  ? "'Inter', system-ui, -apple-system, sans-serif"
   : undefined;
 
 const stripHtmlToPlainText = (html?: string): string => {

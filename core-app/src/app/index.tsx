@@ -104,11 +104,11 @@ const colors = {
 };
 
 const corporateFont = Platform.OS === 'web'
-  ? 'Tahoma, Verdana, Segoe UI, sans-serif'
+  ? '"Times New Roman", Times, serif'
   : undefined;
 
 const modernFont = Platform.OS === 'web'
-  ? 'Tahoma, Verdana, Segoe UI, sans-serif'
+  ? "'Inter', system-ui, -apple-system, sans-serif"
   : undefined;
 
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -720,7 +720,7 @@ const InfoBoxEditor = ({
             fontSize: '14px',
             color: '#1e293b',
             backgroundColor: '#ffffff',
-            fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif',
+            fontFamily: 'Tahoma, sans-serif',
             outline: 'none',
             textAlign: alignment === 'justify' ? 'justify' : 'left',
             lineHeight: '1.5',
