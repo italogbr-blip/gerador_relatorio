@@ -496,9 +496,14 @@ const createDefaultTab = (prepostoDefault = ''): TabData => ({
   pdfNomeArquivo: null,
 });
 
-const getRotatedBase64 = (imageUri: string, angle: number): Promise<string> => {
+const compressAndRotateImage = (
+  imageUri: string,
+  angle: number = 0,
+  maxDim: number = 1200,
+  quality: number = 0.72
+): Promise<string> => {
   return new Promise((resolve) => {
-    if (angle === 0 || Platform.OS !== 'web') {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') {
       resolve(imageUri);
       return;
     }
@@ -506,24 +511,45 @@ const getRotatedBase64 = (imageUri: string, angle: number): Promise<string> => {
       const img = new (window as any).Image();
       img.crossOrigin = 'Anonymous';
       img.onload = () => {
+        let origW = img.naturalWidth || img.width || 800;
+        let origH = img.naturalHeight || img.height || 600;
+
+        let targetW = origW;
+        let targetH = origH;
+        if (origW > origH) {
+          if (origW > maxDim) {
+            targetH = Math.round((origH * maxDim) / origW);
+            targetW = maxDim;
+          }
+        } else {
+          if (origH > maxDim) {
+            targetW = Math.round((origW * maxDim) / origH);
+            targetH = maxDim;
+          }
+        }
+
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           resolve(imageUri);
           return;
         }
-        const rad = (angle * Math.PI) / 180;
-        if (angle === 90 || angle === 270) {
-          canvas.width = img.height;
-          canvas.height = img.width;
+
+        let normalizedAngle = angle % 360;
+        if (normalizedAngle < 0) normalizedAngle += 360;
+
+        if (normalizedAngle === 90 || normalizedAngle === 270) {
+          canvas.width = targetH;
+          canvas.height = targetW;
         } else {
-          canvas.width = img.width;
-          canvas.height = img.height;
+          canvas.width = targetW;
+          canvas.height = targetH;
         }
+
         ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(rad);
-        ctx.drawImage(img, -img.width / 2, -img.height / 2);
-        resolve(canvas.toDataURL('image/jpeg', 0.9));
+        ctx.rotate((normalizedAngle * Math.PI) / 180);
+        ctx.drawImage(img, -targetW / 2, -targetH / 2, targetW, targetH);
+        resolve(canvas.toDataURL('image/jpeg', quality));
       };
       img.onerror = () => resolve(imageUri);
       img.src = imageUri;
@@ -531,6 +557,10 @@ const getRotatedBase64 = (imageUri: string, angle: number): Promise<string> => {
       resolve(imageUri);
     }
   });
+};
+
+const getRotatedBase64 = (imageUri: string, angle: number): Promise<string> => {
+  return compressAndRotateImage(imageUri, angle, 1200, 0.72);
 };
 
 const InfoBoxEditor = ({
@@ -2255,6 +2285,10 @@ export default function ReportGenerator() {
         alinhamentoInfo: parsed.alinhamentoInfo || 'left',
       };
 
+      // Invalida cache de blob anterior e limpa URL para que novos PDFs sejam gerados atualizados
+      cachedPdfBlobRef.current = null;
+      loadedTab.pdfUrl = null;
+
       setTabStore((prev) => ({
         ...prev,
         [activeTab]: loadedTab,
@@ -2293,11 +2327,16 @@ export default function ReportGenerator() {
   };
 
   useEffect(() => {
+    let targetId: number | null = null;
     if (editId) {
-      const idNum = Number(editId);
-      if (!isNaN(idNum) && idNum > 0 && idNum !== editingReportId) {
-        carregarRelatorioParaEdicao(idNum);
-      }
+      targetId = Number(editId);
+    } else if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const qId = sp.get('editId');
+      if (qId) targetId = Number(qId);
+    }
+    if (targetId && !isNaN(targetId) && targetId > 0 && targetId !== editingReportId) {
+      carregarRelatorioParaEdicao(targetId);
     }
   }, [editId]);
 
@@ -2701,12 +2740,13 @@ export default function ReportGenerator() {
         const file = e.target?.files?.[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = (event) => {
+          reader.onload = async (event) => {
             const uri = event.target?.result as string;
             if (uri) {
+              const compressedUri = await compressAndRotateImage(uri, 0, 1200, 0.72);
               setImageEditorModal({
                 visible: true,
-                rawUri: uri,
+                rawUri: compressedUri,
                 titulo: 'ANEXO FOTOGRÁFICO',
                 rotation: 0,
               });
@@ -2733,7 +2773,7 @@ export default function ReportGenerator() {
 
   const handleSaveImageEdit = async () => {
     if (!imageEditorModal.rawUri) return;
-    const finalUri = await getRotatedBase64(imageEditorModal.rawUri, imageEditorModal.rotation);
+    const finalUri = await compressAndRotateImage(imageEditorModal.rawUri, imageEditorModal.rotation, 1200, 0.72);
     if (imageEditorModal.editingId) {
       updateCurrentTab({
         fotosAnexadas: currentData.fotosAnexadas.map((f) =>
@@ -3174,6 +3214,24 @@ export default function ReportGenerator() {
       });
 
       if (apiSaveRes.sucesso) {
+        setPdfGenerated(true);
+        cachedPdfBlobRef.current = null;
+        updateCurrentTab({ pdfUrl: null });
+        try {
+          const dadosAtualizados = obterDadosRelatorioAtual();
+          gerarPdfBlob(dadosAtualizados, null)
+            .then((res) => {
+              cachedPdfBlobRef.current = res;
+            })
+            .catch(() => {});
+        } catch (_) {}
+
+        if (editingReportId) {
+          showCustomAlert(
+            'RELATÓRIO ATUALIZADO',
+            `O relatório #${editingReportId} (${currentData.unidade || 'Sem Unidade'}) foi salvo e atualizado com sucesso no banco de dados!`
+          );
+        }
         return;
       }
 

@@ -61,25 +61,65 @@ function salvarRelatorio(PDO $pdo, array $input): void {
     try {
         if ($id && $id > 0) {
             // Atualização de relatório existente
-            $stmt = $pdo->prepare("
-                UPDATE relatorios 
-                SET empresa = :empresa,
-                    unidade = :unidade,
-                    local_atendimento = :local,
-                    dados_json = :dados_json,
-                    teve_anexo = :teve_anexo,
-                    pdf_url = COALESCE(NULLIF(:pdf_url, ''), pdf_url)
-                WHERE id = :id
-            ");
-            $stmt->execute([
-                ':empresa' => $empresa,
-                ':unidade' => $unidade,
-                ':local' => $local,
-                ':dados_json' => $dadosJson,
-                ':teve_anexo' => $teveAnexo,
-                ':pdf_url' => $pdfUrl,
-                ':id' => $id
-            ]);
+            // Se veio um novo pdf_url, usa-o; caso contrário, define como NULL para invalidar o PDF antigo e forçar regeração com as novas alterações
+            $novoPdfUrl = !empty($pdfUrl) ? $pdfUrl : null;
+
+            // Invalida e remove arquivo físico anterior do PDF se existir
+            try {
+                $stmtOldPdf = $pdo->prepare("SELECT pdf_url FROM relatorios WHERE id = ?");
+                $stmtOldPdf->execute([$id]);
+                $oldRow = $stmtOldPdf->fetch();
+                if (!empty($oldRow['pdf_url'])) {
+                    $oldFilePath = realpath(__DIR__ . '/../' . $oldRow['pdf_url']) ?: realpath(__DIR__ . '/' . $oldRow['pdf_url']);
+                    if ($oldFilePath && is_file($oldFilePath)) {
+                        @unlink($oldFilePath);
+                    }
+                }
+            } catch (Exception $ePdfClean) {}
+
+            try {
+                $stmt = $pdo->prepare("
+                    UPDATE relatorios 
+                    SET empresa = :empresa,
+                        unidade = :unidade,
+                        local_atendimento = :local,
+                        dados_json = :dados_json,
+                        teve_anexo = :teve_anexo,
+                        pdf_url = :pdf_url,
+                        data_edicao = NOW()
+                    WHERE id = :id
+                ");
+                $stmt->execute([
+                    ':empresa' => $empresa,
+                    ':unidade' => $unidade,
+                    ':local' => $local,
+                    ':dados_json' => $dadosJson,
+                    ':teve_anexo' => $teveAnexo,
+                    ':pdf_url' => $novoPdfUrl,
+                    ':id' => $id
+                ]);
+            } catch (Exception $eUpCol) {
+                // Fallback caso a coluna data_edicao ainda não tenha sido criada
+                $stmt = $pdo->prepare("
+                    UPDATE relatorios 
+                    SET empresa = :empresa,
+                        unidade = :unidade,
+                        local_atendimento = :local,
+                        dados_json = :dados_json,
+                        teve_anexo = :teve_anexo,
+                        pdf_url = :pdf_url
+                    WHERE id = :id
+                ");
+                $stmt->execute([
+                    ':empresa' => $empresa,
+                    ':unidade' => $unidade,
+                    ':local' => $local,
+                    ':dados_json' => $dadosJson,
+                    ':teve_anexo' => $teveAnexo,
+                    ':pdf_url' => $novoPdfUrl,
+                    ':id' => $id
+                ]);
+            }
 
             jsonResponse([
                 'sucesso' => true,

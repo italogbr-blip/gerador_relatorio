@@ -221,6 +221,23 @@ function inicializarTabelasSeNecessario(PDO $pdo): void {
             INDEX idx_rel_user (usuario_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        // Migração idempotente para colunas de edição em relatorios
+        try {
+            $stmtColsRel = $pdo->query("SHOW COLUMNS FROM relatorios");
+            if ($stmtColsRel) {
+                $colsRel = $stmtColsRel->fetchAll(PDO::FETCH_COLUMN);
+                if (!in_array('dados_json_original', $colsRel)) {
+                    $pdo->exec("ALTER TABLE relatorios ADD COLUMN dados_json_original LONGTEXT NULL");
+                }
+                if (!in_array('data_edicao', $colsRel)) {
+                    $pdo->exec("ALTER TABLE relatorios ADD COLUMN data_edicao DATETIME NULL");
+                }
+                if (!in_array('editado_por', $colsRel)) {
+                    $pdo->exec("ALTER TABLE relatorios ADD COLUMN editado_por VARCHAR(100) NULL");
+                }
+            }
+        } catch (Exception $eRelCol) {}
+
         // 3. Senha de coordenação
         $pdo->exec("CREATE TABLE IF NOT EXISTS coord_senha (
             id INT PRIMARY KEY DEFAULT 1,

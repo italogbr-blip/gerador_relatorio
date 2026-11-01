@@ -19,7 +19,7 @@ import { listarRelatoriosApi, excluirRelatorioApi, listarEmpresasApi } from '../
 import { formatReportPdfUrl, PHP_SERVER_URL } from '../lib/config';
 import { getSavedSessionSync, getValidatedUserSession, authenticateUser, isUserCoordinator, AppUserSession } from '../lib/auth';
 import { gerarHtmlPdfFidelidade, ReportPdfData } from '../lib/pdfHtmlGenerator';
-import { baixarPdfRelatorio, visualizarRelatorioHtml } from '../lib/pdfManager';
+import { baixarPdfRelatorio, visualizarRelatorioHtml, compartilharPdfRelatorio } from '../lib/pdfManager';
 
 const modernFont = Platform.OS === 'web'
   ? "'Inter', system-ui, -apple-system, sans-serif"
@@ -277,20 +277,16 @@ export default function MeusRelatoriosScreen() {
     });
   };
 
-  // Abrir / Baixar PDF vinculado ao relatório
-  const openReportPdf = async (report: any) => {
-    if (!report) return;
-    const rawUrl = report.pdf_url || report.caminho_pdf;
-    const url = formatReportPdfUrl(rawUrl);
+  // Extrai ReportPdfData completo a partir do relatório registrado
+  const extrairDadosPdf = (report: any): ReportPdfData => {
     const dataObj = parseReportData(report) || {};
-
-    const pdfData: ReportPdfData = {
-      grupo: dataObj.grupo || report.empresa,
-      unidade: dataObj.unidade || report.unidade,
-      data: dataObj.data || (report.data_criacao ? report.data_criacao.split('T')[0] : ''),
-      local: dataObj.local || report.local_atendimento,
+    return {
+      grupo: dataObj.grupo || report.empresa || 'TECHNIP',
+      unidade: dataObj.unidade || report.unidade || 'MMS',
+      data: dataObj.data || (report.data_criacao ? String(report.data_criacao).split('T')[0] : ''),
+      local: dataObj.local || report.local_atendimento || '',
       modal: dataObj.modal || 'Helicóptero',
-      preposto: dataObj.preposto || report.preposto,
+      preposto: dataObj.preposto || report.preposto || '',
       horarios: dataObj.horarios,
       info_troca: dataObj.info_troca || dataObj.info,
       pax_embarcando: dataObj.pax_embarcando || dataObj.pax1,
@@ -298,6 +294,14 @@ export default function MeusRelatoriosScreen() {
       fotos: dataObj.fotos || [],
       alinhamentoInfo: dataObj.alinhamentoInfo || 'left',
     };
+  };
+
+  // Abrir / Baixar PDF vinculado ao relatório
+  const openReportPdf = async (report: any) => {
+    if (!report) return;
+    const rawUrl = report.pdf_url || report.caminho_pdf;
+    const url = formatReportPdfUrl(rawUrl);
+    const pdfData = extrairDadosPdf(report);
 
     try {
       await baixarPdfRelatorio(pdfData, url);
@@ -306,8 +310,29 @@ export default function MeusRelatoriosScreen() {
     }
   };
 
-  // Compartilhar Resumo do Relatório via WhatsApp
-  const shareWhatsApp = (report: any) => {
+  // Compartilhar via Menu Nativo do Navegador / Sistema
+  const handleCompartilharRelatorio = async (report: any) => {
+    if (!report) return;
+    try {
+      const pdfData = extrairDadosPdf(report);
+      const rawPdf = report.pdf_url || report.caminho_pdf;
+      const fallbackUrl = rawPdf
+        ? (formatReportPdfUrl(rawPdf) || undefined)
+        : (Platform.OS === 'web' && typeof window !== 'undefined' ? `${window.location.origin}/ver_relatorio?id=${report.id}` : undefined);
+
+      const res = await compartilharPdfRelatorio(pdfData, fallbackUrl, rawPdf || undefined);
+      if (!res.sucesso && res.metodo === 'not_supported') {
+        shareWhatsAppFallback(report);
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        shareWhatsAppFallback(report);
+      }
+    }
+  };
+
+  // Fallback para envio direto via WhatsApp caso o navegador não possua suporte a Web Share
+  const shareWhatsAppFallback = (report: any) => {
     if (!report) return;
     const parsed = parseReportData(report);
     const dataFormatada = report.data_criacao
@@ -836,9 +861,9 @@ export default function MeusRelatoriosScreen() {
 
                     <TouchableOpacity
                       style={styles.btnActionWhats}
-                      onPress={() => shareWhatsApp(r)}
+                      onPress={() => handleCompartilharRelatorio(r)}
                     >
-                      <Text style={styles.btnActionWhatsText}>💬 ZAP</Text>
+                      <Text style={styles.btnActionWhatsText}>📤 COMPARTILHAR</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -919,9 +944,9 @@ export default function MeusRelatoriosScreen() {
 
                     <TouchableOpacity
                       style={styles.btnActionWhats}
-                      onPress={() => shareWhatsApp(r)}
+                      onPress={() => handleCompartilharRelatorio(r)}
                     >
-                      <Text style={styles.btnActionWhatsText}>💬 ZAP</Text>
+                      <Text style={styles.btnActionWhatsText}>📤 COMPARTILHAR</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -1014,10 +1039,10 @@ export default function MeusRelatoriosScreen() {
 
                     <TouchableOpacity
                       style={styles.btnWhatsModal}
-                      onPress={() => shareWhatsApp(selectedReport)}
+                      onPress={() => handleCompartilharRelatorio(selectedReport)}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.btnWhatsModalText}>💬 WHATSAPP</Text>
+                      <Text style={styles.btnWhatsModalText}>📤 COMPARTILHAR</Text>
                     </TouchableOpacity>
                   </View>
 

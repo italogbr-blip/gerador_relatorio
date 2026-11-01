@@ -49,6 +49,60 @@ async function getImageDimensions(src: string): Promise<{ width: number; height:
 }
 
 /**
+ * Otimiza e comprime imagem de anexos fotográficos (máximo de 1200px e JPEG 0.72)
+ * Garante arquivos ultraleves (~150KB-250KB por foto em vez de 10MB+) mantendo altíssima nitidez visual
+ */
+async function optimizeImageForPdf(
+  src: string,
+  maxDim: number = 1200,
+  quality: number = 0.72
+): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG' }> {
+  return new Promise((resolve) => {
+    if (typeof Image === 'undefined' || typeof document === 'undefined') {
+      const isPng = src.startsWith('data:image/png') || src.toLowerCase().endsWith('.png');
+      resolve({ dataUrl: src, format: isPng ? 'PNG' : 'JPEG' });
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      let origW = img.naturalWidth || img.width || 800;
+      let origH = img.naturalHeight || img.height || 600;
+
+      let targetW = origW;
+      let targetH = origH;
+      if (origW > origH) {
+        if (origW > maxDim) {
+          targetH = Math.round((origH * maxDim) / origW);
+          targetW = maxDim;
+        }
+      } else {
+        if (origH > maxDim) {
+          targetW = Math.round((origW * maxDim) / origH);
+          targetH = maxDim;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve({ dataUrl: src, format: 'JPEG' });
+        return;
+      }
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+      resolve({ dataUrl: compressedDataUrl, format: 'JPEG' });
+    };
+    img.onerror = () => {
+      resolve({ dataUrl: src, format: 'JPEG' });
+    };
+    img.src = src;
+  });
+}
+
+/**
  * Gerador de PDF 100% Vetorial Nativo idêntico ao DomPDF original em PHP.
  * Medidas e posições extraídas diretamente do binário do DomPDF oficial:
  * - A4: 210mm x 297mm (595.28pt x 841.89pt)
@@ -76,7 +130,7 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
   function drawBackgroundAndLogo() {
     if (PDF_BACKGROUND_BASE64) {
       try {
-        doc.addImage(PDF_BACKGROUND_BASE64, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+        doc.addImage(PDF_BACKGROUND_BASE64, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'MEDIUM');
       } catch (e) {
         console.warn('Erro ao carregar background vetorial:', e);
       }
@@ -84,7 +138,7 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     if (PDF_LOGO_BASE64) {
       try {
         // Logo oficial Dompdf: 60pt x 60pt (21.17mm x 21.17mm) at x=15.0mm, y=5.0mm
-        doc.addImage(PDF_LOGO_BASE64, 'JPEG', 15.0, 5.0, 21.17, 21.17, undefined, 'FAST');
+        doc.addImage(PDF_LOGO_BASE64, 'JPEG', 15.0, 5.0, 21.17, 21.17, undefined, 'MEDIUM');
       } catch (e) {
         console.warn('Erro ao carregar logo no cabeçalho:', e);
       }
@@ -399,7 +453,8 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
     doc.line(105.0 - ftW / 2, 26.5, 105.0 + ftW / 2, 26.5);
 
     try {
-      const dims = await getImageDimensions(imgSrc);
+      const { dataUrl: optSrc, format } = await optimizeImageForPdf(imgSrc);
+      const dims = await getImageDimensions(optSrc);
       const maxW = 180;
       const maxH = 220;
       let w = maxW;
@@ -413,10 +468,7 @@ export async function gerarVectorPdf(data: ReportPdfData): Promise<jsPDF> {
       const imgX = 15.0 + (maxW - w) / 2;
       const imgY = 35.0 + (maxH - h) / 2;
 
-      const isPng = imgSrc.startsWith('data:image/png') || imgSrc.toLowerCase().endsWith('.png');
-      const format = isPng ? 'PNG' : 'JPEG';
-
-      doc.addImage(imgSrc, format, imgX, imgY, w, h, undefined, 'FAST');
+      doc.addImage(optSrc, format, imgX, imgY, w, h, undefined, 'MEDIUM');
     } catch (err) {
       console.warn('Erro ao inserir foto no PDF:', err);
     }

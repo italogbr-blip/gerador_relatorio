@@ -252,27 +252,52 @@ export default function PainelCoordScreen() {
     return '';
   });
 
+  const [ultimoCheckCadastros, setUltimoCheckCadastros] = useState<string>(() => {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      return localStorage.getItem('mms_coord_cadastros_vistos') || '';
+    }
+    return '';
+  });
+  const [bannerCadastrosFechado, setBannerCadastrosFechado] = useState<boolean>(false);
+
   const acessosFalhosNaoVistosCount = useMemo(() => {
     if (!acessosFalhos || acessosFalhos.length === 0) return 0;
     if (!ultimoCheckSeguranca) return acessosFalhos.length;
-    const checkTime = new Date(ultimoCheckSeguranca).getTime();
+    const checkTime = new Date(ultimoCheckSeguranca.replace(' ', 'T')).getTime();
+    if (isNaN(checkTime)) return acessosFalhos.length;
     const novos = acessosFalhos.filter((af) => {
-      const afTime = new Date(af.data_tentativa).getTime();
-      return isNaN(checkTime) || afTime > checkTime;
+      const rawDate = String(af.data_tentativa || '').replace(' ', 'T');
+      const afTime = new Date(rawDate).getTime();
+      return isNaN(afTime) ? false : afTime > checkTime;
     });
     return novos.length;
   }, [acessosFalhos, ultimoCheckSeguranca]);
 
-  const handleIrParaSeguranca = () => {
-    setActiveTab('seguranca');
-    setAlertaSegurancaExpandido(false);
+  const handleZerarAlertasSeguranca = () => {
     const agora = new Date().toISOString();
     setUltimoCheckSeguranca(agora);
+    setAlertaSegurancaExpandido(false);
     if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
       try {
         localStorage.setItem('mms_coord_seguranca_vista', agora);
       } catch (e) {}
     }
+  };
+
+  const handleZerarAlertasCadastros = () => {
+    const agora = new Date().toISOString();
+    setUltimoCheckCadastros(agora);
+    setBannerCadastrosFechado(true);
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('mms_coord_cadastros_vistos', agora);
+      } catch (e) {}
+    }
+  };
+
+  const handleIrParaSeguranca = () => {
+    setActiveTab('seguranca');
+    handleZerarAlertasSeguranca();
     carregarSeguranca();
   };
 
@@ -2410,7 +2435,7 @@ export default function PainelCoordScreen() {
                 style={styles.coordSecurityAlertCloseBtn}
                 onPress={(e) => {
                   e.stopPropagation?.();
-                  setAlertaSegurancaExpandido(false);
+                  handleZerarAlertasSeguranca();
                 }}
                 activeOpacity={0.7}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -2421,11 +2446,14 @@ export default function PainelCoordScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Banner de Notificação de Novos Cadastros Pendentes */}
-        {usuariosPendentes.length > 0 && (
+        {/* Banner de Notificação de Novos Cadastros Pendentes (Zera/Fecha ao clicar) */}
+        {usuariosPendentes.length > 0 && !bannerCadastrosFechado && (
           <TouchableOpacity
             style={[styles.coordSecurityAlertBanner, { backgroundColor: '#fffbeb', borderColor: '#fde68a' }]}
-            onPress={() => setActiveTab('usuarios')}
+            onPress={() => {
+              setActiveTab('usuarios');
+              handleZerarAlertasCadastros();
+            }}
             activeOpacity={0.92}
           >
             <View style={styles.coordSecurityAlertBannerContent}>
@@ -2450,6 +2478,17 @@ export default function PainelCoordScreen() {
               <View style={[styles.coordSecurityAlertActionBox, { backgroundColor: '#d97706' }]}>
                 <Text style={styles.coordSecurityAlertActionText}>REVISAR ›</Text>
               </View>
+              <TouchableOpacity
+                style={styles.coordSecurityAlertCloseBtn}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  handleZerarAlertasCadastros();
+                }}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.coordSecurityAlertCloseBtnText}>✕</Text>
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
         )}
@@ -5327,6 +5366,18 @@ export default function PainelCoordScreen() {
                       {acessosFalhos.length} BLOQUEIOS REGISTRADOS
                     </Text>
                   </View>
+
+                  {acessosFalhosNaoVistosCount > 0 && (
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#0284c7', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 }}
+                      onPress={handleZerarAlertasSeguranca}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                        ZERAR NOTIFICAÇÕES
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
                   {acessosFalhos.length > 0 && (
                     <TouchableOpacity
